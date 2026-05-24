@@ -45,6 +45,7 @@ class FieldResult(BaseModel):
     is_correct: bool
     score: int
     error_type: str | None
+    feedback: str = ""
     vector: dict[str, Any]
 
 

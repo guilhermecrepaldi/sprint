@@ -7,6 +7,8 @@ import kotlinx.serialization.Serializable
 data class FolhaField(
     @SerialName("field_index") val fieldIndex: Int,
     @SerialName("exercise_id") val exerciseId: String,
+    val subject: String = "math",
+    @SerialName("canvas_mode") val canvasMode: String = "calculation",
     val statement: String,
     @SerialName("skill_tags") val skillTags: List<String>,
     @SerialName("estimated_time_ms") val estimatedTimeMs: Int? = null,

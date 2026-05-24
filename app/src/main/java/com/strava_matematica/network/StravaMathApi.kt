@@ -1,5 +1,7 @@
 package com.strava_matematica.network
 
+import com.strava_matematica.model.CalibrationRequest
+import com.strava_matematica.model.CalibrationResponse
 import com.strava_matematica.model.SessionStartRequest
 import com.strava_matematica.model.SessionStartResponse
 import com.strava_matematica.model.SubmitRequest
@@ -21,4 +23,10 @@ interface StravaMathApi {
         @Path("sessionId") sessionId: String,
         @Body request: SubmitRequest,
     ): SubmitResult
+
+    @POST("api/student/{studentId}/calibrate")
+    suspend fun calibrate(
+        @Path("studentId") studentId: String,
+        @Body body: CalibrationRequest,
+    ): CalibrationResponse
 }

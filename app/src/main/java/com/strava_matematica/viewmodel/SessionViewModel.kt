@@ -1,18 +1,19 @@
 package com.strava_matematica.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.strava_matematica.model.ApiStatus
-import com.strava_matematica.model.FieldResult
+import com.strava_matematica.model.CalibrationRequest
+import com.strava_matematica.model.CalibrationSample
 import com.strava_matematica.model.Folha
-import com.strava_matematica.model.FolhaField
 import com.strava_matematica.model.SessionConfig
 import com.strava_matematica.model.SessionStatus
 import com.strava_matematica.model.SubmitResult
 import com.strava_matematica.model.SessionStartRequest
 import com.strava_matematica.model.SubmitRequest
 import com.strava_matematica.model.FieldSubmit
-import com.strava_matematica.model.Thermometer
 import com.strava_matematica.network.ApiClient
 import com.strava_matematica.ui.folha.ImageUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +33,9 @@ data class SessionUiState(
     val errorMessage: String? = null,
 )
 
-class SessionViewModel : ViewModel() {
+class SessionViewModel(application: Application) : AndroidViewModel(application) {
     private val api = ApiClient.create()
+    private val prefs = application.getSharedPreferences("love_class_prefs", Context.MODE_PRIVATE)
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState
 
@@ -42,9 +44,11 @@ class SessionViewModel : ViewModel() {
     }
 
     fun startSession() {
-        // Se primeira sessão (sem histórico), ir para CALIBRATION primeiro.
-        // Por ora, ir direto para ACTIVE — calibração pode ser ativada via settings.
-        // (implementar lógica de "primeira sessão" na Fase G.2)
+        if (!prefs.getBoolean("calibration_done", false)) {
+            _uiState.update { it.copy(status = SessionStatus.CALIBRATION, apiStatus = ApiStatus.OK) }
+            return
+        }
+
         val config = _uiState.value.config
         _uiState.update { it.copy(apiStatus = ApiStatus.CONNECTING, errorMessage = null) }
         viewModelScope.launch {
@@ -63,6 +67,37 @@ class SessionViewModel : ViewModel() {
                 _uiState.update { it.copy(status = SessionStatus.ERROR, errorMessage = e.message, apiStatus = ApiStatus.ERROR) }
             }
         }
+    }
+
+    fun onCalibrationComplete(skipped: Boolean) {
+        markCalibrationDone()
+        startSession()
+    }
+
+    fun submitCalibration(samples: List<CalibrationSample>) {
+        _uiState.update { it.copy(apiStatus = ApiStatus.CONNECTING, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                api.calibrate(
+                    studentId = _uiState.value.studentId,
+                    body = CalibrationRequest(samples = samples),
+                )
+                markCalibrationDone()
+                startSession()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        status = SessionStatus.CALIBRATION,
+                        apiStatus = ApiStatus.ERROR,
+                        errorMessage = e.message,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun markCalibrationDone() {
+        prefs.edit().putBoolean("calibration_done", true).apply()
     }
 
     fun submitFolha(folhaState: FolhaUiState) {

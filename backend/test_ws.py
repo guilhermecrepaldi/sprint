@@ -1,7 +1,7 @@
 import asyncio
 import websockets
 
-async def test_ws():
+async def run_ws_smoke():
     uri = "ws://localhost:8000/api/telemetry/stream"
     try:
         async with websockets.connect(uri) as websocket:
@@ -13,4 +13,4 @@ async def test_ws():
         print(f"WS Error: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test_ws())
+    asyncio.run(run_ws_smoke())

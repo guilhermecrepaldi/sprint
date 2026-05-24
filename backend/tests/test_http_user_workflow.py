@@ -77,6 +77,25 @@ class HttpUserWorkflowTests(unittest.TestCase):
         self.assertEqual(submit_response.status_code, 400)
         self.assertEqual(submit_response.json()["detail"]["missing"], [2])
 
+    def test_http_can_start_physics_session(self):
+        response = self.client.post(
+            "/api/session/start",
+            json={
+                "student_id": "33333333-3333-4333-8333-333333333333",
+                "config": {
+                    "subject": "physics",
+                    "duration_mode": "pages",
+                    "pages_limit": 1,
+                    "exercises_per_page": 1,
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        field = response.json()["first_folha"]["fields"][0]
+        self.assertEqual(field["subject"], "physics")
+        self.assertEqual(field["canvas_mode"], "calculation")
+
     def _submit_payload(self, folha: dict) -> dict:
         return {
             "folha_id": folha["folha_id"],

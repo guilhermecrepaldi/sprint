@@ -20,3 +20,6 @@ class Exercise(Base):
     difficulty: Mapped[float] = mapped_column(Float, nullable=False)
     estimated_time_ms: Mapped[int | None] = mapped_column(Integer)
     source_library: Mapped[str | None] = mapped_column(String(100))
+    subject: Mapped[str] = mapped_column(String(32), default="math", server_default="math", index=True)
+    canvas_mode: Mapped[str] = mapped_column(String(32), default="calculation", server_default="calculation")
+    validator: Mapped[str] = mapped_column(String(32), default="sympy", server_default="sympy")

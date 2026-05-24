@@ -58,9 +58,26 @@ class FakeAsyncSession:
                 difficulty=2.0 + min(index, 4) * 0.2,
                 estimated_time_ms=30000,
                 source_library="test",
+                subject="math",
+                canvas_mode="calculation",
+                validator="sympy",
             )
             self.add(exercise)
             exercises.append(exercise)
+        physics = Exercise(
+            id=uuid.uuid4(),
+            statement="Um corpo percorre 20 m em 4 s. Calcule a velocidade média.",
+            expected_answer="x = 5",
+            skill_tags=["cinematica"],
+            difficulty=2.0,
+            estimated_time_ms=30000,
+            source_library="test",
+            subject="physics",
+            canvas_mode="calculation",
+            validator="sympy",
+        )
+        self.add(physics)
+        exercises.append(physics)
         return exercises
 
     def add(self, obj: Any) -> None:
@@ -127,6 +144,7 @@ class FakeAsyncSession:
         if entity is Exercise:
             lower = params.get("difficulty_1", 1.0)
             upper = params.get("difficulty_2", 10.0)
+            subject = params.get("subject_1")
             limit = params.get("param_1")
             excluded = set()
             for key, value in params.items():
@@ -136,6 +154,7 @@ class FakeAsyncSession:
                 exercise
                 for exercise in self._stores[Exercise].values()
                 if lower <= exercise.difficulty <= upper and exercise.id not in excluded
+                and (subject is None or exercise.subject == subject)
             ]
             items.sort(key=lambda exercise: (abs(exercise.difficulty - ((lower + upper) / 2)), str(exercise.id)))
             return FakeResult(items=items[:limit])
@@ -180,6 +199,11 @@ class FakeAsyncSession:
             obj.erase_count = obj.erase_count or 0
             obj.pause_count = obj.pause_count or 0
             obj.created_at = obj.created_at or datetime.now(UTC)
+
+        if isinstance(obj, Exercise):
+            obj.subject = obj.subject or "math"
+            obj.canvas_mode = obj.canvas_mode or "calculation"
+            obj.validator = obj.validator or "sympy"
 
         if isinstance(obj, StudentSkillMemory):
             obj.accuracy = obj.accuracy if obj.accuracy is not None else 0.5

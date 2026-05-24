@@ -36,6 +36,7 @@ async def start_session(body: SessionStartIn, db: AsyncSession = Depends(get_db)
         difficulty=config.difficulty_start,
         exercises_per_page=config.exercises_per_page,
         student_id=body.student_id,
+        subject=config.subject,
     )
     if not exercises:
         await db.rollback()

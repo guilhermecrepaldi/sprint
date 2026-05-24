@@ -2408,3 +2408,385 @@ Branch: `main`. Push: OK para `origin/main`.
 2. Fase G.2: em `SessionViewModel.startSession()`, checar se aluno tem tentativas no histórico; se zero, setar `status = SessionStatus.CALIBRATION` antes de ir para ACTIVE.
 3. `CalibrationScreen` → conectar ao endpoint real `POST /api/student/{id}/calibrate`: coletar bitmaps por caractere via `ImageUtils.exportBitmap`, enviar ao backend, exibir resultado de `weak_chars`.
 4. Continuar smoke real com Docker+Postgres.
+
+---
+
+# APPEND — 2026-05-25: Super Handoff — Estado Completo para Próximo Operador
+
+> Este APPEND substitui todos os anteriores como referência rápida.
+> Leia só este se quiser entender o estado atual sem ler o histórico.
+
+---
+
+## 1. Visão Geral do Projeto
+
+**Nome:** Strava da Matemática
+**Propósito:** App de treino para concursandos — matemática + multi-matéria, loop ultra-rápido exercício → resposta manuscrita → correção → próximo.
+
+**Stack:**
+- Android: Kotlin + Jetpack Compose, Retrofit, kotlinx-serialization
+- Backend: Python 3.11, FastAPI, SQLAlchemy async, Alembic, PostgreSQL, Redis
+- OCR: Claude Haiku Vision (`claude-haiku-4-5-20251001`)
+- Correção: SymPy para math; AI/Rubric para outras matérias
+- Repo: `https://github.com/guilhermecrepaldi/love-class` branch `main`
+
+---
+
+## 2. O Que Está 100% Implementado
+
+### Fases A–G (completas)
+
+| Fase | Android | Backend |
+|------|---------|---------|
+| A — Split canvas | ✅ ExerciseField: rascunho 65% + caixa resposta 35% | — |
+| B — Settings panel | ✅ FolhaSettingsSheet.kt (ModalBottomSheet) | — |
+| C — Multi-matéria | ✅ FolhaField com subject + canvasMode | ✅ Exercise.subject/canvas_mode/validator + migration 0005 |
+| D — 4 Agentes | — | ✅ scoring_agent, feedback_agent, exercise_creator_agent, progression_agent |
+| E — Mastery engine | — | ✅ mastery.py (diminishing returns + log decay) + unlock.py (90%+100 ex) |
+| F — Ritmo adaptativo | — | ✅ adaptive.py (micro: warmup/flow/breathing/sprint) + rhythm.py (macro) |
+| G — Calibração | ✅ CalibrationScreen.kt (10 dígitos, InkCanvas) | ✅ POST /api/student/{id}/calibrate |
+
+### Estado dos testes
+```
+python -m unittest -v   →   85/85 OK
+gradlew assembleDebug   →   BUILD SUCCESSFUL
+```
+
+### Migrations aplicadas
+```
+0001_initial
+0002_add_folha_exercises
+0003_add_attempt_submit_guard
+0004_add_runtime_indexes
+0005_add_subject_fields
+0006_add_skill_attempt_count
+0007_add_last_practiced_at
+0008_add_session_accuracy_duration
+```
+
+### Último commit significativo
+```
+90024c4   feat: Fase G complete — calibration API, CalibrationScreen, macro-rhythm
+75a6e51   feat: add Fase G calibration API, macro-rhythm engine, and CalibrationScreen
+```
+
+---
+
+## 3. Mapa de Arquivos (só os que importam agora)
+
+### Android — arquivos relevantes
+```
+app/src/main/java/com/strava_matematica/
+│
+├── MainActivity.kt
+│   ├── StravaMathApp() — when(state.status) router
+│   ├── SessionStatus.CALIBRATION → CalibrationScreen(onComplete = { _ -> viewModel.startSession() })
+│   ├── SessionStatus.ACTIVE/SUBMITTING → FolhaScreen(folha, config, folhaState...)
+│   └── folhaViewModel.advanceExercise() → se done, viewModel.submitFolha(folhaState)
+│
+├── model/
+│   ├── SessionConfig.kt         — BackgroundMode, DurationMode, SessionStatus(CONFIG/CALIBRATION/ACTIVE/SUBMITTING/RESULT/FINISHED/ERROR)
+│   │                              campos: showCorrectCount, showPercentage, blindMode, exercisesPerPage
+│   └── Folha.kt                 — FolhaField(fieldIndex, exerciseId, subject, canvasMode, statement, skillTags, estimatedTimeMs)
+│
+├── viewmodel/
+│   ├── FolhaViewModel.kt        — FolhaUiState com fieldScratchStrokes/fieldAnswerStrokes/fieldScratchRedoStacks/fieldAnswerRedoStacks
+│   │                              fieldStrokes = alias de fieldAnswerStrokes (o que vai ao OCR)
+│   │                              syncScratch() / syncAnswer() / advanceExercise() / resetForNextFolha()
+│   └── SessionViewModel.kt      — startSession() [IR PARA CALIBRATION AQUI — veja Fase G.2]
+│                                  submitFolha(folhaState): itera campos, ImageUtils.exportBitmap(strokes) → Base64, Retrofit
+│
+└── ui/
+    ├── folha/
+    │   ├── ExerciseField.kt     — SPLIT CANVAS: InkCanvas scratch (weight 0.65) + InkCanvas answer (weight 0.35, borda primary 1.5dp)
+    │   │                          InkCanvas: detectDragGestures, mutableStateListOf local (60fps), sincroniza no onDragEnd
+    │   │                          clearSignal/undoSignal/redoSignal via LaunchedEffect
+    │   ├── FolhaScreen.kt       — 1 exercício por tela, .advanceGestureInput(onAdvance) [2 dedos ≥80dp | 3 taps ≤600ms]
+    │   │                          top bar: Pág. / Dif. / Ex. N/Total / Termômetro / ⚙ settings
+    │   │                          InkToolbar: undo/redo/clear via Int signals
+    │   ├── FolhaSettingsSheet.kt — ModalBottomSheet: fundo (white/dark), cor caneta (4 opções), visibilidade (4 switches), questões por folha (stepper 1–10)
+    │   ├── InkToolbar.kt        — botões Desfazer / Refazer / Limpar
+    │   └── ImageUtils.kt        — exportBitmap(strokes: List<List<Offset>>): String (PNG Base64, fundo branco)
+    │
+    └── calibration/
+        └── CalibrationScreen.kt — sequência "1"–"9"+"0" (10 chars), InkCanvas por char, clearSignal(index), Pular/Avançar/Concluir
+                                   onComplete(skipped: Boolean) — atualmente SÓ chama viewModel.startSession() sem enviar bitmaps
+```
+
+### Backend — arquivos relevantes
+```
+backend/
+├── main.py              — create_app(), routers: health, session, submit, calibration, rhythm
+├── db.py                — settings (DATABASE_URL, REDIS_URL, ANTHROPIC_API_KEY, AUTO_CREATE_TABLES)
+│
+├── models/
+│   ├── exercise.py      — subject, canvas_mode, validator
+│   ├── vector.py        — StudentSkillMemory: accuracy, attempt_count, last_practiced_at
+│   └── session.py       — Session: session_accuracy, duration_ms
+│
+├── engine/
+│   ├── ocr.py           — extract_answer(image_base64, student_id=None); fallback "latex:..." p/ testes
+│   ├── correction.py    — validate_answer() SymPy + string fallback
+│   ├── mastery.py       — update_mastery(current, correct) → rendimento decrescente; apply_decay(mastery, days)
+│   ├── unlock.py        — MASTERY_THRESHOLD=0.90, MIN_EXERCISES=100, PREREQUISITE_TREE (soma→cálculo)
+│   │                      check_unlock(target_skill, skill_memory) → UnlockStatus
+│   │                      get_available_skills(skill_memory) → list[str]
+│   ├── adaptive.py      — get_next_folha() usa get_available_skills() + apply_decay()
+│   │                      get_exercise_role(pos, errors) → warmup/flow/breathing/sprint
+│   └── rhythm.py        — get_session_recommendation(sessions) → trend/best_hour/suggested_duration_ms
+│
+├── agents/
+│   ├── scoring_agent.py        — wraps compute_score(), sem LLM
+│   ├── feedback_agent.py       — lazy Anthropic client, silêncio em streak≥3, "✓" em acerto, 1 frase em erro (Haiku)
+│   ├── exercise_creator_agent.py — gera exercício JSON via Claude Sonnet a partir de StudentBrief
+│   └── progression_agent.py    — analisa skill_memories + attempts, produz StudentBrief
+│
+├── api/
+│   ├── session.py   — POST /api/session/start
+│   ├── submit.py    — POST /api/session/{id}/submit
+│   ├── calibration.py — POST /api/student/{id}/calibrate
+│   └── rhythm.py    — GET /api/student/{id}/rhythm
+│
+└── tests/           — 85 testes
+    ├── test_unlock.py, test_mastery.py, test_rhythm.py, test_calibration.py
+    └── ... demais
+```
+
+---
+
+## 4. Fase G.2 — O Que Falta (PRÓXIMA TAREFA)
+
+### Tarefa G.2.1 — Detectar primeira sessão e ir para CALIBRATION
+
+**Arquivo:** `app/.../viewmodel/SessionViewModel.kt`, função `startSession()`
+
+**O que fazer:**
+1. Antes de chamar a API `/api/session/start`, verificar se o aluno já tem histórico.
+2. Se zero tentativas (primeira vez) → setar `status = SessionStatus.CALIBRATION` e retornar.
+3. O `CalibrationScreen` já chama `onComplete = { _ -> viewModel.startSession() }`, então ao concluir a calibração, `startSession()` é chamado novamente e desta vez vai para ACTIVE normalmente.
+
+**Implementação sugerida:**
+
+```kotlin
+fun startSession() {
+    viewModelScope.launch {
+        try {
+            // Verificar se aluno tem histórico (primeira sessão)
+            val history = api.getStudentHistory(_uiState.value.studentId)
+            if (history.sessionCount == 0 && !_uiState.value.calibrationDone) {
+                _uiState.update { it.copy(status = SessionStatus.CALIBRATION) }
+                return@launch
+            }
+            // Fluxo normal
+            val req = SessionStartRequest(...)
+            ...
+        }
+    }
+}
+```
+
+**Alternativa mais simples** (sem endpoint de histórico):
+- Usar `SharedPreferences` para persistir flag `calibration_done` localmente.
+- Na primeira execução do app: flag ausente → ir para CALIBRATION.
+- Após `onComplete`: salvar flag, chamar `startSession()` de novo.
+
+```kotlin
+// SessionViewModel
+private fun isFirstTime(): Boolean =
+    !prefs.getBoolean("calibration_done", false)
+
+private fun markCalibrationDone() =
+    prefs.edit().putBoolean("calibration_done", true).apply()
+
+fun startSession() {
+    if (isFirstTime()) {
+        _uiState.update { it.copy(status = SessionStatus.CALIBRATION) }
+        return
+    }
+    // ... fluxo normal de API ...
+}
+
+fun onCalibrationComplete(skipped: Boolean) {
+    markCalibrationDone()
+    startSession()
+}
+```
+
+E no `MainActivity.kt`, trocar:
+```kotlin
+SessionStatus.CALIBRATION -> CalibrationScreen(
+    onComplete = { skipped -> viewModel.onCalibrationComplete(skipped) }
+)
+```
+
+---
+
+### Tarefa G.2.2 — Conectar CalibrationScreen ao endpoint real
+
+**Arquivo:** `app/.../ui/calibration/CalibrationScreen.kt`
+
+**O que fazer:**
+1. Coletar o bitmap de cada caractere após o usuário avançar.
+2. Ao chegar no último (ou clicar "Concluir"), enviar todos ao backend.
+3. Exibir resultado: quais caracteres o OCR reconheceu mal (`weak_chars`).
+
+**Problema atual:** `CalibrationScreen` não tem acesso ao `InkCanvas`'s strokes para exportar. `InkCanvas` mantém estado local. Precisa de callback `onSyncStrokes` igual ao `ExerciseField`.
+
+**Implementação sugerida:**
+
+```kotlin
+// CalibrationScreen.kt — adicionar estado de coleta
+val samples = remember { mutableStateListOf<Pair<String, List<List<Offset>>>>() }
+var currentStrokes by remember(index) { mutableStateOf<List<List<Offset>>>(emptyList()) }
+
+// No InkCanvas da tela de calibração:
+InkCanvas(
+    ...
+    onSyncStrokes = { strokes, _ -> currentStrokes = strokes },
+)
+
+// Ao avançar:
+Button(onClick = {
+    samples.add(currentChar to currentStrokes)   // salvar antes de avançar
+    if (index < CALIBRATION_CHARS.lastIndex) {
+        index++
+    } else {
+        // Enviar ao backend
+        onSubmitSamples(samples.map { (char, strokes) ->
+            CalibrationSample(
+                expectedChar = char,
+                imageBase64 = ImageUtils.exportBitmap(strokes),
+            )
+        })
+    }
+})
+```
+
+**Endpoint backend:** `POST /api/student/{student_id}/calibrate`
+
+```kotlin
+// Adicionar em ApiService.kt:
+@POST("api/student/{studentId}/calibrate")
+suspend fun calibrate(
+    @Path("studentId") studentId: String,
+    @Body body: CalibrationRequest,
+): CalibrationResponse
+
+// Models:
+data class CalibrationSample(val expectedChar: String, val imageBase64: String)
+data class CalibrationRequest(val samples: List<CalibrationSample>)
+data class CalibrationResponse(val weakChars: List<String>, val overallScore: Float)
+```
+
+---
+
+## 5. Regras de Negócio que Não Mudam
+
+| Regra | Valor | Arquivo |
+|-------|-------|---------|
+| Mastery mínimo para unlock | 90% | `engine/unlock.py: MASTERY_THRESHOLD` |
+| Exercícios mínimos para unlock | 100 | `engine/unlock.py: MIN_EXERCISES` |
+| Ganho por acerto | `0.08 × (1 - current)` | `engine/mastery.py` |
+| Perda por erro | `0.06 × current` | `engine/mastery.py` |
+| Gesto avançar (2 dedos) | horizontal ≥ 80dp | `FolhaScreen.kt: advanceGestureInput` |
+| Gesto avançar (3 taps) | dentro de 600ms | `FolhaScreen.kt: advanceGestureInput` |
+| OCR recebe APENAS | caixa de resposta (35%) | `FolhaViewModel.fieldStrokes = fieldAnswerStrokes` |
+| Feedback silencioso | streak ≥ 3 acertos | `agents/feedback_agent.py` |
+| Feedback máximo | 1 frase, 12 palavras | `agents/feedback_agent.py` |
+
+---
+
+## 6. Como Rodar
+
+### Backend
+```powershell
+# Iniciar Docker (admin)
+Start-Service -Name com.docker.service
+
+# Subir containers
+cd "D:\LOVE CLASS\backend"
+docker compose up -d
+
+# Aplicar migrations (se novas)
+python -m alembic upgrade head
+
+# Rodar testes
+python -m unittest -v
+
+# Iniciar servidor
+python -m uvicorn main:app --reload
+```
+
+### Android
+```powershell
+cd "D:\LOVE CLASS"
+$env:JAVA_HOME = "C:/Program Files/Android/Android Studio/jbr"
+bash gradlew assembleDebug
+# ou via Android Studio: Sync → Run
+```
+
+---
+
+## 7. Estimativa de Falta
+
+| Componente | % Pronto | Restante |
+|------------|----------|----------|
+| Backend lógica | 100% | — |
+| Backend runtime (smoke E2E) | 95% | rodar smoke_backend.py com DB real |
+| Android código | 95% | Fase G.2 (primeira sessão + submit calibration) |
+| Android E2E integrado | 80% | testar no emulador apontando p/ localhost:8000 |
+| **Projeto completo** | **~92%** | Fase G.2 + QA E2E |
+
+---
+
+*APPEND escrito em 2026-05-25. Estado verificado diretamente no código dos arquivos.*
+
+---
+
+# APPEND — Continuidade 2026-05-24: Fase G.2 Android Calibration Wiring
+
+## Implementado
+
+Fase G.2 concluída no Android:
+
+- `SessionViewModel` agora usa `SharedPreferences` (`love_class_prefs`) para persistir `calibration_done`.
+- Primeira chamada de `startSession()` sem flag redireciona para `SessionStatus.CALIBRATION` antes de chamar `/api/session/start`.
+- `onCalibrationComplete(skipped: Boolean)` marca a flag e chama `startSession()` novamente.
+- `submitCalibration(samples)` chama `POST /api/student/{studentId}/calibrate`, marca a calibração como concluída quando a API responde e inicia a sessão normal.
+- `MainActivity` conecta `CalibrationScreen` a `onCalibrationComplete(...)` e `submitCalibration(...)`.
+- `CalibrationScreen` captura strokes do `InkCanvas` por caractere, exporta PNG Base64 via `ImageUtils.exportBitmap(...)` e envia os 10 samples ao concluir.
+- `StravaMathApi` ganhou `calibrate(...)`.
+- Models Android adicionados em `model/Calibration.kt`: `CalibrationSample`, `CalibrationRequest`, `CalibrationResponse`.
+- Label visível do app alterado para `LOVE CLASS` via `@string/app_name`.
+
+## Arquivos tocados nesta etapa
+
+- `app/src/main/java/com/strava_matematica/viewmodel/SessionViewModel.kt`
+- `app/src/main/java/com/strava_matematica/MainActivity.kt`
+- `app/src/main/java/com/strava_matematica/ui/calibration/CalibrationScreen.kt`
+- `app/src/main/java/com/strava_matematica/network/StravaMathApi.kt`
+- `app/src/main/java/com/strava_matematica/model/Calibration.kt`
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/res/values/strings.xml`
+
+## Verificação
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+# Ran 85 tests in 1.240s
+# OK
+
+cd "D:\LOVE CLASS"
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat assembleDebug
+# BUILD SUCCESSFUL
+```
+
+Também foi verificado que não há mais strings visíveis antigas como `Strava Matemática` em `app/src/main/java` ou `app/src/main/res`.
+
+## Observações
+
+- Backend não foi alterado nesta etapa G.2; apenas consumido pelo Android.
+- A calibração salva a flag local somente após `Pular` ou após sucesso do POST de calibração.
+- O package name `com.strava_matematica` e nomes internos como `StravaMathApi`/`StravaMathTheme` permanecem como identificadores internos.

@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from agents.feedback_agent import FeedbackAgent
+from agents.scoring_agent import ScoringAgent
 from db import get_db
 from engine.adaptive import build_folha_out, get_next_folha, get_skill_memory, update_skill_memory
-from engine.correction import validate_answer
 from engine.ocr import extract_answer
-from engine.scoring import compute_score
+from engine.validators import get_validator
 from engine.vector import generate_vector
 from models.attempt import ExerciseAttempt, PenEvent
 from models.exercise import Exercise
@@ -18,6 +19,8 @@ from models.vector import CognitiveVector
 from schemas.submit import FieldResult, SubmitIn, SubmitOut, ThermometerOut
 
 router = APIRouter()
+feedback_agent = FeedbackAgent()
+scoring_agent = ScoringAgent()
 
 
 def _count_pauses(events: list) -> int:
@@ -106,6 +109,7 @@ async def submit_folha(
 
     results: list[FieldResult] = []
     page_vectors: list[dict] = []
+    current_streak = 0
 
     for field in body.fields:
         assignment = assignments.get(field.field_index)
@@ -120,13 +124,23 @@ async def submit_folha(
 
         ocr_result = await extract_answer(field.image_base64)
         recognized_answer = ocr_result.get("answer_latex")
-        correction = validate_answer(recognized_answer, exercise.expected_answer)
-        score = compute_score(
+        validator = get_validator(exercise.validator)
+        correction = await validator.validate(recognized_answer, exercise.expected_answer)
+        score = scoring_agent.compute(
             is_correct=correction["is_correct"],
             total_time_ms=field.total_time_ms,
             hesitation_ms=field.time_to_first_stroke_ms,
             difficulty=exercise.difficulty,
-            estimated_time_ms=exercise.estimated_time_ms or 45000,
+            estimated_time_ms=exercise.estimated_time_ms,
+        )
+        streak_for_feedback = current_streak + 1 if correction["is_correct"] else 0
+        feedback = await feedback_agent.generate(
+            is_correct=correction["is_correct"],
+            error_type=correction["error_type"],
+            statement=exercise.statement,
+            recognized=recognized_answer,
+            expected=exercise.expected_answer,
+            student_streak=streak_for_feedback,
         )
 
         stroke_count = sum(1 for event in field.pen_events if event.event_type == "stroke_start")
@@ -191,6 +205,8 @@ async def submit_folha(
         if session.student_id is not None:
             await update_skill_memory(db, session.student_id, exercise.skill_tags, vector)
 
+        current_streak = streak_for_feedback if correction["is_correct"] else 0
+
         results.append(
             FieldResult(
                 field_index=field.field_index,
@@ -199,6 +215,7 @@ async def submit_folha(
                 is_correct=correction["is_correct"],
                 score=score,
                 error_type=correction["error_type"],
+                feedback=feedback,
                 vector=vector,
             )
         )

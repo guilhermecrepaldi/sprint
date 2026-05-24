@@ -43,7 +43,8 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
             )
 
             SessionStatus.CALIBRATION -> CalibrationScreen(
-                onComplete = { _ -> viewModel.startSession() }
+                onComplete = { skipped -> viewModel.onCalibrationComplete(skipped) },
+                onSubmitSamples = viewModel::submitCalibration,
             )
 
             SessionStatus.ACTIVE,

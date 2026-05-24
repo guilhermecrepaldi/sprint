@@ -44,9 +44,23 @@ class FolhaViewModel : ViewModel() {
     }
 
     fun appendEvent(fieldIndex: Int, event: PenEvent) {
+        val now = System.currentTimeMillis()
         _uiState.update { state ->
             val events = state.fieldEvents[fieldIndex].orEmpty() + event
-            state.copy(fieldEvents = state.fieldEvents + (fieldIndex to events))
+            val currentTiming = state.fieldTiming[fieldIndex] ?: FieldTiming(startedAtMs = now)
+            val startedAt = currentTiming.startedAtMs ?: now
+            val firstStrokeAt = currentTiming.firstStrokeAtMs
+                ?: if (event.eventType == "stroke_start") now - startedAt else null
+            val timing = currentTiming.copy(
+                startedAtMs = startedAt,
+                firstStrokeAtMs = firstStrokeAt,
+                totalTimeMs = now - startedAt,
+            )
+
+            state.copy(
+                fieldEvents = state.fieldEvents + (fieldIndex to events),
+                fieldTiming = state.fieldTiming + (fieldIndex to timing),
+            )
         }
     }
 
@@ -95,6 +109,7 @@ class FolhaViewModel : ViewModel() {
                 fieldAnswerStrokes = state.fieldAnswerStrokes - fieldIndex,
                 fieldScratchRedoStacks = state.fieldScratchRedoStacks - fieldIndex,
                 fieldAnswerRedoStacks = state.fieldAnswerRedoStacks - fieldIndex,
+                fieldTiming = state.fieldTiming - fieldIndex,
             )
         }
     }

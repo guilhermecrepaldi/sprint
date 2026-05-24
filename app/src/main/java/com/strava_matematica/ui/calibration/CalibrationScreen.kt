@@ -6,8 +6,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import com.strava_matematica.design.Spacing
+import com.strava_matematica.model.CalibrationSample
+import com.strava_matematica.ui.folha.ImageUtils
 import com.strava_matematica.ui.folha.InkCanvas
 
 private val CALIBRATION_CHARS = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
@@ -15,10 +18,20 @@ private val CALIBRATION_CHARS = listOf("1", "2", "3", "4", "5", "6", "7", "8", "
 @Composable
 fun CalibrationScreen(
     onComplete: (skipped: Boolean) -> Unit,
+    onSubmitSamples: (List<CalibrationSample>) -> Unit,
 ) {
     var index by remember { mutableIntStateOf(0) }
     val currentChar = CALIBRATION_CHARS[index]
     var clearSignal by remember(index) { mutableIntStateOf(0) }
+    var currentStrokes by remember(index) { mutableStateOf<List<List<Offset>>>(emptyList()) }
+    val samples = remember { mutableStateMapOf<String, CalibrationSample>() }
+
+    fun captureCurrentSample() {
+        samples[currentChar] = CalibrationSample(
+            expectedChar = currentChar,
+            imageBase64 = ImageUtils.exportBitmap(currentStrokes),
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -48,14 +61,17 @@ fun CalibrationScreen(
                     androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                 ),
         ) {
-            InkCanvas(
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(Spacing.md),
-                penColor = "#1a1a1a",
-                enabled = true,
-                clearSignal = clearSignal,
-            )
+            key(currentChar) {
+                InkCanvas(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(Spacing.md),
+                    penColor = "#1a1a1a",
+                    enabled = true,
+                    clearSignal = clearSignal,
+                    onSyncStrokes = { strokes, _ -> currentStrokes = strokes },
+                )
+            }
         }
 
         Row(
@@ -69,10 +85,11 @@ fun CalibrationScreen(
                 style = MaterialTheme.typography.labelLarge,
             )
             Button(onClick = {
+                captureCurrentSample()
                 if (index < CALIBRATION_CHARS.lastIndex) {
                     index++
                 } else {
-                    onComplete(false)
+                    onSubmitSamples(CALIBRATION_CHARS.mapNotNull { samples[it] })
                 }
             }) {
                 Text(if (index < CALIBRATION_CHARS.lastIndex) "Avançar" else "Concluir")
@@ -80,7 +97,11 @@ fun CalibrationScreen(
         }
 
         Spacer(Modifier.height(Spacing.sm))
-        TextButton(onClick = { clearSignal++ }) {
+        TextButton(onClick = {
+            currentStrokes = emptyList()
+            samples.remove(currentChar)
+            clearSignal++
+        }) {
             Text("Limpar", style = MaterialTheme.typography.labelMedium)
         }
     }

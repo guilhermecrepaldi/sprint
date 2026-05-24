@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerId
-import androidx.compose.ui.input.pointer.changedToDown
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.strava_matematica.design.FocusColors
@@ -115,7 +115,12 @@ fun FolhaScreen(
         HorizontalDivider(color = hairline, thickness = 1.dp)
 
         // ── Full-screen exercise ─────────────────────────────────────────────
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .advanceGestureInput(onAdvance),
+        ) {
             ExerciseField(
                 field = field,
                 isActive = true,
@@ -138,12 +143,6 @@ fun FolhaScreen(
                 },
                 onPenEvent = { event -> onPenEvent(field.fieldIndex, event) },
             )
-            // Transparent overlay: detects the advance gestures without
-            // blocking pen drawing below.
-            AdvanceGestureOverlay(
-                modifier = Modifier.fillMaxSize(),
-                onAdvance = onAdvance,
-            )
         }
 
         // ── Ink toolbar ──────────────────────────────────────────────────────
@@ -165,66 +164,59 @@ fun FolhaScreen(
 }
 
 /**
- * Transparent overlay that detects two advance gestures:
+ * Parent-level detector for two advance gestures:
  *   • 2-finger horizontal swipe ≥ 80 dp
  *   • 3 rapid taps (finger downs) within 600 ms
  *
- * Single-touch events are NOT consumed so the InkCanvas below can still draw.
+ * Because this lives on the parent Box, the InkCanvas remains in the hit path.
+ * Single-touch events are only observed; the canvas below keeps normal drawing.
  */
-@Composable
-private fun AdvanceGestureOverlay(
-    modifier: Modifier = Modifier,
+private fun Modifier.advanceGestureInput(
     onAdvance: () -> Unit,
-) {
-    Box(
-        modifier = modifier.pointerInput(onAdvance) {
-            val tapTimes = ArrayDeque<Long>()
-            val pointerStarts = mutableMapOf<PointerId, Float>()
+) = pointerInput(onAdvance) {
+    val tapTimes = ArrayDeque<Long>()
+    val pointerStarts = mutableMapOf<PointerId, Float>()
 
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent()
-                    val now = System.currentTimeMillis()
+    awaitPointerEventScope {
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val now = System.currentTimeMillis()
 
-                    // Track each pointer's starting X for swipe distance calculation.
-                    event.changes.forEach { ch ->
-                        if (ch.changedToDown()) pointerStarts[ch.id] = ch.position.x
-                        else if (!ch.pressed) pointerStarts.remove(ch.id)
+            // Track each pointer's starting X for swipe distance calculation.
+            event.changes.forEach { ch ->
+                if (ch.pressed && !ch.previousPressed) pointerStarts[ch.id] = ch.position.x
+                else if (!ch.pressed) pointerStarts.remove(ch.id)
+            }
+
+            val pressed = event.changes.filter { it.pressed }
+
+            if (pressed.size >= 2) {
+                val maxDx = pressed.mapNotNull { ch ->
+                    pointerStarts[ch.id]?.let { startX ->
+                        kotlin.math.abs(ch.position.x - startX)
                     }
+                }.maxOrNull() ?: 0f
 
-                    val pressed = event.changes.filter { it.pressed }
-
-                    if (pressed.size >= 2) {
-                        // ── 2-finger horizontal swipe ────────────────────────
-                        val maxDx = pressed.mapNotNull { ch ->
-                            pointerStarts[ch.id]?.let { startX ->
-                                kotlin.math.abs(ch.position.x - startX)
-                            }
-                        }.maxOrNull() ?: 0f
-
-                        if (maxDx > 80.dp.toPx()) {
-                            event.changes.forEach { it.consume() }
-                            pointerStarts.clear()
-                            tapTimes.clear()
-                            onAdvance()
-                        }
-                        // Multi-touch breaks any in-progress tap sequence.
-                        if (event.changes.any { it.changedToDown() }) tapTimes.clear()
-                    } else {
-                        // ── 3-tap sequence ───────────────────────────────────
-                        if (event.changes.any { it.changedToDown() }) {
-                            while (tapTimes.isNotEmpty() && now - tapTimes.first() > 600L) {
-                                tapTimes.removeFirst()
-                            }
-                            tapTimes.addLast(now)
-                            if (tapTimes.size >= 3) {
-                                tapTimes.clear()
-                                onAdvance()
-                            }
-                        }
+                if (maxDx > 80.dp.toPx()) {
+                    event.changes.forEach { it.consume() }
+                    pointerStarts.clear()
+                    tapTimes.clear()
+                    onAdvance()
+                }
+                // Multi-touch breaks any in-progress tap sequence.
+                if (event.changes.any { it.pressed && !it.previousPressed }) tapTimes.clear()
+            } else {
+                if (event.changes.any { it.pressed && !it.previousPressed }) {
+                    while (tapTimes.isNotEmpty() && now - tapTimes.first() > 600L) {
+                        tapTimes.removeFirst()
+                    }
+                    tapTimes.addLast(now)
+                    if (tapTimes.size >= 3) {
+                        tapTimes.clear()
+                        onAdvance()
                     }
                 }
             }
-        },
-    )
+        }
+    }
 }

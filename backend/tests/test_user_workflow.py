@@ -114,7 +114,43 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(submit.session_status, "finished")
         self.assertIsNone(submit.next_folha)
 
-    def _submit_body_for_folha(self, folha_id: uuid.UUID, fields: list) -> SubmitIn:
+    async def test_physics_session_returns_physics_canvas_fields(self):
+        start = await start_session(
+            SessionStartIn(
+                student_id=uuid.uuid4(),
+                config=SessionConfigIn(
+                    subject="physics",
+                    duration_mode="pages",
+                    pages_limit=1,
+                    exercises_per_page=1,
+                ),
+            ),
+            db=self.db,
+        )
+
+        field = start.first_folha.fields[0]
+        self.assertEqual(field.subject, "physics")
+        self.assertEqual(field.canvas_mode, "calculation")
+
+    async def test_wrong_answer_returns_feedback(self):
+        start = await start_session(
+            SessionStartIn(
+                student_id=uuid.uuid4(),
+                config=SessionConfigIn(duration_mode="pages", pages_limit=1, exercises_per_page=1),
+            ),
+            db=self.db,
+        )
+
+        submit = await submit_folha(
+            start.session_id,
+            self._submit_body_for_folha(start.first_folha.folha_id, start.first_folha.fields, answer="x = 4"),
+            db=self.db,
+        )
+
+        self.assertFalse(submit.results[0].is_correct)
+        self.assertTrue(submit.results[0].feedback)
+
+    def _submit_body_for_folha(self, folha_id: uuid.UUID, fields: list, answer: str = "x = 5") -> SubmitIn:
         return SubmitIn(
             folha_id=folha_id,
             submitted_at_ms=123456,
@@ -122,7 +158,7 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 FieldSubmit(
                     field_index=field.field_index,
                     exercise_id=field.exercise_id,
-                    image_base64="latex:x = 5",
+                    image_base64=f"latex:{answer}",
                     total_time_ms=20000,
                     time_to_first_stroke_ms=500,
                     pen_events=[

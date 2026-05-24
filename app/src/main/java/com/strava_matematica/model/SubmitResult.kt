@@ -41,6 +41,7 @@ data class FieldResult(
     @SerialName("is_correct") val isCorrect: Boolean,
     val score: Int,
     @SerialName("error_type") val errorType: String? = null,
+    val feedback: String = "",
 )
 
 @Serializable

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class SessionConfigIn(BaseModel):
+    subject: Literal["math", "physics", "chemistry", "biology", "portuguese", "redacao"] = "math"
     show_thermometer: bool = True
     background: Literal["white", "dark"] = "white"
     pen_color: str = Field(default="#1a1a1a", pattern=r"^#[0-9a-fA-F]{6}$")
@@ -31,6 +32,8 @@ class SessionConfigIn(BaseModel):
 class FolhaField(BaseModel):
     field_index: int
     exercise_id: uuid.UUID
+    subject: str = "math"
+    canvas_mode: Literal["calculation", "lined", "full_page"] = "calculation"
     statement: str
     skill_tags: list[str]
     estimated_time_ms: int | None = None
