@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, PrimaryKeyConstraint, String, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, PrimaryKeyConstraint, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,7 +28,10 @@ class CognitiveVector(Base):
 
 class StudentSkillMemory(Base):
     __tablename__ = "student_skill_memory"
-    __table_args__ = (PrimaryKeyConstraint("student_id", "skill", name="pk_student_skill_memory"),)
+    __table_args__ = (
+        PrimaryKeyConstraint("student_id", "skill", name="pk_student_skill_memory"),
+        Index("ix_student_skill_memory_student_status", "student_id", "status"),
+    )
 
     student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id"))
     skill: Mapped[str] = mapped_column(String(100))

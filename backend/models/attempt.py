@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,7 +10,10 @@ from db import Base
 
 class ExerciseAttempt(Base):
     __tablename__ = "exercise_attempts"
-    __table_args__ = (UniqueConstraint("session_id", "folha_id", "field_index", name="uq_attempt_session_folha_field"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", "folha_id", "field_index", name="uq_attempt_session_folha_field"),
+        Index("ix_exercise_attempts_session_created", "session_id", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     folha_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("folhas.id"))

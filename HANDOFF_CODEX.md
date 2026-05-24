@@ -601,3 +601,73 @@ Sempre que continuar:
    - testes rodados,
    - bloqueios,
    - próxima ação.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Runtime Indexes
+
+## Avaliação
+
+O backend já tinha boa cobertura de lógica e workflow, mas ainda faltava uma melhoria recomendada no próprio handoff: indexes para os caminhos quentes de runtime. Sem eles, o app poderia funcionar no smoke, mas começar a degradar quando houvesse muitas tentativas, folhas e memórias por aluno.
+
+## Melhoria Implementada
+
+Adicionados indexes nos models e migration nova:
+
+- `ix_exercise_attempts_session_created` em `exercise_attempts(session_id, created_at)`
+  - Usado para buscar scores recentes por sessão.
+- `ix_folha_exercises_folha` em `folha_exercises(folha_id)`
+  - Usado para validar rapidamente os campos/exercícios da folha no submit.
+- `ix_student_skill_memory_student_status` em `student_skill_memory(student_id, status)`
+  - Usado para filtrar skills fracas/instáveis por aluno.
+
+Arquivos tocados:
+
+- `backend/models/attempt.py`
+- `backend/models/session.py`
+- `backend/models/vector.py`
+- `backend/migrations/versions/0004_add_runtime_indexes.py`
+
+## Testes Rodados
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+python -m compileall .
+python -m alembic history --verbose
+python -m alembic upgrade head --sql
+```
+
+Resultado observado:
+
+- `python -m unittest -v`: 24 testes OK.
+- `compileall`: OK.
+- Alembic head agora é `0004_add_runtime_indexes`.
+- SQL offline gerou:
+  - `CREATE INDEX ix_exercise_attempts_session_created ...`
+  - `CREATE INDEX ix_folha_exercises_folha ...`
+  - `CREATE INDEX ix_student_skill_memory_student_status ...`
+
+## Bloqueio Atual
+
+Inalterado: ainda falta runtime integrado com Postgres real. Docker Desktop/engine Linux continua sendo o bloqueio operacional conhecido. Código e migrations estão prontos para aplicar quando o serviço estiver disponível.
+
+## Próxima Ação Recomendada
+
+1. Commitar e fazer push deste pacote se ainda não tiver sido feito.
+2. Com permissão admin no Windows, iniciar `com.docker.service`.
+3. Rodar:
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+docker compose up -d
+python -m alembic upgrade head
+python seed/exercises.py
+python -m uvicorn main:app --reload
+python scripts/smoke_backend.py
+```
+
+## Estimativa Atualizada
+
+- Backend MVP: 3-5% faltando.
+- Projeto completo com Android: ~45% faltando.

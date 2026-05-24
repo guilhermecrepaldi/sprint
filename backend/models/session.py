@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -56,7 +56,10 @@ class Folha(Base):
 
 class FolhaExercise(Base):
     __tablename__ = "folha_exercises"
-    __table_args__ = (UniqueConstraint("folha_id", "field_index", name="uq_folha_exercises_field"),)
+    __table_args__ = (
+        UniqueConstraint("folha_id", "field_index", name="uq_folha_exercises_field"),
+        Index("ix_folha_exercises_folha", "folha_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     folha_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("folhas.id"), nullable=False)
