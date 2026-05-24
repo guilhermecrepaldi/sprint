@@ -43,10 +43,13 @@ fun ExerciseField(
     backgroundMode: BackgroundMode,
     penColor: String,
     modifier: Modifier = Modifier,
+    initialStrokes: List<List<Offset>> = emptyList(),
+    initialRedoStack: List<List<Offset>> = emptyList(),
     clearSignal: Int = 0,
     undoSignal: Int = 0,
     redoSignal: Int = 0,
     onClick: () -> Unit,
+    onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
 ) {
     val fieldColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkField else FocusColors.WhiteField
@@ -98,6 +101,9 @@ fun ExerciseField(
                 clearSignal = clearSignal,
                 undoSignal = undoSignal,
                 redoSignal = redoSignal,
+                initialStrokes = initialStrokes,
+                initialRedoStack = initialRedoStack,
+                onSyncStrokes = onSyncStrokes,
                 onPenEvent = onPenEvent,
             )
         }
@@ -136,10 +142,13 @@ fun InkCanvas(
     clearSignal: Int = 0,
     undoSignal: Int = 0,
     redoSignal: Int = 0,
+    initialStrokes: List<List<Offset>> = emptyList(),
+    initialRedoStack: List<List<Offset>> = emptyList(),
+    onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
 ) {
-    val strokes = remember { mutableStateListOf<List<Offset>>() }
-    val redoStack = remember { mutableStateListOf<List<Offset>>() }
+    val strokes = remember(initialStrokes) { mutableStateListOf(*initialStrokes.toTypedArray()) }
+    val redoStack = remember(initialRedoStack) { mutableStateListOf(*initialRedoStack.toTypedArray()) }
     val inkColor = remember(penColor) { parseHexColor(penColor) }
     var currentStroke = remember { mutableListOf<Offset>() }
     var strokeStartedAt = remember { 0L }
@@ -150,6 +159,7 @@ fun InkCanvas(
         if (clearSignal > 0) {
             strokes.clear()
             redoStack.clear()
+            onSyncStrokes(strokes.toList(), redoStack.toList())
             onPenEvent(Offset.Zero.toPenEvent(System.currentTimeMillis(), 0f, "clear"))
         }
     }
@@ -157,6 +167,7 @@ fun InkCanvas(
     LaunchedEffect(undoSignal) {
         if (undoSignal > 0 && strokes.isNotEmpty()) {
             redoStack.add(strokes.removeAt(strokes.lastIndex))
+            onSyncStrokes(strokes.toList(), redoStack.toList())
             onPenEvent(Offset.Zero.toPenEvent(System.currentTimeMillis(), 0f, "undo"))
         }
     }
@@ -164,6 +175,7 @@ fun InkCanvas(
     LaunchedEffect(redoSignal) {
         if (redoSignal > 0 && redoStack.isNotEmpty()) {
             strokes.add(redoStack.removeAt(redoStack.lastIndex))
+            onSyncStrokes(strokes.toList(), redoStack.toList())
             onPenEvent(Offset.Zero.toPenEvent(System.currentTimeMillis(), 0f, "redo"))
         }
     }
@@ -198,6 +210,7 @@ fun InkCanvas(
                 },
                 onDragEnd = {
                     if (currentStroke.isNotEmpty()) {
+                        onSyncStrokes(strokes.toList(), redoStack.toList())
                         onPenEvent(currentStroke.last().toPenEvent(strokeStartedAt, 0f, "stroke_end"))
                     }
                 },

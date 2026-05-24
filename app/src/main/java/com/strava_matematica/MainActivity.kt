@@ -14,6 +14,8 @@ import com.strava_matematica.ui.folha.FolhaScreen
 import com.strava_matematica.ui.result.PageResultScreen
 import com.strava_matematica.ui.summary.SessionSummaryScreen
 import com.strava_matematica.viewmodel.SessionViewModel
+import com.strava_matematica.viewmodel.FolhaViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     private val sessionViewModel: SessionViewModel by viewModels()
@@ -27,7 +29,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun StravaMathApp(viewModel: SessionViewModel) {
+fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
 
     StravaMathTheme(backgroundMode = state.config.backgroundMode) {
@@ -36,15 +38,19 @@ fun StravaMathApp(viewModel: SessionViewModel) {
             SessionStatus.ERROR -> SessionConfigScreen(
                 config = state.config,
                 onConfigChange = viewModel::updateConfig,
-                onStart = viewModel::startDemoSession,
+                onStart = viewModel::startSession,
             )
 
             SessionStatus.ACTIVE,
             SessionStatus.SUBMITTING -> state.currentFolha?.let {
+                val folhaState by folhaViewModel.uiState.collectAsState()
                 FolhaScreen(
                     folha = it,
                     config = state.config,
-                    onSubmit = viewModel::submitDemoFolha,
+                    fieldStrokes = folhaState.fieldStrokes,
+                    fieldRedoStacks = folhaState.fieldRedoStacks,
+                    onSubmit = { viewModel.submitFolha(folhaState) },
+                    onSyncStrokes = folhaViewModel::syncStrokes,
                 )
             }
 

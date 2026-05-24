@@ -35,11 +35,16 @@ import com.strava_matematica.model.PenEvent
 import com.strava_matematica.model.SessionConfig
 import com.strava_matematica.ui.components.ThermometerView
 
+import androidx.compose.ui.geometry.Offset
+
 @Composable
 fun FolhaScreen(
     folha: Folha,
     config: SessionConfig,
+    fieldStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
+    fieldRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
     onSubmit: () -> Unit,
+    onSyncStrokes: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
 ) {
     var activeField by remember { mutableIntStateOf(0) }
@@ -95,10 +100,13 @@ fun FolhaScreen(
                     isActive = field.fieldIndex == activeField,
                     backgroundMode = config.backgroundMode,
                     penColor = config.penColor,
+                    initialStrokes = fieldStrokes[field.fieldIndex].orEmpty(),
+                    initialRedoStack = fieldRedoStacks[field.fieldIndex].orEmpty(),
                     clearSignal = if (field.fieldIndex == activeField) clearSignal else 0,
                     undoSignal = if (field.fieldIndex == activeField) undoSignal else 0,
                     redoSignal = if (field.fieldIndex == activeField) redoSignal else 0,
                     onClick = { activeField = field.fieldIndex },
+                    onSyncStrokes = { strokes, redoStack -> onSyncStrokes(field.fieldIndex, strokes, redoStack) },
                     onPenEvent = { event -> onPenEvent(field.fieldIndex, event) },
                 )
             }
