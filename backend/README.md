@@ -11,6 +11,13 @@ python seed/exercises.py
 python -m uvicorn main:app --reload
 ```
 
+## Unit Checks
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest
+```
+
 ## Smoke Test
 
 In another terminal, after the API is running:

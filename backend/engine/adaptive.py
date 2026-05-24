@@ -1,10 +1,10 @@
 import uuid
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.exercise import Exercise
-from models.session import Folha, Session, SessionConfig
+from models.session import Folha, FolhaExercise, Session, SessionConfig
 from models.vector import StudentSkillMemory
 from schemas.session import FolhaField, FolhaOut
 
@@ -101,9 +101,13 @@ async def _select_exercises(
     exercises.extend(fallback.scalars().all())
 
     if len(exercises) < limit:
+        broader_filters = []
+        selected_ids = [exercise.id for exercise in exercises]
+        if selected_ids:
+            broader_filters.append(Exercise.id.not_in(selected_ids))
         broader = await db.execute(
             select(Exercise)
-            .where(or_(Exercise.id.not_in([exercise.id for exercise in exercises]), len(exercises) == 0))
+            .where(*broader_filters)
             .order_by(func.abs(Exercise.difficulty - difficulty), func.random())
             .limit(limit - len(exercises))
         )
@@ -142,6 +146,10 @@ async def create_folha(
     await db.flush()
 
     exercises = await _select_exercises(db, difficulty, exercises_per_page, weak_skills)
+    db.add_all(
+        FolhaExercise(folha_id=folha.id, exercise_id=exercise.id, field_index=index)
+        for index, exercise in enumerate(exercises)
+    )
     session.page_count += 1
     await db.flush()
     return folha, exercises

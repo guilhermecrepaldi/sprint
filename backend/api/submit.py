@@ -12,7 +12,7 @@ from engine.scoring import compute_score
 from engine.vector import generate_vector
 from models.attempt import ExerciseAttempt, PenEvent
 from models.exercise import Exercise
-from models.session import Session, SessionConfig
+from models.session import Folha, FolhaExercise, Session, SessionConfig
 from models.vector import CognitiveVector
 from schemas.submit import FieldResult, SubmitIn, SubmitOut, ThermometerOut
 
@@ -58,11 +58,26 @@ async def submit_folha(
     if config is None:
         raise HTTPException(status_code=404, detail="Session config not found")
 
+    folha = await db.get(Folha, body.folha_id)
+    if folha is None or folha.session_id != session.id:
+        raise HTTPException(status_code=404, detail="Folha not found for this session")
+
+    assignment_result = await db.execute(
+        select(FolhaExercise).where(FolhaExercise.folha_id == body.folha_id)
+    )
+    assignments = {assignment.field_index: assignment for assignment in assignment_result.scalars().all()}
+
     results: list[FieldResult] = []
     page_vectors: list[dict] = []
 
     for field in body.fields:
-        exercise = await db.get(Exercise, field.exercise_id)
+        assignment = assignments.get(field.field_index)
+        if assignment is None:
+            raise HTTPException(status_code=400, detail=f"Field {field.field_index} does not belong to this folha")
+        if assignment.exercise_id != field.exercise_id:
+            raise HTTPException(status_code=400, detail=f"Exercise mismatch for field {field.field_index}")
+
+        exercise = await db.get(Exercise, assignment.exercise_id)
         if exercise is None:
             raise HTTPException(status_code=404, detail=f"Exercise {field.exercise_id} not found")
 
