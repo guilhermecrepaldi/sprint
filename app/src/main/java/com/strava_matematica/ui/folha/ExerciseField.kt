@@ -5,11 +5,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,35 +35,72 @@ fun ExerciseField(
     onClick: () -> Unit,
 ) {
     val fieldColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkField else FocusColors.WhiteField
+    val surfaceColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkSurface else FocusColors.WhiteSurface
+    val hairline = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkHairline else FocusColors.WhiteHairline
     val borderColor = if (isActive) MaterialTheme.colorScheme.primary else {
-        if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkHairline else FocusColors.WhiteHairline
+        hairline
     }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(190.dp)
-            .background(fieldColor, RoundedCornerShape(8.dp))
+            .background(surfaceColor, RoundedCornerShape(8.dp))
             .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(Spacing.md),
     ) {
-        Text(
-            text = "%02d  %s".format(field.fieldIndex + 1, field.statement),
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "%02d".format(field.fieldIndex + 1),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+            )
+            Spacer(Modifier.width(Spacing.sm))
+            Text(
+                text = field.skillTags.firstOrNull()?.replace("_", " ") ?: "exercício",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.50f),
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = field.statement,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
         Spacer(Modifier.height(Spacing.sm))
-        InkCanvas(
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
-        )
+                .fillMaxWidth()
+                .background(fieldColor, RoundedCornerShape(4.dp))
+                .border(BorderStroke(1.dp, hairline.copy(alpha = 0.65f)), RoundedCornerShape(4.dp)),
+        ) {
+            InkCanvas(modifier = Modifier.matchParentSize().padding(Spacing.xs))
+        }
         Spacer(Modifier.height(Spacing.sm))
-        Text(
-            text = "Resposta final",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Resposta final",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+            )
+            Spacer(Modifier.width(Spacing.md))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(18.dp),
+            ) {
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    drawLine(
+                        color = hairline,
+                        start = Offset(0f, size.height - 1.dp.toPx()),
+                        end = Offset(size.width, size.height - 1.dp.toPx()),
+                        strokeWidth = 1.dp.toPx(),
+                    )
+                }
+            }
+        }
     }
 }
 

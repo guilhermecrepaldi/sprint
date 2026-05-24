@@ -21,5 +21,6 @@ htmlcov/
 .idea/
 .vscode/
 *.log
+*.zip
 
 backend/postgres_data/

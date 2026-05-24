@@ -9,6 +9,7 @@ object FocusColors {
     val WhiteTextPrimary = Color(0xFF151713)
     val WhiteTextSecondary = Color(0xFF5F665C)
     val WhiteHairline = Color(0xFFD9DED6)
+    val WhiteHairlineSoft = Color(0xFFE8ECE5)
 
     val DarkBackground = Color(0xFF11140F)
     val DarkSurface = Color(0xFF171B15)
@@ -16,6 +17,7 @@ object FocusColors {
     val DarkTextPrimary = Color(0xFFF2F5EF)
     val DarkTextSecondary = Color(0xFFA9B2A3)
     val DarkHairline = Color(0xFF30362C)
+    val DarkHairlineSoft = Color(0xFF232820)
 
     val Progress = Color(0xFF1E7F5C)
     val ProgressDark = Color(0xFF4CC38A)

@@ -835,3 +835,109 @@ Para backend:
 - Backend MVP: 3-5% faltando.
 - Android MVP: ~35-40% faltando.
 - Projeto completo: ~40-45% faltando.
+
+---
+
+# APPEND — Continuidade 2026-05-24: External UI Prototype Review + Safe Port
+
+## Avaliação
+
+Foi recebida uma entrega externa em `D:\LOVE CLASS\love class`. Ela é um protótipo visual web/React, não um app Android pronto. O pacote tem boa direção visual e deve ser usado como referência para o Android, especialmente a variação `safe`.
+
+Conteúdo avaliado:
+
+- `tokens.css`: tokens white/dark, spacing, radius, typography.
+- `components/folha-safe.jsx`: melhor base para `FolhaScreen`.
+- `components/folha-bold.jsx`: variação editorial, mais arriscada para MVP.
+- `components/result-safe.jsx`: melhor base para `PageResultScreen`.
+- `components/result-bold.jsx`: variação editorial.
+- `components/ink-canvas.jsx`: referência web para tinta, não port direto.
+- `screenshots/*`: referência visual.
+
+Decisão:
+
+- Versionar o protótipo como referência em `design-references/love-class-ui-prototype`.
+- Ignorar `*.zip` no git para não versionar o pacote bruto duplicado.
+- Portar primeiro a linha `safe` para Compose.
+
+## Melhoria Implementada
+
+1. Movida a entrega externa para:
+
+```text
+design-references/love-class-ui-prototype/
+```
+
+2. Adicionado:
+
+```text
+design-references/love-class-ui-prototype/README.md
+```
+
+3. Atualizado `.gitignore` para ignorar zips:
+
+```text
+*.zip
+```
+
+4. Port parcial do visual `safe` para Compose:
+
+- `ExerciseField.kt`
+  - header com número, skill label e enunciado;
+  - campo com surface externa e área de tinta interna;
+  - linha de resposta final;
+  - borda ativa mais parecida com protótipo.
+- `FolhaScreen.kt`
+  - top bar mais densa;
+  - labels `Página` e `Dif.`;
+  - divider hairline.
+- `PageResultScreen.kt`
+  - result rows em surfaces com hairline;
+  - número do campo em formato `00`;
+  - score destacado;
+  - error type discreto.
+- `Color.kt`
+  - adicionados hairlines suaves para portar tokens externos.
+
+## Testes/Verificações Rodadas
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+
+cd "D:\LOVE CLASS"
+git diff --check
+```
+
+Resultado observado:
+
+- Backend: 26 testes OK.
+- `git diff --check`: OK, apenas warnings de CRLF esperados no Windows.
+- Android ainda não compilado por ausência de Gradle/Gradle wrapper.
+
+## Limitações Conhecidas
+
+- O protótipo externo é web e usa React/Babel/CDN; não deve ser tratado como código Android.
+- O port Compose ainda é parcial e visual.
+- `InkCanvas` Android ainda precisa de stylus real e crop por campo.
+- `love class.zip` permanece local, mas ignorado por git.
+
+## Próxima Ação Recomendada
+
+1. Commitar e fazer push deste pacote se ainda não tiver sido feito.
+2. Abrir Android Studio e criar/baixar Gradle wrapper.
+3. Rodar:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+4. Corrigir primeira compilação Android.
+5. Continuar portando `folha-safe.jsx` e `result-safe.jsx` para Compose.
+6. Só depois considerar ideias da variação `bold`.
+
+## Estimativa Atualizada
+
+- Backend MVP: 3-5% faltando.
+- Android MVP: ~30-35% faltando.
+- Projeto completo: ~35-40% faltando.
