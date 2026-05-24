@@ -671,3 +671,77 @@ python scripts/smoke_backend.py
 
 - Backend MVP: 3-5% faltando.
 - Projeto completo com Android: ~45% faltando.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Startup Schema Policy
+
+## Avaliação
+
+O handoff anterior ainda deixava aberta a decisão sobre `Base.metadata.create_all` no startup. Isso é conveniente em desenvolvimento, mas em produção/migração real o schema deve ser controlado por Alembic. A mudança feita agora torna esse comportamento explícito e configurável.
+
+## Melhoria Implementada
+
+Adicionado setting:
+
+```env
+AUTO_CREATE_TABLES=true
+```
+
+Comportamento:
+
+- Default `true`: mantém experiência dev fácil.
+- `false`: servidor sobe sem rodar `Base.metadata.create_all`; Alembic passa a ser a fonte única de schema.
+
+Arquivos tocados:
+
+- `backend/db.py`: novo `Settings.auto_create_tables`.
+- `backend/main.py`: `app = create_app(run_startup_db=settings.auto_create_tables)`.
+- `backend/.env.example`: adiciona `AUTO_CREATE_TABLES=true`.
+- `backend/README.md`: documenta usar `AUTO_CREATE_TABLES=false` fora de dev.
+- `backend/tests/test_settings.py`: cobre default e normalização de URL Postgres para asyncpg.
+
+## Testes Rodados
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+python -m compileall .
+python -c "import main; print([route.path for route in main.app.routes]); print(main.settings.auto_create_tables)"
+```
+
+Resultado observado:
+
+- `python -m unittest -v`: 26 testes OK.
+- `compileall`: OK.
+- Rotas seguem registradas:
+  - `/api/health`
+  - `/api/session/start`
+  - `/api/session/{session_id}/submit`
+  - `/api/telemetry/stream`
+- `settings.auto_create_tables` retornou `True` com default atual.
+
+## Bloqueio Atual
+
+Inalterado: falta Postgres/Redis real para smoke integrado. Docker Desktop Service ainda precisa ser iniciado com permissão elevada/admin.
+
+## Próxima Ação Recomendada
+
+1. Commitar e fazer push deste pacote se ainda não tiver sido feito.
+2. Tentar novamente runtime real:
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+docker compose up -d
+python -m alembic upgrade head
+python seed/exercises.py
+python -m uvicorn main:app --reload
+python scripts/smoke_backend.py
+```
+
+3. Se Docker continuar bloqueado, próximo ganho sem DB é começar o scaffold Android seguindo `APP_LAYOUT_SPEC.md`.
+
+## Estimativa Atualizada
+
+- Backend MVP: 3-5% faltando.
+- Projeto completo com Android: ~45% faltando.

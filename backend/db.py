@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     anthropic_api_key: str = ""
     claude_ocr_model: str = "claude-haiku-4-5-20251001"
+    auto_create_tables: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

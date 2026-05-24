@@ -11,7 +11,7 @@ from api.health import router as health_router
 from api.session import router as session_router
 from api.submit import router as submit_router
 from api.telemetry import router as telemetry_router
-from db import Base, engine
+from db import Base, engine, settings
 import models  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def create_app(run_startup_db: bool = True) -> FastAPI:
     return app
 
 
-app = create_app()
+app = create_app(run_startup_db=settings.auto_create_tables)
 
 
 if __name__ == "__main__":

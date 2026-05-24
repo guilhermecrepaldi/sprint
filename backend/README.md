@@ -13,6 +13,7 @@ python -m uvicorn main:app --reload
 
 Then open `http://localhost:8000/api/health`.
 If Docker Desktop is open but the engine is unavailable, start the Docker Desktop Service from an elevated Windows terminal and rerun `docker compose up -d`.
+Set `AUTO_CREATE_TABLES=false` outside local development when Alembic owns schema changes.
 
 ## Unit Checks
 
