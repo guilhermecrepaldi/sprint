@@ -63,6 +63,10 @@ fun ExerciseField(
     val surfaceColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkSurface else FocusColors.WhiteSurface
     val hairline = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkHairline else FocusColors.WhiteHairline
     val borderColor = if (isActive) MaterialTheme.colorScheme.primary else hairline
+    val isFullPage = field.canvasMode == "full_page"
+    val isLined = field.canvasMode == "lined"
+    val scratchWeight = if (isLined) 0.75f else 0.65f
+    val answerWeight = if (isFullPage) 1f else if (isLined) 0.25f else 0.35f
 
     // Merge legacy onSyncStrokes into onSyncAnswer so old callers still work.
     val answerSync: (List<List<Offset>>, List<List<Offset>>) -> Unit = { s, r ->
@@ -91,6 +95,14 @@ fun ExerciseField(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.50f),
             )
+            if (field.subject != "math") {
+                Spacer(Modifier.width(Spacing.xs))
+                Text(
+                    text = field.subject.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
+                )
+            }
             Spacer(Modifier.weight(1f))
             Text(
                 text = field.statement,
@@ -99,31 +111,35 @@ fun ExerciseField(
         }
         Spacer(Modifier.height(Spacing.sm))
 
-        // ── Scratch area — 65% of remaining height ───────────────────────
-        Box(
-            modifier = Modifier
-                .weight(0.65f)
-                .fillMaxWidth()
-                .background(fieldColor, RoundedCornerShape(4.dp))
-                .border(BorderStroke(1.dp, hairline.copy(alpha = 0.65f)), RoundedCornerShape(4.dp)),
-        ) {
-            InkCanvas(
-                modifier = Modifier.matchParentSize().padding(Spacing.xs),
-                penColor = penColor,
-                enabled = isActive,
-                clearSignal = clearSignal,
-                undoSignal = undoSignal,
-                redoSignal = redoSignal,
-                initialStrokes = initialScratchStrokes,
-                initialRedoStack = initialScratchRedoStack,
-                onSyncStrokes = onSyncScratch,
-                onPenEvent = onPenEvent,
-            )
+        if (!isFullPage) {
+            // ── Scratch area — not sent to OCR ───────────────────────────
+            Box(
+                modifier = Modifier
+                    .weight(scratchWeight)
+                    .fillMaxWidth()
+                    .background(fieldColor, RoundedCornerShape(4.dp))
+                    .border(BorderStroke(1.dp, hairline.copy(alpha = 0.65f)), RoundedCornerShape(4.dp)),
+            ) {
+                InkCanvas(
+                    modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                    penColor = penColor,
+                    enabled = isActive,
+                    clearSignal = clearSignal,
+                    undoSignal = undoSignal,
+                    redoSignal = redoSignal,
+                    initialStrokes = initialScratchStrokes,
+                    initialRedoStack = initialScratchRedoStack,
+                    guideMode = if (isLined) "lined" else "single",
+                    onSyncStrokes = onSyncScratch,
+                    onPenEvent = onPenEvent,
+                )
+            }
+
+            Spacer(Modifier.height(Spacing.sm))
         }
 
-        Spacer(Modifier.height(Spacing.sm))
         Text(
-            text = "Resposta final",
+            text = if (isFullPage) "Resposta" else "Resposta final",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
         )
@@ -132,7 +148,7 @@ fun ExerciseField(
         // ── Answer box — 35% of remaining height, primary border ─────────
         Box(
             modifier = Modifier
-                .weight(0.35f)
+                .weight(answerWeight)
                 .fillMaxWidth()
                 .background(fieldColor, RoundedCornerShape(4.dp))
                 .border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary), RoundedCornerShape(4.dp)),
@@ -142,10 +158,11 @@ fun ExerciseField(
                 penColor = penColor,
                 enabled = isActive,
                 clearSignal = clearSignal,
-                undoSignal = 0,   // undo/redo operate only on scratch
-                redoSignal = 0,
+                undoSignal = if (isFullPage) undoSignal else 0,
+                redoSignal = if (isFullPage) redoSignal else 0,
                 initialStrokes = initialAnswerStrokes,
                 initialRedoStack = initialAnswerRedoStack,
+                guideMode = if (isFullPage || isLined) "lined" else "single",
                 onSyncStrokes = answerSync,
                 onPenEvent = onPenEvent,
             )
@@ -164,6 +181,7 @@ fun InkCanvas(
     redoSignal: Int = 0,
     initialStrokes: List<List<Offset>> = emptyList(),
     initialRedoStack: List<List<Offset>> = emptyList(),
+    guideMode: String = "single",
     onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
 ) {
@@ -237,13 +255,27 @@ fun InkCanvas(
             )
         },
     ) {
-        val y = size.height * 0.72f
-        drawLine(
-            color = Color.Gray.copy(alpha = 0.35f),
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
-            strokeWidth = 1.dp.toPx(),
-        )
+        if (guideMode == "lined") {
+            val gap = 32.dp.toPx()
+            var y = gap
+            while (y < size.height) {
+                drawLine(
+                    color = Color.Gray.copy(alpha = 0.22f),
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1.dp.toPx(),
+                )
+                y += gap
+            }
+        } else {
+            val y = size.height * 0.72f
+            drawLine(
+                color = Color.Gray.copy(alpha = 0.35f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx(),
+            )
+        }
         strokes.forEach { stroke ->
             if (stroke.size == 1) {
                 drawCircle(color = inkColor, radius = penWidth.dp.toPx() / 2f, center = stroke.first())

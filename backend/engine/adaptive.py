@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from engine.unlock import get_available_skills
 from models.exercise import Exercise
 from models.session import Folha, FolhaExercise, Session, SessionConfig
 from models.vector import StudentSkillMemory
@@ -46,7 +47,7 @@ async def update_skill_memory(
     for skill in skill_tags:
         memory = await db.get(StudentSkillMemory, {"student_id": student_id, "skill": skill})
         if memory is None:
-            memory = StudentSkillMemory(student_id=student_id, skill=skill)
+            memory = StudentSkillMemory(student_id=student_id, skill=skill, attempt_count=0)
             db.add(memory)
             await db.flush()
 
@@ -57,6 +58,7 @@ async def update_skill_memory(
         memory.accuracy = 0.8 * memory.accuracy + 0.2 * correctness
         memory.fluency = 0.8 * memory.fluency + 0.2 * fluency
         memory.fatigue_avg = 0.8 * memory.fatigue_avg + 0.2 * fatigue
+        memory.attempt_count += 1
         memory.status = vector_to_memory_status(memory.accuracy)
 
 
@@ -64,12 +66,14 @@ async def _select_exercises(
     db: AsyncSession,
     difficulty: float,
     limit: int,
+    subject: str = "math",
     weak_skills: list[str] | None = None,
 ) -> list[Exercise]:
     upper_bound = min(10.0, difficulty + 0.5)
     lower_bound = max(1.0, difficulty - 0.8)
 
     base_filters = [
+        Exercise.subject == subject,
         Exercise.difficulty >= lower_bound,
         Exercise.difficulty <= upper_bound,
     ]
@@ -101,7 +105,7 @@ async def _select_exercises(
     exercises.extend(fallback.scalars().all())
 
     if len(exercises) < limit:
-        broader_filters = []
+        broader_filters = [Exercise.subject == subject]
         selected_ids = [exercise.id for exercise in exercises]
         if selected_ids:
             broader_filters.append(Exercise.id.not_in(selected_ids))
@@ -125,6 +129,8 @@ def build_folha_out(folha: Folha, exercises: list[Exercise]) -> FolhaOut:
             FolhaField(
                 field_index=index,
                 exercise_id=exercise.id,
+                subject=exercise.subject,
+                canvas_mode=exercise.canvas_mode,
                 statement=exercise.statement,
                 skill_tags=exercise.skill_tags,
                 estimated_time_ms=exercise.estimated_time_ms,
@@ -139,13 +145,14 @@ async def create_folha(
     session: Session,
     difficulty: float,
     exercises_per_page: int,
+    subject: str = "math",
     weak_skills: list[str] | None = None,
 ) -> tuple[Folha, list[Exercise]]:
     folha = Folha(session_id=session.id, page_index=session.page_count, difficulty=difficulty)
     db.add(folha)
     await db.flush()
 
-    exercises = await _select_exercises(db, difficulty, exercises_per_page, weak_skills)
+    exercises = await _select_exercises(db, difficulty, exercises_per_page, subject, weak_skills)
     db.add_all(
         FolhaExercise(folha_id=folha.id, exercise_id=exercise.id, field_index=index)
         for index, exercise in enumerate(exercises)
@@ -161,10 +168,11 @@ async def get_first_folha(
     difficulty: float,
     exercises_per_page: int,
     student_id: uuid.UUID,
+    subject: str = "math",
 ) -> tuple[Folha, list[Exercise]]:
     memories = await get_skill_memory(db, student_id)
     weak_skills = [skill for skill, memory in memories.items() if memory.status in ("fraco", "instavel")]
-    return await create_folha(db, session, difficulty, exercises_per_page, weak_skills)
+    return await create_folha(db, session, difficulty, exercises_per_page, subject, weak_skills)
 
 
 async def get_next_folha(
@@ -187,6 +195,21 @@ async def get_next_folha(
     new_difficulty = min(10.0, max(1.0, new_difficulty))
     session.current_difficulty = new_difficulty
 
-    weak_skills = [skill for skill, memory in skill_memory.items() if memory.status in ("fraco", "instavel")]
-    folha, exercises = await create_folha(db, session, new_difficulty, config.exercises_per_page, weak_skills)
+    skill_memory_dict = {
+        skill: {"accuracy": mem.accuracy, "attempt_count": mem.attempt_count}
+        for skill, mem in skill_memory.items()
+    }
+    available_skills = get_available_skills(skill_memory_dict)
+    weak_skills = [
+        skill for skill, mem in skill_memory.items()
+        if mem.status in ("fraco", "instavel") and skill in available_skills
+    ]
+    folha, exercises = await create_folha(
+        db,
+        session,
+        new_difficulty,
+        config.exercises_per_page,
+        config.subject,
+        weak_skills if weak_skills else None,
+    )
     return folha, exercises, restart

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, PrimaryKeyConstraint, String, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, PrimaryKeyConstraint, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,5 +39,6 @@ class StudentSkillMemory(Base):
     fluency: Mapped[float] = mapped_column(Float, default=0.5, server_default="0.5")
     retention: Mapped[float] = mapped_column(Float, default=0.5, server_default="0.5")
     fatigue_avg: Mapped[float] = mapped_column(Float, default=0.0, server_default="0.0")
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status: Mapped[str] = mapped_column(String(30), default="novo", server_default="novo")
     last_updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
