@@ -25,7 +25,17 @@ def post_json(path: str, payload: dict) -> dict:
         raise RuntimeError(f"POST {path} failed: {exc.code} {body}") from exc
 
 
+def get_json(path: str) -> dict:
+    try:
+        with urllib.request.urlopen(f"{API_URL}{path}", timeout=20) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GET {path} failed: {exc.code} {body}") from exc
+
+
 def main() -> int:
+    health = get_json("/api/health")
     student_id = str(uuid.uuid4())
     start_payload = {
         "student_id": student_id,
@@ -83,7 +93,7 @@ def main() -> int:
         },
     )
 
-    print(json.dumps({"start": start, "submit": submit}, ensure_ascii=False, indent=2))
+    print(json.dumps({"health": health, "start": start, "submit": submit}, ensure_ascii=False, indent=2))
     return 0
 
 

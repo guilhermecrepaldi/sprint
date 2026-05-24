@@ -1,25 +1,25 @@
 import uuid
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from schemas.session import FolhaOut
 
 
 class PenEventIn(BaseModel):
-    ts: int
+    ts: int = Field(ge=0)
     x: float
     y: float
     pressure: float | None = None
     tilt: float | None = None
     velocity: float | None = None
-    event_type: str
+    event_type: Literal["stroke_start", "stroke_move", "stroke_end", "erase"]
 
 
 class FieldSubmit(BaseModel):
-    field_index: int
+    field_index: int = Field(ge=0)
     exercise_id: uuid.UUID
-    image_base64: str
+    image_base64: str = Field(min_length=1)
     total_time_ms: int = Field(ge=0)
     time_to_first_stroke_ms: int = Field(default=0, ge=0)
     pen_events: list[PenEventIn] = Field(default_factory=list)
@@ -28,7 +28,14 @@ class FieldSubmit(BaseModel):
 class SubmitIn(BaseModel):
     folha_id: uuid.UUID
     submitted_at_ms: int | None = None
-    fields: list[FieldSubmit]
+    fields: list[FieldSubmit] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_fields(self) -> "SubmitIn":
+        field_indexes = [field.field_index for field in self.fields]
+        if len(field_indexes) != len(set(field_indexes)):
+            raise ValueError("field_index values must be unique within a submit")
+        return self
 
 
 class FieldResult(BaseModel):

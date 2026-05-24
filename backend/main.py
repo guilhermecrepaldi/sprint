@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from api.health import router as health_router
 from api.session import router as session_router
 from api.submit import router as submit_router
 from api.telemetry import router as telemetry_router
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 app.include_router(telemetry_router)
+app.include_router(health_router)
 app.include_router(session_router)
 app.include_router(submit_router)
 

@@ -11,6 +11,8 @@ python seed/exercises.py
 python -m uvicorn main:app --reload
 ```
 
+Then open `http://localhost:8000/api/health`.
+
 ## Unit Checks
 
 ```powershell
