@@ -34,4 +34,4 @@ cd "D:\LOVE CLASS\backend"
 python scripts/smoke_backend.py
 ```
 
-The smoke test starts a session, submits one folha using the local `latex:` OCR fallback, and prints the response with results, thermometer, and next folha.
+The smoke test calibrates handwriting with the local `latex:` OCR fallback, starts a session, submits one folha, checks the rhythm endpoint, and prints the combined response.

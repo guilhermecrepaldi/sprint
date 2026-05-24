@@ -2867,3 +2867,54 @@ O restante concreto continua sendo QA runtime:
 
 - Smoke real com Postgres/Redis quando Docker Desktop Linux Engine estiver disponível.
 - Teste manual no emulador Android apontando para `http://10.0.2.2:8000`.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Smoke E2E Ampliado
+
+## Ajuste Implementado
+
+O script `backend/scripts/smoke_backend.py` foi ampliado para cobrir o caminho runtime final:
+
+- `GET /api/health`
+- `POST /api/student/{student_id}/calibrate` usando fallback local `latex:`
+- `POST /api/session/start`
+- `POST /api/session/{session_id}/submit`
+- `GET /api/student/{student_id}/rhythm`
+
+O smoke agora inclui asserts simples de contrato para falhar cedo se:
+
+- calibração não retornar `overall_score == 1.0` para samples `latex:`
+- a primeira folha vier sem campos
+- submit não retornar resultados, termômetro ou próxima folha
+- rhythm não retornar `trend` e `suggested_duration_ms`
+
+`backend/README.md` também foi atualizado para refletir a nova cobertura do smoke.
+
+## Verificação
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+# Ran 85 tests in 0.952s
+# OK
+
+python -m py_compile scripts\smoke_backend.py
+# OK
+
+cd "D:\LOVE CLASS"
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat assembleDebug
+# BUILD SUCCESSFUL
+```
+
+## Bloqueio Restante
+
+O smoke ampliado ainda não foi executado contra API real porque o Docker Desktop Service/engine Linux não está disponível nesta sessão. Próximo passo operacional permanece:
+
+1. Iniciar Docker Desktop com permissão adequada.
+2. `docker compose up -d`
+3. `python -m alembic upgrade head`
+4. `python seed/exercises.py`
+5. `python -m uvicorn main:app --reload`
+6. `python scripts/smoke_backend.py`

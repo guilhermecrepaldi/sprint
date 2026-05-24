@@ -37,6 +37,20 @@ def get_json(path: str) -> dict:
 def main() -> int:
     health = get_json("/api/health")
     student_id = str(uuid.uuid4())
+
+    calibration = post_json(
+        f"/api/student/{student_id}/calibrate",
+        {
+            "samples": [
+                {"expected_char": "1", "image_base64": "latex:1"},
+                {"expected_char": "7", "image_base64": "latex:7"},
+                {"expected_char": "0", "image_base64": "latex:0"},
+            ],
+        },
+    )
+    assert calibration["overall_score"] == 1.0, calibration
+    assert calibration["weak_chars"] == [], calibration
+
     start_payload = {
         "student_id": student_id,
         "config": {
@@ -52,6 +66,8 @@ def main() -> int:
 
     start = post_json("/api/session/start", start_payload)
     first_folha = start["first_folha"]
+    assert first_folha["fields"], start
+
     fields = []
     for field in first_folha["fields"]:
         fields.append(
@@ -92,8 +108,27 @@ def main() -> int:
             "fields": fields,
         },
     )
+    assert submit["results"], submit
+    assert "thermometer" in submit, submit
+    assert submit["next_folha"] is not None, submit
 
-    print(json.dumps({"health": health, "start": start, "submit": submit}, ensure_ascii=False, indent=2))
+    rhythm = get_json(f"/api/student/{student_id}/rhythm")
+    assert "trend" in rhythm, rhythm
+    assert "suggested_duration_ms" in rhythm, rhythm
+
+    print(
+        json.dumps(
+            {
+                "health": health,
+                "calibration": calibration,
+                "start": start,
+                "submit": submit,
+                "rhythm": rhythm,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 
