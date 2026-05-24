@@ -24,3 +24,13 @@ htmlcov/
 *.zip
 
 backend/postgres_data/
+
+# Android / Gradle generated files
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/

@@ -7,7 +7,7 @@ enum class BackgroundMode { WHITE, DARK }
 enum class DurationMode { UNLIMITED, TIMED, PAGES }
 enum class DifficultyProgression { ARITHMETIC, GEOMETRIC }
 enum class SessionStatus { CONFIG, ACTIVE, SUBMITTING, RESULT, FINISHED, ERROR }
-enum class ApiStatus { CONNECTING, OK, OFFLINE }
+enum class ApiStatus { CONNECTING, OK, OFFLINE, ERROR }
 
 @Serializable
 data class SessionConfig(
