@@ -1,7 +1,8 @@
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db import get_db
@@ -42,6 +43,20 @@ async def _recent_scores(db: AsyncSession, session_id: uuid.UUID, limit: int) ->
     return [(score or 0) / 100 for score in scores]
 
 
+def _should_finish_session(session: Session, config: SessionConfig) -> bool:
+    if config.duration_mode == "pages" and config.pages_limit is not None:
+        return session.page_count >= config.pages_limit
+
+    if config.duration_mode == "timed" and config.duration_limit_ms is not None and session.started_at is not None:
+        started_at = session.started_at
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=UTC)
+        elapsed_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        return elapsed_ms >= config.duration_limit_ms
+
+    return False
+
+
 @router.post("/api/session/{session_id}/submit", response_model=SubmitOut)
 async def submit_folha(
     session_id: uuid.UUID,
@@ -51,6 +66,8 @@ async def submit_folha(
     session = await db.get(Session, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session.status != "active":
+        raise HTTPException(status_code=409, detail=f"Session is {session.status}")
     if session.config_id is None:
         raise HTTPException(status_code=409, detail="Session has no config")
 
@@ -66,6 +83,26 @@ async def submit_folha(
         select(FolhaExercise).where(FolhaExercise.folha_id == body.folha_id)
     )
     assignments = {assignment.field_index: assignment for assignment in assignment_result.scalars().all()}
+    if not assignments:
+        raise HTTPException(status_code=409, detail="Folha has no exercise assignments")
+
+    submitted_indexes = {field.field_index for field in body.fields}
+    expected_indexes = set(assignments)
+    if submitted_indexes != expected_indexes:
+        missing = sorted(expected_indexes - submitted_indexes)
+        extra = sorted(submitted_indexes - expected_indexes)
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Submit must include exactly all folha fields", "missing": missing, "extra": extra},
+        )
+
+    existing_attempts = await db.execute(
+        select(func.count())
+        .select_from(ExerciseAttempt)
+        .where(ExerciseAttempt.session_id == session.id, ExerciseAttempt.folha_id == body.folha_id)
+    )
+    if existing_attempts.scalar_one() > 0:
+        raise HTTPException(status_code=409, detail="Folha already submitted")
 
     results: list[FieldResult] = []
     page_vectors: list[dict] = []
@@ -175,14 +212,13 @@ async def submit_folha(
     avg_fluency = sum(vector["fluency_score"] for vector in page_vectors) / max(1, len(page_vectors))
     thermometer_value = round(min(1.0, max(0.0, 0.5 * avg_correctness + 0.3 * avg_speed + 0.2 * avg_fluency)), 2)
 
-    session_status = session.status
-    if config.duration_mode == "pages" and config.pages_limit is not None and session.page_count >= config.pages_limit:
+    if _should_finish_session(session, config):
         session.status = "finished"
-        session_status = "finished"
+        session.ended_at = datetime.now(UTC)
 
     next_folha = None
     restart_triggered = False
-    if session_status == "active":
+    if session.status == "active":
         recent_scores = await _recent_scores(db, session.id, config.restart_window)
         skill_memory = await get_skill_memory(db, session.student_id) if session.student_id is not None else {}
         folha, exercises, restart_triggered = await get_next_folha(db, session, config, recent_scores, skill_memory)
