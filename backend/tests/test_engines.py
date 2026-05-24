@@ -1,9 +1,12 @@
 import unittest
 from types import SimpleNamespace
 
+from agents.feedback_agent import FeedbackAgent
+from agents.scoring_agent import ScoringAgent
 from engine.adaptive import check_restart, vector_to_memory_status
 from engine.correction import validate_answer
 from engine.scoring import compute_score
+from engine.validators import get_validator
 
 
 class CorrectionTests(unittest.TestCase):
@@ -22,12 +25,59 @@ class CorrectionTests(unittest.TestCase):
         self.assertEqual(result["error_type"], "ocr_invalido")
 
 
+class ValidatorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sympy_validator_uses_current_correction_logic(self):
+        result = await get_validator("sympy").validate("\\frac{3}{4}", "0.75")
+        self.assertTrue(result["is_correct"])
+
+    async def test_exact_match_validator_compares_text(self):
+        result = await get_validator("exact_match").validate("Resposta", "resposta")
+        self.assertTrue(result["is_correct"])
+
+
 class ScoringTests(unittest.TestCase):
     def test_wrong_answer_scores_zero(self):
         self.assertEqual(compute_score(False, 1000, 0, 2.0, 45000), 0)
 
     def test_correct_answer_is_capped_at_1000(self):
         self.assertEqual(compute_score(True, 30000, 1000, 2.5, 45000), 1000)
+
+    def test_scoring_agent_wraps_compute_score(self):
+        score = ScoringAgent().compute(
+            is_correct=True,
+            total_time_ms=30000,
+            hesitation_ms=1000,
+            difficulty=2.5,
+            estimated_time_ms=45000,
+        )
+        self.assertEqual(score, 1000)
+
+
+class FeedbackAgentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_wrong_answer_gets_short_feedback(self):
+        feedback = await FeedbackAgent().generate(
+            is_correct=False,
+            error_type="sinal",
+            statement="Resolva: 5 - 2x = 17",
+            recognized="x = 6",
+            expected="x = -6",
+            student_streak=0,
+        )
+
+        # FeedbackAgent uses LLM with fallback; wrong answers always get non-empty feedback
+        self.assertTrue(len(feedback) > 0)
+
+    async def test_correct_streak_stays_quiet(self):
+        feedback = await FeedbackAgent().generate(
+            is_correct=True,
+            error_type=None,
+            statement="Resolva: x + 1 = 6",
+            recognized="x = 5",
+            expected="x = 5",
+            student_streak=3,
+        )
+
+        self.assertEqual(feedback, "")
 
 
 class AdaptiveTests(unittest.TestCase):

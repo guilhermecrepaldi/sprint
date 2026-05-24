@@ -1,8 +1,10 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from engine.mastery import apply_decay, update_mastery
 from engine.unlock import get_available_skills
 from models.exercise import Exercise
 from models.session import Folha, FolhaExercise, Session, SessionConfig
@@ -55,10 +57,11 @@ async def update_skill_memory(
         fluency = float(vector.get("fluency_score") or 0.0)
         fatigue = float(vector.get("fatigue_index") or 0.0)
 
-        memory.accuracy = 0.8 * memory.accuracy + 0.2 * correctness
+        memory.accuracy = update_mastery(memory.accuracy, correctness > 0.5)
         memory.fluency = 0.8 * memory.fluency + 0.2 * fluency
         memory.fatigue_avg = 0.8 * memory.fatigue_avg + 0.2 * fatigue
         memory.attempt_count += 1
+        memory.last_practiced_at = datetime.now(UTC)
         memory.status = vector_to_memory_status(memory.accuracy)
 
 
@@ -118,6 +121,34 @@ async def _select_exercises(
         exercises.extend(broader.scalars().all())
 
     return exercises
+
+
+def get_exercise_role(exercise_num_in_session: int, recent_errors_last_3: int) -> str:
+    """
+    Distribui papéis dentro de uma rodada de 10 exercícios.
+    exercise_num_in_session é 0-based.
+    """
+    pos = exercise_num_in_session % 10
+    if pos < 3:
+        return "warmup"
+    if pos == 7 and recent_errors_last_3 >= 2:
+        return "breathing"
+    if pos >= 8:
+        return "sprint"
+    return "flow"
+
+
+def adjust_difficulty_for_role(base_difficulty: float, role: str) -> float:
+    adjustments = {
+        "warmup": 0.90,
+        "breathing": 0.80,
+        "flow": 1.00,
+        "sprint": 1.00,  # dificuldade + offset fixo abaixo
+    }
+    result = base_difficulty * adjustments[role]
+    if role == "sprint":
+        result = base_difficulty + 0.5
+    return round(min(10.0, max(1.0, result)), 1)
 
 
 def build_folha_out(folha: Folha, exercises: list[Exercise]) -> FolhaOut:
@@ -182,6 +213,17 @@ async def get_next_folha(
     recent_scores: list[float],
     skill_memory: dict[str, StudentSkillMemory],
 ) -> tuple[Folha, list[Exercise], bool]:
+    # Apply mastery decay for each skill based on days since last practice
+    now = datetime.now(UTC)
+    for mem in skill_memory.values():
+        last = mem.last_practiced_at
+        if last is not None:
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=UTC)
+            days = (now - last).days
+            mem.accuracy = apply_decay(mem.accuracy, days)
+            mem.status = vector_to_memory_status(mem.accuracy)
+
     restart = check_restart(recent_scores, config)
 
     if restart:
@@ -195,6 +237,11 @@ async def get_next_folha(
     new_difficulty = min(10.0, max(1.0, new_difficulty))
     session.current_difficulty = new_difficulty
 
+    # Apply rhythmic difficulty adjustment based on position in session
+    recent_errors = sum(1 for s in recent_scores[-3:] if s < 0.5)
+    role = get_exercise_role(session.exercise_count, recent_errors)
+    adjusted_difficulty = adjust_difficulty_for_role(new_difficulty, role)
+
     skill_memory_dict = {
         skill: {"accuracy": mem.accuracy, "attempt_count": mem.attempt_count}
         for skill, mem in skill_memory.items()
@@ -207,7 +254,7 @@ async def get_next_folha(
     folha, exercises = await create_folha(
         db,
         session,
-        new_difficulty,
+        adjusted_difficulty,
         config.exercises_per_page,
         config.subject,
         weak_skills if weak_skills else None,

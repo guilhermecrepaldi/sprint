@@ -41,4 +41,5 @@ class StudentSkillMemory(Base):
     fatigue_avg: Mapped[float] = mapped_column(Float, default=0.0, server_default="0.0")
     attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status: Mapped[str] = mapped_column(String(30), default="novo", server_default="novo")
+    last_practiced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
