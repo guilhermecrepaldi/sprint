@@ -2163,3 +2163,157 @@ D:\LOVE CLASS\
 ```
 
 *Handoff gerado em 2026-05-25. Arquitetura de agentes e UX definida em sessão de design.*
+
+---
+
+# APPEND — 2026-05-25: Regra Canônica de Unlock + Decay de Domínio
+
+## Decisão de Produto (imutável)
+
+O dono do produto definiu a regra de desbloqueio de tópicos:
+
+```
+Para avançar qualquer nó da árvore de habilidades, o aluno precisa de AMBOS:
+  1. Domínio (mastery) ≥ 90% no(s) pré-requisito(s)
+  2. Mínimo de 100 exercícios concluídos naquele tópico
+
+Nenhuma exceção. Não há modo fácil, não há atalho.
+```
+
+**Por quê 100 exercícios obrigatórios:**
+- Impede cramming (aluno não pode avançar em 2h mesmo com acerto perfeito)
+- 100 ex × ~3min = ~5h mínimas por tópico com boa performance
+- 18 nós até cálculo → ~90h mínimas end-to-end (concursando com base sólida)
+- Aluno iniciante do zero: ~8–12 meses a 1h/dia
+
+## O que foi implementado
+
+Arquivo criado: `backend/engine/unlock.py`
+
+Contém:
+- `MASTERY_THRESHOLD = 0.90` — constante única, alterar aqui reflete em todo o sistema
+- `MIN_EXERCISES = 100` — idem
+- `PREREQUISITE_TREE` — árvore completa de pré-requisitos: soma/subtração → cálculo integral
+- `check_unlock(target_skill, skill_memory) → UnlockStatus` — verifica se aluno pode avançar
+- `get_available_skills(skill_memory) → list[str]` — lista tópicos disponíveis para o aluno agora
+- `UnlockStatus` — detalha o que falta: mastery, exercícios, ou ambos
+
+### Comportamento verificado
+
+```python
+# Aluno zerado → nada disponível ainda
+get_available_skills({}) → []
+
+# 91% de domínio mas 40 exercícios → bloqueado
+check_unlock("equacoes_quadraticas",
+    {"equacoes_lineares": {"accuracy": 0.91, "attempt_count": 40}}
+).unlocked → False   # falta exercícios
+
+# 92% de domínio e 107 exercícios → desbloqueado
+check_unlock("equacoes_quadraticas",
+    {"equacoes_lineares": {"accuracy": 0.92, "attempt_count": 107}}
+).unlocked → True
+```
+
+## Integração necessária (próximo operador)
+
+### 1. Adicionar `attempt_count` ao modelo `StudentSkillMemory`
+
+```python
+# backend/models/vector.py
+class StudentSkillMemory(Base):
+    # ... campos existentes ...
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+```
+
+Migration: `0006_add_skill_attempt_count`
+
+```python
+def upgrade():
+    op.add_column("student_skill_memory",
+        sa.Column("attempt_count", sa.Integer(), nullable=False, server_default="0"))
+```
+
+### 2. Incrementar `attempt_count` em `adaptive.py`
+
+```python
+async def update_skill_memory(db, student_id, skill_tags, vector):
+    for skill in skill_tags:
+        mem = await get_or_create_skill_memory(db, student_id, skill)
+        mem.accuracy = update_mastery(mem.accuracy, vector.correctness > 0.5)
+        mem.attempt_count += 1          # ← NOVO
+        mem.status = classify_status(mem.accuracy)
+```
+
+### 3. Usar `check_unlock` em `get_next_folha`
+
+```python
+from engine.unlock import check_unlock, get_available_skills
+
+async def get_next_folha(db, session, config, ...):
+    skill_memory = await get_skill_memory_dict(db, session.student_id)
+    available = get_available_skills(skill_memory)
+    # Selecionar exercícios apenas de habilidades disponíveis para o aluno
+    # (evita gerar exercícios de tópicos ainda bloqueados)
+    ...
+```
+
+### 4. Expor progresso de unlock no endpoint de submit
+
+```python
+# Adicionar ao SubmitOut:
+unlock_progress: dict | None = None
+# Quando o aluno está próximo (>= 80% e >= 70 ex), incluir detalhes do que falta
+```
+
+## Decay de Domínio (também decidido nesta sessão)
+
+O sistema deve ser time-based, não apenas volume-based.
+Domínio decai se o aluno não pratica — isso impede que o desbloqueio seja
+eterno mesmo sem manter o conhecimento.
+
+```python
+# backend/engine/mastery.py — adicionar:
+import math
+
+def apply_decay(mastery: float, days_since_last_practice: int) -> float:
+    """
+    Decaimento natural do domínio por falta de prática.
+    - Até 1 dia: sem decaimento
+    - 3 dias: leve (~2%)
+    - 7 dias: moderado (~5%)
+    - 30 dias: significativo (~15%)
+    """
+    if days_since_last_practice <= 1:
+        return mastery
+    decay = 0.015 * math.log(days_since_last_practice)
+    return max(0.0, mastery - decay)
+```
+
+`apply_decay` deve ser chamado no início de cada sessão, para cada habilidade
+do aluno, antes de calcular disponibilidade de tópicos.
+
+## Testes
+
+38/38 passando após criação de `unlock.py`.
+Testes específicos de unlock ainda a criar (próximo operador):
+
+```python
+# tests/test_unlock.py
+class UnlockTests(unittest.TestCase):
+    def test_root_skill_always_available(self):
+        status = check_unlock("soma_subtracao", {})
+        self.assertTrue(status.unlocked)
+
+    def test_requires_90_percent_mastery(self):
+        mem = {"equacoes_lineares": {"accuracy": 0.89, "attempt_count": 150}}
+        self.assertFalse(check_unlock("equacoes_quadraticas", mem).unlocked)
+
+    def test_requires_100_exercises(self):
+        mem = {"equacoes_lineares": {"accuracy": 0.95, "attempt_count": 99}}
+        self.assertFalse(check_unlock("equacoes_quadraticas", mem).unlocked)
+
+    def test_unlocks_when_both_met(self):
+        mem = {"equacoes_lineares": {"accuracy": 0.90, "attempt_count": 100}}
+        self.assertTrue(check_unlock("equacoes_quadraticas", mem).unlocked)
+```
