@@ -1,4 +1,4 @@
-# Strava da Matemática Backend
+# LOVE CLASS Backend
 
 ## Dev Run
 

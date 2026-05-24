@@ -1,6 +1,6 @@
 """add session_accuracy and duration_ms to sessions
 
-Revision ID: 0008_add_session_accuracy_duration
+Revision ID: 0008_session_metrics
 Revises: 0007_add_last_practiced_at
 Create Date: 2026-05-25 00:00:00
 """
@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "0008_add_session_accuracy_duration"
+revision: str = "0008_session_metrics"
 down_revision: str | None = "0007_add_last_practiced_at"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

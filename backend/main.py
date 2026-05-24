@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI, run_startup_db: bool = True) -> AsyncGenerator[
 
 
 def create_app(run_startup_db: bool = True) -> FastAPI:
-    app = FastAPI(title="Strava da Matemática API", lifespan=lambda app: lifespan(app, run_startup_db))
+    app = FastAPI(title="LOVE CLASS API", lifespan=lambda app: lifespan(app, run_startup_db))
 
     app.add_middleware(
         CORSMiddleware,

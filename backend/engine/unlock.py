@@ -1,6 +1,6 @@
 """
-Unlock Engine — Strava da Matemática
-=====================================
+Unlock Engine — LOVE CLASS
+==========================
 Define os requisitos para desbloquear o próximo nível de dificuldade
 ou o próximo tópico/matéria na árvore de habilidades.
 

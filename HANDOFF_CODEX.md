@@ -2918,3 +2918,65 @@ O smoke ampliado ainda não foi executado contra API real porque o Docker Deskto
 4. `python seed/exercises.py`
 5. `python -m uvicorn main:app --reload`
 6. `python scripts/smoke_backend.py`
+
+---
+
+# APPEND — Continuidade 2026-05-24: Smoke Runtime Real Passou
+
+## Resultado
+
+O runtime E2E com Docker/Postgres/Redis foi desbloqueado e verificado.
+
+Passos executados:
+
+```powershell
+Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+docker compose up -d
+python -m alembic upgrade head
+python seed\exercises.py
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
+python scripts\smoke_backend.py
+```
+
+Cobertura confirmada pelo smoke:
+
+- `GET /api/health` retornou `{"status":"ok","database":"ok"}`.
+- `POST /api/student/{id}/calibrate` com fallback `latex:` retornou `overall_score: 1.0` e `weak_chars: []`.
+- `POST /api/session/start` criou sessão e folha com campos `subject`/`canvas_mode`.
+- `POST /api/session/{id}/submit` retornou resultados, feedback, vetores, termômetro e próxima folha.
+- `GET /api/student/{id}/rhythm` retornou `trend`, `suggested_duration_ms`, `best_hour` e `message`.
+
+## Bug de Migration Encontrado e Corrigido
+
+Durante `alembic upgrade head`, a migration `0008_add_session_accuracy_duration.py` falhou porque o revision id `0008_add_session_accuracy_duration` tinha mais de 32 caracteres, limite padrão de `alembic_version.version_num`.
+
+Correção:
+
+- Revision ID encurtado para `0008_session_metrics`.
+- `alembic upgrade head` passou em Postgres real.
+
+## Ajustes de Marca
+
+Foram removidas ocorrências remanescentes de `Strava da Matemática`/`Strava Matemática` em arquivos app/backend pesquisáveis:
+
+- `backend/main.py` agora usa `LOVE CLASS API`.
+- `backend/README.md` usa `LOVE CLASS Backend`.
+- `backend/engine/unlock.py` usa `Unlock Engine — LOVE CLASS`.
+
+## Verificação Complementar
+
+```powershell
+python -m unittest -v
+# Ran 85 tests
+# OK
+
+.\gradlew.bat assembleDebug
+# BUILD SUCCESSFUL
+
+rg "Strava da Matemática|Strava Matemática|Strava da Matematica|Strava Matematica|strava da matemática|strava matemática" app\src\main\java app\src\main\res backend
+# sem resultados
+```
+
+## Restante
+
+O único item ainda não executado nesta sessão é o teste manual no emulador Android contra `http://10.0.2.2:8000`.

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -7,6 +8,9 @@ import uuid
 
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 
 def post_json(path: str, payload: dict) -> dict:
