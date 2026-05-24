@@ -31,6 +31,7 @@ import com.strava_matematica.design.FocusColors
 import com.strava_matematica.design.Spacing
 import com.strava_matematica.model.BackgroundMode
 import com.strava_matematica.model.Folha
+import com.strava_matematica.model.PenEvent
 import com.strava_matematica.model.SessionConfig
 import com.strava_matematica.ui.components.ThermometerView
 
@@ -39,6 +40,7 @@ fun FolhaScreen(
     folha: Folha,
     config: SessionConfig,
     onSubmit: () -> Unit,
+    onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
 ) {
     var activeField by remember { mutableIntStateOf(0) }
 
@@ -89,7 +91,9 @@ fun FolhaScreen(
                     field = field,
                     isActive = field.fieldIndex == activeField,
                     backgroundMode = config.backgroundMode,
+                    penColor = config.penColor,
                     onClick = { activeField = field.fieldIndex },
+                    onPenEvent = { event -> onPenEvent(field.fieldIndex, event) },
                 )
             }
         }

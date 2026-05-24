@@ -941,3 +941,75 @@ Resultado observado:
 - Backend MVP: 3-5% faltando.
 - Android MVP: ~30-35% faltando.
 - Projeto completo: ~35-40% faltando.
+
+---
+
+# APPEND — Continuidade 2026-05-24: InkCanvas Stroke Capture
+
+## Avaliação
+
+Depois do port visual do protótipo `safe`, o maior buraco do Android era o `InkCanvas`: ele ainda desenhava apenas uma linha guia, sem capturar escrita real. Isso impedia avançar para telemetria e submit. A melhoria desta etapa cria uma primeira implementação funcional de strokes em Compose.
+
+## Melhoria Implementada
+
+Arquivos tocados:
+
+- `app/src/main/java/com/strava_matematica/ui/folha/ExerciseField.kt`
+- `app/src/main/java/com/strava_matematica/ui/folha/FolhaScreen.kt`
+- `HANDOFF_CODEX.md`
+
+Mudanças:
+
+- `InkCanvas` agora usa `detectDragGestures`.
+- Desenha strokes locais com `Path` e `StrokeCap.Round`.
+- Usa `penColor` vindo de `SessionConfig`.
+- Emite `PenEvent` para:
+  - `stroke_start`
+  - `stroke_move`
+  - `stroke_end`
+- Calcula velocidade aproximada por distância/tempo entre pontos.
+- `FolhaScreen` agora expõe callback:
+
+```kotlin
+onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit
+```
+
+Isso deixa a UI pronta para plugar no `FolhaViewModel.appendEvent(...)` e, depois, montar payload real para `/submit`.
+
+## Testes/Verificações Rodadas
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+
+cd "D:\LOVE CLASS"
+git diff --check
+```
+
+Resultado observado:
+
+- Backend: 26 testes OK.
+- `git diff --check`: OK, apenas warnings de CRLF esperados no Windows.
+- Android ainda não compilado por ausência de Gradle/Gradle wrapper.
+
+## Limitações Conhecidas
+
+- Ainda não captura pressure/tilt reais; esses campos ficam `null`.
+- Ainda não há eraser funcional.
+- Ainda não há undo/redo real.
+- Strokes ainda ficam no estado local do composable; próximo passo é ligá-los ao `FolhaViewModel`.
+- Ainda falta export/crop bitmap por campo para `image_base64`.
+
+## Próxima Ação Recomendada
+
+1. Commitar e fazer push deste pacote se ainda não tiver sido feito.
+2. Plugar `onPenEvent` em `FolhaViewModel.appendEvent(...)`.
+3. Fazer `InkToolbar` limpar campo ativo usando `FolhaViewModel.clearField(...)`.
+4. Criar representação persistente de strokes por campo para suportar recomposição, undo/redo e submit.
+5. Quando Android Studio/Gradle estiver disponível, rodar `:app:assembleDebug`.
+
+## Estimativa Atualizada
+
+- Backend MVP: 3-5% faltando.
+- Android MVP: ~28-33% faltando.
+- Projeto completo: ~34-39% faltando.
