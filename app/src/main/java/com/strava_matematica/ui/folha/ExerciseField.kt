@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -42,6 +43,9 @@ fun ExerciseField(
     backgroundMode: BackgroundMode,
     penColor: String,
     modifier: Modifier = Modifier,
+    clearSignal: Int = 0,
+    undoSignal: Int = 0,
+    redoSignal: Int = 0,
     onClick: () -> Unit,
     onPenEvent: (PenEvent) -> Unit = {},
 ) {
@@ -91,6 +95,9 @@ fun ExerciseField(
                 modifier = Modifier.matchParentSize().padding(Spacing.xs),
                 penColor = penColor,
                 enabled = isActive,
+                clearSignal = clearSignal,
+                undoSignal = undoSignal,
+                redoSignal = redoSignal,
                 onPenEvent = onPenEvent,
             )
         }
@@ -126,14 +133,40 @@ fun InkCanvas(
     penColor: String = "#1a1a1a",
     penWidth: Float = 2.2f,
     enabled: Boolean = true,
+    clearSignal: Int = 0,
+    undoSignal: Int = 0,
+    redoSignal: Int = 0,
     onPenEvent: (PenEvent) -> Unit = {},
 ) {
     val strokes = remember { mutableStateListOf<List<Offset>>() }
+    val redoStack = remember { mutableStateListOf<List<Offset>>() }
     val inkColor = remember(penColor) { parseHexColor(penColor) }
     var currentStroke = remember { mutableListOf<Offset>() }
     var strokeStartedAt = remember { 0L }
     var previousPoint = remember { Offset.Zero }
     var previousUptime = remember { 0L }
+
+    LaunchedEffect(clearSignal) {
+        if (clearSignal > 0) {
+            strokes.clear()
+            redoStack.clear()
+            onPenEvent(Offset.Zero.toPenEvent(System.currentTimeMillis(), 0f, "clear"))
+        }
+    }
+
+    LaunchedEffect(undoSignal) {
+        if (undoSignal > 0 && strokes.isNotEmpty()) {
+            redoStack.add(strokes.removeAt(strokes.lastIndex))
+            onPenEvent(Offset.Zero.toPenEvent(System.currentTimeMillis(), 0f, "undo"))
+        }
+    }
+
+    LaunchedEffect(redoSignal) {
+        if (redoSignal > 0 && redoStack.isNotEmpty()) {
+            strokes.add(redoStack.removeAt(redoStack.lastIndex))
+            onPenEvent(Offset.Zero.toPenEvent(System.currentTimeMillis(), 0f, "redo"))
+        }
+    }
 
     Canvas(
         modifier = modifier.pointerInput(enabled, penColor, penWidth) {
@@ -144,6 +177,7 @@ fun InkCanvas(
                     previousUptime = strokeStartedAt
                     previousPoint = offset
                     currentStroke = mutableListOf(offset)
+                    redoStack.clear()
                     strokes.add(currentStroke.toList())
                     onPenEvent(offset.toPenEvent(strokeStartedAt, 0f, "stroke_start"))
                 },

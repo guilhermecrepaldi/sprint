@@ -13,7 +13,7 @@ class PenEventIn(BaseModel):
     pressure: float | None = None
     tilt: float | None = None
     velocity: float | None = None
-    event_type: Literal["stroke_start", "stroke_move", "stroke_end", "erase"]
+    event_type: Literal["stroke_start", "stroke_move", "stroke_end", "erase", "clear", "undo", "redo"]
 
 
 class FieldSubmit(BaseModel):

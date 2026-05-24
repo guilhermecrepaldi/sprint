@@ -1013,3 +1013,101 @@ Resultado observado:
 - Backend MVP: 3-5% faltando.
 - Android MVP: ~28-33% faltando.
 - Projeto completo: ~34-39% faltando.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Avaliação `strava-da-matemática` + Undo/Redo Android
+
+## Avaliação da Entrega Externa
+
+O diretório externo recebido em `D:\LOVE CLASS\strava-da-matemática` foi inspecionado e organizado como referência em:
+
+- `design-references/strava-da-matematica-ai-studio/`
+
+Resumo técnico:
+
+- É um app web Vite/React com backend Express em `server.ts`.
+- Usa Gemini via `@google/genai`, enquanto a arquitetura canônica deste projeto continua sendo FastAPI/Postgres/Claude Vision/SymPy.
+- Tem bom valor como referência de UX e canvas, mas não deve substituir os contratos atuais.
+- O arquivo mais útil é `src/components/InkCanvas.tsx`, porque implementa:
+  - strokes por pointer event;
+  - undo/redo;
+  - clear;
+  - pressure/tilt quando disponíveis;
+  - export base64 com fundo sólido para OCR.
+
+Divergências encontradas:
+
+- `duration_mode`: externo usa `free|time|pages`; canônico usa `unlimited|timed|pages`.
+- `difficulty_progression`: externo usa `linear|geometric`; canônico usa `arithmetic|geometric`.
+- campos: externo usa `fieldIndex` visual 1-based; canônico usa `field_index` 0-based.
+- submit externo usa payload `{ fields: [...] }` sem `folha_id`; canônico exige `folha_id` no submit.
+- backend externo é memória local/Express; backend canônico é persistente/assíncrono/FastAPI.
+
+Foi adicionado `REFERENCE_NOTES.md` dentro da pasta de referência para evitar uso acidental como código de produção.
+
+## Melhoria Implementada
+
+Arquivos tocados:
+
+- `app/src/main/java/com/strava_matematica/ui/folha/ExerciseField.kt`
+- `app/src/main/java/com/strava_matematica/ui/folha/InkToolbar.kt`
+- `app/src/main/java/com/strava_matematica/ui/folha/FolhaScreen.kt`
+- `backend/schemas/submit.py`
+- `backend/tests/test_schemas.py`
+- `design-references/strava-da-matematica-ai-studio/REFERENCE_NOTES.md`
+- `HANDOFF_CODEX.md`
+
+Mudanças:
+
+- `InkCanvas` Android agora tem comandos reais de:
+  - limpar;
+  - desfazer;
+  - refazer.
+- Foi criado um `redoStack` local no canvas.
+- Novo stroke limpa o redo stack, comportamento esperado em editores de escrita.
+- `InkToolbar` agora encaminha callbacks reais para undo/redo/clear.
+- `FolhaScreen` mantém contadores de comando para aplicar ação apenas no campo ativo.
+- O canvas emite eventos sintéticos `clear`, `undo` e `redo` via `PenEvent`, além dos eventos de stroke já existentes.
+- Backend `SubmitIn` agora aceita `clear`, `undo` e `redo` como tipos válidos de `PenEvent`.
+- Teste de schema adicionado para garantir que esses eventos editoriais não quebrem submit futuro.
+
+## Testes/Verificações a Rodar Nesta Etapa
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+
+cd "D:\LOVE CLASS"
+git diff --check
+```
+
+Android ainda depende de Gradle/Android Studio para compilar:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+## Limitações Conhecidas Atualizadas
+
+- Undo/redo/clear agora existem localmente no canvas, mas os strokes ainda não estão persistidos no `FolhaViewModel`.
+- O evento sintético de undo/redo/clear ainda não reconstrói stroke state do ViewModel; é apenas telemetria inicial.
+- Eraser visual ainda não está implementado.
+- Pressure/tilt seguem pendentes no Android.
+- Ainda falta export/crop bitmap por campo para `image_base64`.
+- App Android ainda não foi compilado por falta de Gradle wrapper/Gradle no ambiente.
+
+## Próxima Ação Recomendada
+
+1. Rodar testes backend e `git diff --check`.
+2. Commitar e fazer push.
+3. Persistir strokes por campo no `FolhaViewModel`.
+4. Derivar undo/redo/clear do ViewModel, não só do estado local do composable.
+5. Implementar crop/export bitmap por campo.
+6. Criar Gradle wrapper ou abrir o projeto no Android Studio e compilar.
+
+## Estimativa Atualizada
+
+- Backend MVP: 3-5% faltando.
+- Android MVP: ~26-31% faltando.
+- Projeto completo: ~33-38% faltando.

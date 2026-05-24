@@ -1,0 +1,6 @@
+{
+  "name": "Strava da Matemática",
+  "description": "Plataforma de treino matemático de alta performance para adolescentes estilo deep work.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

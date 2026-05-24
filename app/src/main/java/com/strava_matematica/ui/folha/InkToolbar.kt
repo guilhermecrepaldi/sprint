@@ -18,6 +18,8 @@ import com.strava_matematica.design.Spacing
 @Composable
 fun InkToolbar(
     modifier: Modifier = Modifier,
+    onUndo: () -> Unit = {},
+    onRedo: () -> Unit = {},
     onClear: () -> Unit = {},
 ) {
     Row(
@@ -28,8 +30,8 @@ fun InkToolbar(
     ) {
         IconButton(onClick = {}) { Icon(Icons.Outlined.Brush, contentDescription = "Caneta") }
         IconButton(onClick = {}) { Icon(Icons.Outlined.CleaningServices, contentDescription = "Borracha") }
-        IconButton(onClick = {}) { Icon(Icons.Outlined.Undo, contentDescription = "Desfazer") }
-        IconButton(onClick = {}) { Icon(Icons.Outlined.Redo, contentDescription = "Refazer") }
+        IconButton(onClick = onUndo) { Icon(Icons.Outlined.Undo, contentDescription = "Desfazer") }
+        IconButton(onClick = onRedo) { Icon(Icons.Outlined.Redo, contentDescription = "Refazer") }
         IconButton(onClick = onClear) { Icon(Icons.Outlined.CleaningServices, contentDescription = "Limpar campo") }
     }
 }

@@ -47,6 +47,20 @@ class SubmitSchemaTests(unittest.TestCase):
                 pen_events=[{"ts": 0, "x": 1, "y": 1, "event_type": "tap"}],
             )
 
+    def test_accepts_editor_pen_event_types(self):
+        field = FieldSubmit(
+            field_index=0,
+            exercise_id=uuid.uuid4(),
+            image_base64="latex:x = 5",
+            total_time_ms=1000,
+            pen_events=[
+                {"ts": 0, "x": 0, "y": 0, "event_type": "clear"},
+                {"ts": 1, "x": 0, "y": 0, "event_type": "undo"},
+                {"ts": 2, "x": 0, "y": 0, "event_type": "redo"},
+            ],
+        )
+        self.assertEqual([event.event_type for event in field.pen_events], ["clear", "undo", "redo"])
+
 
 if __name__ == "__main__":
     unittest.main()

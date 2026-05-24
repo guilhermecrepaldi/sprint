@@ -43,6 +43,9 @@ fun FolhaScreen(
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
 ) {
     var activeField by remember { mutableIntStateOf(0) }
+    var clearSignal by remember { mutableIntStateOf(0) }
+    var undoSignal by remember { mutableIntStateOf(0) }
+    var redoSignal by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = Modifier
@@ -92,12 +95,19 @@ fun FolhaScreen(
                     isActive = field.fieldIndex == activeField,
                     backgroundMode = config.backgroundMode,
                     penColor = config.penColor,
+                    clearSignal = if (field.fieldIndex == activeField) clearSignal else 0,
+                    undoSignal = if (field.fieldIndex == activeField) undoSignal else 0,
+                    redoSignal = if (field.fieldIndex == activeField) redoSignal else 0,
                     onClick = { activeField = field.fieldIndex },
                     onPenEvent = { event -> onPenEvent(field.fieldIndex, event) },
                 )
             }
         }
 
-        InkToolbar(onClear = {})
+        InkToolbar(
+            onUndo = { undoSignal += 1 },
+            onRedo = { redoSignal += 1 },
+            onClear = { clearSignal += 1 },
+        )
     }
 }
