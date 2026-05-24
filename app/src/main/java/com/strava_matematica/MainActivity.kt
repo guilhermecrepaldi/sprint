@@ -1,0 +1,65 @@
+package com.strava_matematica
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.strava_matematica.design.StravaMathTheme
+import com.strava_matematica.model.SessionStatus
+import com.strava_matematica.ui.config.SessionConfigScreen
+import com.strava_matematica.ui.folha.FolhaScreen
+import com.strava_matematica.ui.result.PageResultScreen
+import com.strava_matematica.ui.summary.SessionSummaryScreen
+import com.strava_matematica.viewmodel.SessionViewModel
+
+class MainActivity : ComponentActivity() {
+    private val sessionViewModel: SessionViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            StravaMathApp(sessionViewModel)
+        }
+    }
+}
+
+@Composable
+fun StravaMathApp(viewModel: SessionViewModel) {
+    val state by viewModel.uiState.collectAsState()
+
+    StravaMathTheme(backgroundMode = state.config.backgroundMode) {
+        when (state.status) {
+            SessionStatus.CONFIG,
+            SessionStatus.ERROR -> SessionConfigScreen(
+                config = state.config,
+                onConfigChange = viewModel::updateConfig,
+                onStart = viewModel::startDemoSession,
+            )
+
+            SessionStatus.ACTIVE,
+            SessionStatus.SUBMITTING -> state.currentFolha?.let {
+                FolhaScreen(
+                    folha = it,
+                    config = state.config,
+                    onSubmit = viewModel::submitDemoFolha,
+                )
+            }
+
+            SessionStatus.RESULT -> state.lastResult?.let {
+                PageResultScreen(
+                    result = it,
+                    onNext = viewModel::goToNextFolha,
+                    onSummary = {},
+                )
+            }
+
+            SessionStatus.FINISHED -> SessionSummaryScreen(
+                result = state.lastResult,
+                onNewSession = viewModel::resetToConfig,
+            )
+        }
+    }
+}

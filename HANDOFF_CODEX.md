@@ -745,3 +745,93 @@ python scripts/smoke_backend.py
 
 - Backend MVP: 3-5% faltando.
 - Projeto completo com Android: ~45% faltando.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Android Compose Scaffold
+
+## Avaliação
+
+Como o backend está bloqueado apenas no runtime real com Postgres/Docker, o melhor avanço foi iniciar a Fase Android seguindo `APP_LAYOUT_SPEC.md`. Não havia projeto Android no repositório. Também foi confirmado que `gradle` não está disponível no PATH desta máquina, então a validação local do Android ficou limitada a estrutura/conteúdo. O backend foi retestado para garantir que nada regrediu.
+
+## Melhoria Implementada
+
+Criado scaffold Android/Jetpack Compose:
+
+- `settings.gradle.kts`
+- `build.gradle.kts`
+- `app/build.gradle.kts`
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/res/values/styles.xml`
+- `app/src/main/java/com/strava_matematica/MainActivity.kt`
+- `app/src/main/java/com/strava_matematica/design/*`
+- `app/src/main/java/com/strava_matematica/model/*`
+- `app/src/main/java/com/strava_matematica/network/*`
+- `app/src/main/java/com/strava_matematica/viewmodel/*`
+- `app/src/main/java/com/strava_matematica/ui/*`
+- `app/README.md`
+
+O app agora tem um fluxo demo em Compose:
+
+```text
+SessionConfigScreen
+-> FolhaScreen
+-> PageResultScreen
+-> SessionSummaryScreen
+```
+
+O `SessionViewModel` usa dados demo para permitir navegação visual sem backend. Os modelos Kotlin espelham os contratos atuais da API. A interface visual segue o spec: tema white/dark, tela de config, folha com campos, termômetro, toolbar de tinta, tela de resultado e resumo.
+
+## Limitações Conhecidas
+
+- Android ainda não foi compilado localmente porque `gradle` não existe no PATH e não há Gradle wrapper versionado.
+- `InkCanvas` ainda é visual-only; falta captura real de stylus, strokes, pressure, tilt e velocity.
+- Ainda falta exportar crop bitmap por campo para `image_base64`.
+- Retrofit está definido, mas o fluxo demo ainda não chama backend real.
+- Layout é primeira base funcional, não QA visual final.
+
+## Testes/Verificações Rodadas
+
+```powershell
+cd "D:\LOVE CLASS"
+rg --files app | Sort-Object
+rg "TODO|Future|import .*\\*|com\\.jakewharton|TODO" app backend
+
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+python -m compileall .
+```
+
+Resultado observado:
+
+- Estrutura Android criada com 24 arquivos iniciais.
+- Backend: 26 testes OK.
+- Backend compileall OK.
+- Gradle local não rodou por ausência de tooling.
+
+## Próxima Ação Recomendada
+
+Para Android:
+
+1. Abrir o projeto no Android Studio.
+2. Criar/baixar Gradle wrapper.
+3. Rodar:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+4. Corrigir erros de primeira compilação Android se aparecerem.
+5. Substituir ações demo do `SessionViewModel` por chamadas reais via `ApiClient`.
+6. Implementar captura real no `InkCanvas`.
+7. Implementar crop por campo para submit.
+
+Para backend:
+
+1. Quando Docker/Postgres estiver disponível, rodar smoke real.
+
+## Estimativa Atualizada
+
+- Backend MVP: 3-5% faltando.
+- Android MVP: ~35-40% faltando.
+- Projeto completo: ~40-45% faltando.
