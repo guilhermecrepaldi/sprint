@@ -2833,3 +2833,37 @@ docker version
 ```
 
 Resultado: cliente Docker existe, mas o daemon `dockerDesktopLinuxEngine` não está rodando/disponível. O smoke real com Postgres/Redis segue como o próximo bloqueio operacional, não como pendência de código.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Estado de Envio na Calibração
+
+## Ajuste Implementado
+
+Refinamento pequeno na Fase G.2 Android:
+
+- `MainActivity` agora passa `apiStatus` e `errorMessage` para `CalibrationScreen`.
+- `CalibrationScreen` mostra texto de envio enquanto as amostras estão sendo submetidas.
+- Durante o POST de calibração, canvas e botões ficam desabilitados para evitar envio duplicado ou alteração das amostras.
+- Se o endpoint falhar, a tela permanece em calibração e exibe mensagem de erro amigável para tentar novamente.
+
+## Verificação
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+# Ran 85 tests in 1.289s
+# OK
+
+cd "D:\LOVE CLASS"
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat assembleDebug
+# BUILD SUCCESSFUL
+```
+
+## Estado Atual
+
+O restante concreto continua sendo QA runtime:
+
+- Smoke real com Postgres/Redis quando Docker Desktop Linux Engine estiver disponível.
+- Teste manual no emulador Android apontando para `http://10.0.2.2:8000`.

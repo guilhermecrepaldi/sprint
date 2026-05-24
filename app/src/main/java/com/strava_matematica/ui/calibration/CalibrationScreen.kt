@@ -17,6 +17,8 @@ private val CALIBRATION_CHARS = listOf("1", "2", "3", "4", "5", "6", "7", "8", "
 
 @Composable
 fun CalibrationScreen(
+    isSubmitting: Boolean = false,
+    errorMessage: String? = null,
     onComplete: (skipped: Boolean) -> Unit,
     onSubmitSamples: (List<CalibrationSample>) -> Unit,
 ) {
@@ -44,10 +46,17 @@ fun CalibrationScreen(
         Spacer(Modifier.height(Spacing.lg))
         Text("Calibração de escrita", style = MaterialTheme.typography.titleLarge)
         Text(
-            "Escreva o caractere mostrado no quadrado e avance.",
+            if (isSubmitting) "Enviando amostras..." else "Escreva o caractere mostrado no quadrado e avance.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
         )
+        if (errorMessage != null) {
+            Text(
+                text = "Não consegui enviar. Verifique a conexão e tente novamente.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         Spacer(Modifier.height(Spacing.md))
 
         Text(currentChar, style = MaterialTheme.typography.displayLarge)
@@ -67,7 +76,7 @@ fun CalibrationScreen(
                         .matchParentSize()
                         .padding(Spacing.md),
                     penColor = "#1a1a1a",
-                    enabled = true,
+                    enabled = !isSubmitting,
                     clearSignal = clearSignal,
                     onSyncStrokes = { strokes, _ -> currentStrokes = strokes },
                 )
@@ -79,29 +88,44 @@ fun CalibrationScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = { onComplete(true) }) { Text("Pular") }
+            TextButton(
+                enabled = !isSubmitting,
+                onClick = { onComplete(true) },
+            ) { Text("Pular") }
             Text(
                 "${index + 1}/${CALIBRATION_CHARS.size}",
                 style = MaterialTheme.typography.labelLarge,
             )
-            Button(onClick = {
-                captureCurrentSample()
-                if (index < CALIBRATION_CHARS.lastIndex) {
-                    index++
-                } else {
-                    onSubmitSamples(CALIBRATION_CHARS.mapNotNull { samples[it] })
-                }
-            }) {
-                Text(if (index < CALIBRATION_CHARS.lastIndex) "Avançar" else "Concluir")
+            Button(
+                enabled = !isSubmitting,
+                onClick = {
+                    captureCurrentSample()
+                    if (index < CALIBRATION_CHARS.lastIndex) {
+                        index++
+                    } else {
+                        onSubmitSamples(CALIBRATION_CHARS.mapNotNull { samples[it] })
+                    }
+                },
+            ) {
+                Text(
+                    when {
+                        isSubmitting -> "Enviando"
+                        index < CALIBRATION_CHARS.lastIndex -> "Avançar"
+                        else -> "Concluir"
+                    },
+                )
             }
         }
 
         Spacer(Modifier.height(Spacing.sm))
-        TextButton(onClick = {
-            currentStrokes = emptyList()
-            samples.remove(currentChar)
-            clearSignal++
-        }) {
+        TextButton(
+            enabled = !isSubmitting,
+            onClick = {
+                currentStrokes = emptyList()
+                samples.remove(currentChar)
+                clearSignal++
+            },
+        ) {
             Text("Limpar", style = MaterialTheme.typography.labelMedium)
         }
     }

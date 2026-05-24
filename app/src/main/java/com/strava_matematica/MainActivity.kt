@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.strava_matematica.design.StravaMathTheme
+import com.strava_matematica.model.ApiStatus
 import com.strava_matematica.model.SessionStatus
 import com.strava_matematica.ui.calibration.CalibrationScreen
 import com.strava_matematica.ui.config.SessionConfigScreen
@@ -43,6 +44,8 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
             )
 
             SessionStatus.CALIBRATION -> CalibrationScreen(
+                isSubmitting = state.apiStatus == ApiStatus.CONNECTING,
+                errorMessage = state.errorMessage,
                 onComplete = { skipped -> viewModel.onCalibrationComplete(skipped) },
                 onSubmitSamples = viewModel::submitCalibration,
             )
