@@ -1,10 +1,10 @@
 import re
 
 import sympy
-from sympy.parsing.sympy_parser import parse_expr, standard_transformations
+from sympy.parsing.sympy_parser import implicit_multiplication_application, parse_expr, standard_transformations
 
 
-TRANSFORMATIONS = standard_transformations
+TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application,)
 
 
 def _normalize(value: str | None) -> str:
