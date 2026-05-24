@@ -21,6 +21,8 @@ cd "D:\LOVE CLASS\backend"
 python -m unittest
 ```
 
+The suite includes user workflow tests for config -> first folha -> submit -> next folha, incomplete page rejection, duplicate submit rejection, and page-limit session finish.
+
 ## Smoke Test
 
 In another terminal, after the API is running:
