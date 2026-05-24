@@ -39,12 +39,18 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState
 
+    init {
+        if (needsCalibration()) {
+            _uiState.update { it.copy(status = SessionStatus.CALIBRATION) }
+        }
+    }
+
     fun updateConfig(config: SessionConfig) {
         _uiState.update { it.copy(config = config) }
     }
 
     fun startSession() {
-        if (!prefs.getBoolean("calibration_done", false)) {
+        if (needsCalibration()) {
             _uiState.update { it.copy(status = SessionStatus.CALIBRATION, apiStatus = ApiStatus.OK) }
             return
         }
@@ -99,6 +105,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private fun markCalibrationDone() {
         prefs.edit().putBoolean("calibration_done", true).apply()
     }
+
+    private fun needsCalibration(): Boolean =
+        !prefs.getBoolean("calibration_done", false)
 
     fun submitFolha(folhaState: FolhaUiState) {
         val state = _uiState.value

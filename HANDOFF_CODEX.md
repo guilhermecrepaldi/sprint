@@ -2790,3 +2790,46 @@ Também foi verificado que não há mais strings visíveis antigas como `Strava 
 - Backend não foi alterado nesta etapa G.2; apenas consumido pelo Android.
 - A calibração salva a flag local somente após `Pular` ou após sucesso do POST de calibração.
 - O package name `com.strava_matematica` e nomes internos como `StravaMathApi`/`StravaMathTheme` permanecem como identificadores internos.
+
+---
+
+# APPEND — Continuidade 2026-05-24: Ajuste First-Open Calibration
+
+## Ajuste Implementado
+
+Depois da Fase G.2, foi fechado o detalhe de UX da primeira abertura:
+
+- `SessionViewModel` agora inicializa em `SessionStatus.CALIBRATION` se `SharedPreferences["calibration_done"]` ainda não existir.
+- `startSession()` continua protegendo o fluxo: se a flag não existir, volta para `CALIBRATION`; se existir, segue para `/api/session/start`.
+- `needsCalibration()` centraliza a leitura da flag local.
+
+Isso alinha o comportamento com a verificação esperada:
+
+- Primeira abertura do app → `CalibrationScreen`.
+- `Pular` → marca flag e inicia sessão normal.
+- `Concluir` → envia amostras, marca flag e inicia sessão normal.
+- Segunda abertura → vai direto para `SessionConfigScreen`.
+
+## Verificação
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+# Ran 85 tests in 1.116s
+# OK
+
+cd "D:\LOVE CLASS"
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat assembleDebug
+# BUILD SUCCESSFUL
+```
+
+## Runtime E2E
+
+Tentativa de verificar Docker para smoke real:
+
+```powershell
+docker version
+```
+
+Resultado: cliente Docker existe, mas o daemon `dockerDesktopLinuxEngine` não está rodando/disponível. O smoke real com Postgres/Redis segue como o próximo bloqueio operacional, não como pendência de código.
