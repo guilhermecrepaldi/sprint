@@ -10,6 +10,7 @@ sqlalchemy[asyncio]
 alembic
 asyncpg
 anthropic
+openai
 python-multipart
 pillow
 python-dotenv

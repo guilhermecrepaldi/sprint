@@ -404,3 +404,49 @@ Resultado atual:
 ### Próximo passo
 
 Resolver billing/quota da chave OpenAI ou trocar por uma chave OpenAI com quota ativa. Depois repetir primeiro o dry-run de 5 exercícios nas 3 skills; somente se a amostra estiver correta, rodar o comando de 5.032 tentativas.
+
+---
+
+## APPEND 2026-05-24 — Endpoint OpenAI para geração
+
+Pedido: criar endpoint para OpenAI também.
+
+### Endpoint novo
+
+`POST /api/exercises/generate/openai`
+
+Body exemplo para dry-run:
+
+```json
+{
+  "skills": ["equacoes_lineares"],
+  "count": 5,
+  "batch_size": 5,
+  "dry_run": true
+}
+```
+
+Body exemplo para inserir 5.032 exercícios:
+
+```json
+{
+  "all": true,
+  "count": 148,
+  "batch_size": 25,
+  "dry_run": false
+}
+```
+
+Resposta inclui `total_generated`, `total_inserted`, `total_duplicates`, `total_errors` e o detalhamento por skill. Em `dry_run=true`, retorna `preview` com enunciado, resposta esperada e dificuldade, sem inserir no banco.
+
+### Arquivos tocados
+
+- `backend/api/exercise_generation.py`: rota FastAPI e schemas Pydantic.
+- `backend/main.py`: include do router novo.
+- `backend/requirements.txt`: adiciona `openai`, necessário pelos endpoints/engines OpenAI já presentes no backend.
+
+### Verificação executada
+
+- `python -m py_compile api\exercise_generation.py main.py scripts\generate_exercises.py` passou.
+- Teste rápido com `TestClient` sem chave retornou `503` e `{"detail": "OPENAI_API_KEY nao configurada"}`.
+- `python -m unittest -v` continua falhando nos mesmos 9 testes por `api.submit.extract_answer` ausente. Não é uma falha do endpoint novo.
