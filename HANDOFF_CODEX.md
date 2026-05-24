@@ -397,3 +397,206 @@ A: Não. Use o `test_ws.py` existente e crie scripts de teste em `tests/` que si
 ---
 
 *Handoff gerado em 2026-05-23. Spec completa em SUPER_SPEC.md.*
+
+---
+
+# APPEND — Estado Atual para Continuidade
+# Data: 2026-05-24
+# Autor da execução: Codex
+
+Este é o ponto único de handoff a partir daqui. Não substituir o conteúdo anterior; continuar anexando novas seções `APPEND — ...` no fim deste arquivo sempre que houver avanço relevante, bloqueio, decisão técnica ou mudança de plano.
+
+Repositório privado:
+
+- `https://github.com/guilhermecrepaldi/love-class`
+- Branch principal: `main`
+- Working tree esperado após este append: limpo e sincronizado com `origin/main`
+
+## Resumo Executivo
+
+O backend MVP está praticamente pronto em código e testes. As Fases 1 a 4 foram implementadas em primeira versão:
+
+- Fase 1: foundation, DB models, Alembic, seed, Docker Compose, requirements.
+- Fase 2: `POST /api/session/start`, criação de aluno/config/sessão/folha.
+- Fase 3: `POST /api/session/{session_id}/submit`, OCR, correção, score, attempts e pen events.
+- Fase 4: vetores cognitivos, memória por skill, seleção adaptativa da próxima folha, restart/checks de sessão.
+
+O único bloqueio real para carimbar o backend MVP é runtime com Postgres/Redis real. O Docker Desktop existe na máquina, mas a engine Linux não responde; o serviço `com.docker.service` está parado e o Windows negou start sem permissão elevada.
+
+## Commits já enviados
+
+Ordem mais recente:
+
+```text
+37af0d2 test: add http workflow coverage and ci
+65c59d1 test: add user workflow coverage
+9c7dafa feat: guard folha submit lifecycle
+39e7c0d chore: harden api payload validation
+cdb5e4f feat: persist folha exercise assignments
+12563f5 chore: add backend smoke test
+12d07a1 feat: add session and adaptive submit APIs
+7cdc900 feat: add backend foundation
+```
+
+## Arquitetura Implementada
+
+Arquivos principais:
+
+- `backend/db.py`: settings, engine SQLAlchemy async, session dependency.
+- `backend/main.py`: `create_app(run_startup_db=True)`, CORS, routers, lifespan DB.
+- `backend/models/`: SQLAlchemy models.
+- `backend/schemas/`: Pydantic contracts.
+- `backend/api/session.py`: start session.
+- `backend/api/submit.py`: submit folha.
+- `backend/api/health.py`: DB healthcheck.
+- `backend/engine/ocr.py`: Claude Vision com fallback local `latex:...` para testes.
+- `backend/engine/correction.py`: correção por normalização/SymPy.
+- `backend/engine/scoring.py`: Time-Decay Score.
+- `backend/engine/vector.py`: cognitive vector.
+- `backend/engine/adaptive.py`: primeira/próxima folha, skill memory, restart.
+- `backend/seed/exercises.py`: 20 exercícios seed.
+- `backend/scripts/smoke_backend.py`: smoke HTTP real quando DB/API estiverem rodando.
+- `.github/workflows/backend-tests.yml`: GitHub Actions rodando unittest.
+
+Migrations:
+
+- `0001_initial.py`: schema base.
+- `0002_add_folha_exercises.py`: vínculo persistente folha/campo/exercício.
+- `0003_add_attempt_submit_guard.py`: constraint contra resubmissão por campo.
+
+## Decisões Técnicas Importantes
+
+1. `folha_exercises` foi adicionada porque a spec original tinha `folhas`, mas não persistia quais exercícios estavam nos campos da folha. Sem isso, o submit confiava demais no client.
+2. `submit` exige exatamente todos os campos da folha. Submissão parcial é rejeitada.
+3. Reenvio da mesma folha é rejeitado com `409`.
+4. Sessões não `active` rejeitam submit.
+5. `duration_mode="timed"` exige `duration_limit_ms`; `duration_mode="pages"` exige `pages_limit`.
+6. OCR tem fallback local: se `image_base64` vier como `latex:x = 5`, retorna `x = 5` sem Anthropic. Isso é intencional para testes/smoke sem custo.
+7. `create_app(run_startup_db=False)` existe para testes HTTP sem Postgres.
+8. Redis ainda não foi integrado de verdade, apesar de estar no compose/requirements. Está previsto, mas não bloqueia o MVP HTTP.
+
+## Testes Existentes
+
+Rodar:
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python -m unittest -v
+```
+
+Último resultado observado:
+
+```text
+Ran 24 tests in ~0.27s
+OK
+```
+
+Cobertura de intenção:
+
+- Engines: correction, scoring, adaptive restart/status.
+- Schemas: validação de config, submit, event types, duplicidade.
+- Submit helpers: término por páginas/tempo.
+- Workflow handler-level: start -> submit -> next folha, incompleto, reenvio, término.
+- Workflow HTTP-level com `TestClient`: cliente chama endpoints reais com fake DB.
+
+## Como Fechar o Backend MVP
+
+Assim que houver permissão para iniciar Docker Desktop Service ou Postgres local:
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+docker compose up -d
+python -m alembic upgrade head
+python seed/exercises.py
+python -m uvicorn main:app --reload
+```
+
+Em outro terminal:
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+python scripts/smoke_backend.py
+```
+
+Critério de aceite do backend MVP:
+
+- `GET /api/health` retorna `{status: ok, database: ok}`.
+- `POST /api/session/start` retorna folha com N exercícios.
+- `POST /api/session/{id}/submit` retorna results, page_score, thermometer e next_folha ou status finished.
+- `python -m unittest -v` continua verde.
+- `python scripts/smoke_backend.py` passa contra servidor real.
+
+## Bloqueio Atual
+
+Docker:
+
+- `docker info` falha com pipe Linux engine ausente.
+- `Get-Service` mostrou `com.docker.service` parado.
+- `Start-Service -Name com.docker.service` falhou por permissão: precisa terminal elevado/admin.
+- `localhost:5432` não está ouvindo.
+
+Próximo operador deve primeiro tentar:
+
+```powershell
+# Em terminal Windows elevado/admin:
+Start-Service -Name com.docker.service
+```
+
+Depois voltar para:
+
+```powershell
+cd "D:\LOVE CLASS\backend"
+docker compose up -d
+```
+
+## Próximas Melhorias Recomendadas
+
+Backend antes do Android:
+
+1. Rodar smoke real com Postgres.
+2. Corrigir qualquer bug de runtime que apareça no smoke.
+3. Adicionar indexes básicos:
+   - `exercise_attempts(session_id, created_at)`
+   - `folha_exercises(folha_id)`
+   - `student_skill_memory(student_id, status)`
+4. Decidir se `Base.metadata.create_all` no lifespan continua em dev ou se produção deve depender só de Alembic.
+5. Integrar Redis apenas para sessão ativa se realmente necessário agora; senão deixar para pós-MVP.
+
+Android MVP depois do backend:
+
+1. Criar projeto Android/Kotlin.
+2. `SessionConfigScreen`.
+3. `FolhaScreen` com campos.
+4. `InkCanvas` capturando stylus.
+5. Retrofit client.
+6. Submit de crops/telemetria.
+7. Tela de resultado/termômetro.
+
+## Estimativa de Falta
+
+Backend MVP:
+
+- Falta estimada: 3-6%.
+- Natureza do restante: runtime integrado com DB real, não lógica principal.
+
+Projeto completo com Android:
+
+- Falta estimada: ~45%.
+- Motivo: backend quase fechado; Android ainda não começou.
+
+## Regra para Próximos Appends
+
+Sempre que continuar:
+
+1. Rodar `git status -sb`.
+2. Implementar mudança pequena e verificável.
+3. Rodar `python -m unittest -v` se tocou backend.
+4. Commitar com mensagem curta.
+5. Push para `origin/main`.
+6. Anexar uma nova seção abaixo desta com:
+   - data/hora,
+   - commit,
+   - o que mudou,
+   - testes rodados,
+   - bloqueios,
+   - próxima ação.
