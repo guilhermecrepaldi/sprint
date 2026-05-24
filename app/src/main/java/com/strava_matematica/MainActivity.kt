@@ -48,13 +48,17 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
                     folha = folha,
                     config = state.config,
                     currentExerciseIndex = folhaState.currentExerciseIndex,
-                    fieldStrokes = folhaState.fieldStrokes,
-                    fieldRedoStacks = folhaState.fieldRedoStacks,
+                    fieldScratchStrokes = folhaState.fieldScratchStrokes,
+                    fieldAnswerStrokes = folhaState.fieldAnswerStrokes,
+                    fieldScratchRedoStacks = folhaState.fieldScratchRedoStacks,
+                    fieldAnswerRedoStacks = folhaState.fieldAnswerRedoStacks,
                     onAdvance = {
                         val done = folhaViewModel.advanceExercise(folha.fields.size)
                         if (done) viewModel.submitFolha(folhaState)
                     },
-                    onSyncStrokes = folhaViewModel::syncStrokes,
+                    onSyncScratch = folhaViewModel::syncScratch,
+                    onSyncAnswer = folhaViewModel::syncAnswer,
+                    onConfigChange = viewModel::updateConfig,
                 )
             }
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,17 +43,22 @@ fun FolhaScreen(
     folha: Folha,
     config: SessionConfig,
     currentExerciseIndex: Int = 0,
-    fieldStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
-    fieldRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    fieldScratchStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
+    fieldAnswerStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
+    fieldScratchRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    fieldAnswerRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
     onAdvance: () -> Unit,
-    onSyncStrokes: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
+    onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
+    onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
+    onConfigChange: (SessionConfig) -> Unit = {},
 ) {
     val field = folha.fields[currentExerciseIndex]
     // Signals reset whenever the exercise changes, giving each field a fresh canvas state.
     var clearSignal by remember(currentExerciseIndex) { mutableIntStateOf(0) }
     var undoSignal by remember(currentExerciseIndex) { mutableIntStateOf(0) }
     var redoSignal by remember(currentExerciseIndex) { mutableIntStateOf(0) }
+    var showSettings by remember { mutableStateOf(false) }
     val hairline = if (config.backgroundMode == BackgroundMode.DARK) FocusColors.DarkHairline else FocusColors.WhiteHairline
 
     Column(
@@ -101,6 +108,9 @@ fun FolhaScreen(
             } else {
                 Spacer(modifier = Modifier.weight(1f))
             }
+            IconButton(onClick = { showSettings = true }) {
+                Icon(Icons.Outlined.Settings, contentDescription = "Configurações")
+            }
         }
         HorizontalDivider(color = hairline, thickness = 1.dp)
 
@@ -112,14 +122,19 @@ fun FolhaScreen(
                 backgroundMode = config.backgroundMode,
                 penColor = config.penColor,
                 modifier = Modifier.fillMaxSize(),
-                initialStrokes = fieldStrokes[field.fieldIndex].orEmpty(),
-                initialRedoStack = fieldRedoStacks[field.fieldIndex].orEmpty(),
+                initialScratchStrokes = fieldScratchStrokes[field.fieldIndex].orEmpty(),
+                initialAnswerStrokes = fieldAnswerStrokes[field.fieldIndex].orEmpty(),
+                initialScratchRedoStack = fieldScratchRedoStacks[field.fieldIndex].orEmpty(),
+                initialAnswerRedoStack = fieldAnswerRedoStacks[field.fieldIndex].orEmpty(),
                 clearSignal = clearSignal,
                 undoSignal = undoSignal,
                 redoSignal = redoSignal,
                 onClick = {},
-                onSyncStrokes = { strokes, redoStack ->
-                    onSyncStrokes(field.fieldIndex, strokes, redoStack)
+                onSyncScratch = { strokes, redoStack ->
+                    onSyncScratch(field.fieldIndex, strokes, redoStack)
+                },
+                onSyncAnswer = { strokes, redoStack ->
+                    onSyncAnswer(field.fieldIndex, strokes, redoStack)
                 },
                 onPenEvent = { event -> onPenEvent(field.fieldIndex, event) },
             )
@@ -136,6 +151,15 @@ fun FolhaScreen(
             onUndo = { undoSignal += 1 },
             onRedo = { redoSignal += 1 },
             onClear = { clearSignal += 1 },
+        )
+    }
+
+    // ── Settings bottom sheet ─────────────────────────────────────────────
+    if (showSettings) {
+        FolhaSettingsSheet(
+            config = config,
+            onConfigChange = onConfigChange,
+            onDismiss = { showSettings = false },
         )
     }
 }

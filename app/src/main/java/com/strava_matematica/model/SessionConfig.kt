@@ -24,6 +24,9 @@ data class SessionConfig(
     @SerialName("restart_on_avg") val restartOnAvg: Double? = 7.0,
     @SerialName("restart_window") val restartWindow: Int = 10,
     @SerialName("exercises_per_page") val exercisesPerPage: Int = 5,
+    @SerialName("show_correct_count") val showCorrectCount: Boolean = true,
+    @SerialName("show_percentage") val showPercentage: Boolean = true,
+    @SerialName("blind_mode") val blindMode: Boolean = false,
 ) {
     val backgroundMode: BackgroundMode
         get() = if (background == "dark") BackgroundMode.DARK else BackgroundMode.WHITE

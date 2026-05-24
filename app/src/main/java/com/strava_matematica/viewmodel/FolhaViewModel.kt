@@ -17,12 +17,23 @@ data class FolhaUiState(
     val currentExerciseIndex: Int = 0,
     val activeFieldIndex: Int? = null,
     val fieldEvents: Map<Int, List<PenEvent>> = emptyMap(),
-    val fieldStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
-    val fieldRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldScratchStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldAnswerStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldScratchRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldAnswerRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
     val fieldTiming: Map<Int, FieldTiming> = emptyMap(),
     val isSubmitting: Boolean = false,
     val elapsedMs: Long = 0,
-)
+) {
+    // Alias so SessionViewModel.submitFolha (which uses fieldStrokes) always
+    // reads only the answer-box strokes — the ones sent to OCR.
+    val fieldStrokes: Map<Int, List<List<Offset>>>
+        get() = fieldAnswerStrokes
+
+    // Legacy redo-stack alias (used nowhere yet, but keeps API surface stable)
+    val fieldRedoStacks: Map<Int, List<List<Offset>>>
+        get() = fieldAnswerRedoStacks
+}
 
 class FolhaViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(FolhaUiState())
@@ -39,14 +50,27 @@ class FolhaViewModel : ViewModel() {
         }
     }
 
-    fun syncStrokes(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
+    fun syncScratch(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
         _uiState.update { state ->
             state.copy(
-                fieldStrokes = state.fieldStrokes + (fieldIndex to strokes),
-                fieldRedoStacks = state.fieldRedoStacks + (fieldIndex to redoStack)
+                fieldScratchStrokes = state.fieldScratchStrokes + (fieldIndex to strokes),
+                fieldScratchRedoStacks = state.fieldScratchRedoStacks + (fieldIndex to redoStack),
             )
         }
     }
+
+    fun syncAnswer(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
+        _uiState.update { state ->
+            state.copy(
+                fieldAnswerStrokes = state.fieldAnswerStrokes + (fieldIndex to strokes),
+                fieldAnswerRedoStacks = state.fieldAnswerRedoStacks + (fieldIndex to redoStack),
+            )
+        }
+    }
+
+    /** Kept for call-sites that haven't migrated yet; routes to answer canvas. */
+    fun syncStrokes(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) =
+        syncAnswer(fieldIndex, strokes, redoStack)
 
     /** Returns true when the student has passed the last exercise (caller should submit). */
     fun advanceExercise(totalFields: Int): Boolean {
@@ -67,8 +91,10 @@ class FolhaViewModel : ViewModel() {
         _uiState.update { state ->
             state.copy(
                 fieldEvents = state.fieldEvents - fieldIndex,
-                fieldStrokes = state.fieldStrokes - fieldIndex,
-                fieldRedoStacks = state.fieldRedoStacks - fieldIndex
+                fieldScratchStrokes = state.fieldScratchStrokes - fieldIndex,
+                fieldAnswerStrokes = state.fieldAnswerStrokes - fieldIndex,
+                fieldScratchRedoStacks = state.fieldScratchRedoStacks - fieldIndex,
+                fieldAnswerRedoStacks = state.fieldAnswerRedoStacks - fieldIndex,
             )
         }
     }

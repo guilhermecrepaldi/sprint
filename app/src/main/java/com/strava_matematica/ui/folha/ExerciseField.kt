@@ -36,6 +36,7 @@ import com.strava_matematica.model.FolhaField
 import com.strava_matematica.model.PenEvent
 import kotlin.math.hypot
 
+
 @Composable
 fun ExerciseField(
     field: FolhaField,
@@ -43,20 +44,30 @@ fun ExerciseField(
     backgroundMode: BackgroundMode,
     penColor: String,
     modifier: Modifier = Modifier,
-    initialStrokes: List<List<Offset>> = emptyList(),
-    initialRedoStack: List<List<Offset>> = emptyList(),
+    // Split-canvas params
+    initialScratchStrokes: List<List<Offset>> = emptyList(),
+    initialAnswerStrokes: List<List<Offset>> = emptyList(),
+    initialScratchRedoStack: List<List<Offset>> = emptyList(),
+    initialAnswerRedoStack: List<List<Offset>> = emptyList(),
     clearSignal: Int = 0,
     undoSignal: Int = 0,
     redoSignal: Int = 0,
-    onClick: () -> Unit,
+    onClick: () -> Unit = {},
+    onSyncScratch: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
+    onSyncAnswer: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
+    // Legacy alias: callers that still pass onSyncStrokes are wired to the answer canvas
     onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
 ) {
     val fieldColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkField else FocusColors.WhiteField
     val surfaceColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkSurface else FocusColors.WhiteSurface
     val hairline = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkHairline else FocusColors.WhiteHairline
-    val borderColor = if (isActive) MaterialTheme.colorScheme.primary else {
-        hairline
+    val borderColor = if (isActive) MaterialTheme.colorScheme.primary else hairline
+
+    // Merge legacy onSyncStrokes into onSyncAnswer so old callers still work.
+    val answerSync: (List<List<Offset>>, List<List<Offset>>) -> Unit = { s, r ->
+        onSyncAnswer(s, r)
+        onSyncStrokes(s, r)
     }
 
     Column(
@@ -67,6 +78,7 @@ fun ExerciseField(
             .clickable(onClick = onClick)
             .padding(Spacing.md),
     ) {
+        // ── Header ──────────────────────────────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = "%02d".format(field.fieldIndex + 1),
@@ -86,9 +98,11 @@ fun ExerciseField(
             )
         }
         Spacer(Modifier.height(Spacing.sm))
+
+        // ── Scratch area — 65% of remaining height ───────────────────────
         Box(
             modifier = Modifier
-                .weight(1f)
+                .weight(0.65f)
                 .fillMaxWidth()
                 .background(fieldColor, RoundedCornerShape(4.dp))
                 .border(BorderStroke(1.dp, hairline.copy(alpha = 0.65f)), RoundedCornerShape(4.dp)),
@@ -100,34 +114,41 @@ fun ExerciseField(
                 clearSignal = clearSignal,
                 undoSignal = undoSignal,
                 redoSignal = redoSignal,
-                initialStrokes = initialStrokes,
-                initialRedoStack = initialRedoStack,
-                onSyncStrokes = onSyncStrokes,
+                initialStrokes = initialScratchStrokes,
+                initialRedoStack = initialScratchRedoStack,
+                onSyncStrokes = onSyncScratch,
                 onPenEvent = onPenEvent,
             )
         }
+
         Spacer(Modifier.height(Spacing.sm))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Resposta final",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+        Text(
+            text = "Resposta final",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+        )
+        Spacer(Modifier.height(Spacing.xs))
+
+        // ── Answer box — 35% of remaining height, primary border ─────────
+        Box(
+            modifier = Modifier
+                .weight(0.35f)
+                .fillMaxWidth()
+                .background(fieldColor, RoundedCornerShape(4.dp))
+                .border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary), RoundedCornerShape(4.dp)),
+        ) {
+            InkCanvas(
+                modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                penColor = penColor,
+                enabled = isActive,
+                clearSignal = clearSignal,
+                undoSignal = 0,   // undo/redo operate only on scratch
+                redoSignal = 0,
+                initialStrokes = initialAnswerStrokes,
+                initialRedoStack = initialAnswerRedoStack,
+                onSyncStrokes = answerSync,
+                onPenEvent = onPenEvent,
             )
-            Spacer(Modifier.width(Spacing.md))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(18.dp),
-            ) {
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    drawLine(
-                        color = hairline,
-                        start = Offset(0f, size.height - 1.dp.toPx()),
-                        end = Offset(size.width, size.height - 1.dp.toPx()),
-                        strokeWidth = 1.dp.toPx(),
-                    )
-                }
-            }
         }
     }
 }
