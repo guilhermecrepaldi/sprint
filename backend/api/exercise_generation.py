@@ -8,9 +8,15 @@ from pydantic import BaseModel, Field, model_validator
 
 from db import settings
 from scripts.generate_exercises import (
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_OLLAMA_BASE_URL,
+    DEFAULT_OLLAMA_MODEL,
     DEFAULT_OPENAI_MODEL,
+    GeminiExerciseGenerator,
+    OllamaExerciseGenerator,
     OpenAIExerciseGenerator,
     SKILL_DICT,
+    ExerciseGenerator,
     insert_exercises,
 )
 
@@ -55,7 +61,7 @@ class SkillGenerationResult(BaseModel):
 
 
 class ExerciseGenerationResponse(BaseModel):
-    provider: str = "openai"
+    provider: str
     model: str
     dry_run: bool
     total_generated: int
@@ -78,6 +84,45 @@ async def generate_openai_exercises(
 
     model = body.model or settings.openai_model or DEFAULT_OPENAI_MODEL
     generator = OpenAIExerciseGenerator(api_key=api_key, model=model)
+    return await _generate_exercises("openai", model, generator, body)
+
+
+@router.post("/api/exercises/generate/gemini", response_model=ExerciseGenerationResponse)
+async def generate_gemini_exercises(
+    body: ExerciseGenerationRequest,
+) -> ExerciseGenerationResponse:
+    api_key = (
+        getattr(settings, "gemini_api_key", "")
+        or os.environ.get("GEMINI_API_KEY", "")
+        or os.environ.get("GOOGLE_API_KEY", "")
+    )
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="GEMINI_API_KEY nao configurada",
+        )
+
+    model = body.model or getattr(settings, "gemini_model", "") or DEFAULT_GEMINI_MODEL
+    generator = GeminiExerciseGenerator(api_key=api_key, model=model)
+    return await _generate_exercises("gemini", model, generator, body)
+
+
+@router.post("/api/exercises/generate/local", response_model=ExerciseGenerationResponse)
+async def generate_local_exercises(
+    body: ExerciseGenerationRequest,
+) -> ExerciseGenerationResponse:
+    model = body.model or settings.ollama_model or DEFAULT_OLLAMA_MODEL
+    base_url = settings.ollama_base_url or DEFAULT_OLLAMA_BASE_URL
+    generator = OllamaExerciseGenerator(model=model, base_url=base_url)
+    return await _generate_exercises("ollama", model, generator, body)
+
+
+async def _generate_exercises(
+    provider: str,
+    model: str,
+    generator: ExerciseGenerator,
+    body: ExerciseGenerationRequest,
+) -> ExerciseGenerationResponse:
     skills = list(SKILL_DICT.keys()) if body.all else list(body.skills or [])
     results: list[SkillGenerationResult] = []
 
@@ -91,7 +136,7 @@ async def generate_openai_exercises(
             try:
                 batch = await asyncio.to_thread(generator.generate, skill, batch_count)
             except (json.JSONDecodeError, KeyError, RuntimeError, ValueError) as exc:
-                logger.warning("OpenAI exercise generation failed for %s: %s", skill, exc)
+                logger.warning("%s exercise generation failed for %s: %s", provider, skill, exc)
                 result.errors.append(str(exc))
                 break
 
@@ -109,6 +154,7 @@ async def generate_openai_exercises(
         results.append(result)
 
     return ExerciseGenerationResponse(
+        provider=provider,
         model=model,
         dry_run=body.dry_run,
         total_generated=sum(result.generated for result in results),

@@ -31,8 +31,13 @@ from db import AsyncSessionLocal, settings
 from models.exercise import Exercise
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+OLLAMA_GENERATE_URL = "{base_url}/api/generate"
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_OLLAMA_MODEL = "qwen2.5:14b"
+DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 
 
 class ExerciseGenerator(Protocol):
@@ -430,6 +435,17 @@ def normalize_items(items: list[dict], min_d: float, max_d: float) -> list[dict]
     return result
 
 
+def coerce_items(parsed: object) -> list[dict]:
+    if isinstance(parsed, list):
+        return parsed
+    if isinstance(parsed, dict):
+        if isinstance(parsed.get("exercises"), list):
+            return parsed["exercises"]
+        if {"statement", "expected_answer", "difficulty"}.issubset(parsed):
+            return [parsed]
+    raise ValueError("JSON gerado nao contem lista de exercicios valida")
+
+
 class AnthropicExerciseGenerator:
     def __init__(self, api_key: str, model: str = DEFAULT_ANTHROPIC_MODEL) -> None:
         self._client = anthropic.Anthropic(api_key=api_key)
@@ -514,7 +530,7 @@ class OpenAIExerciseGenerator:
 
         raw = data.get("output_text") or _extract_openai_output_text(data)
         parsed = extract_json(raw)
-        items = parsed["exercises"] if isinstance(parsed, dict) else parsed
+        items = coerce_items(parsed)
         return normalize_items(items, min_d, max_d)
 
 
@@ -526,6 +542,123 @@ def _extract_openai_output_text(data: dict) -> str:
             if "text" in content:
                 return content["text"]
     raise ValueError("Resposta OpenAI sem output_text")
+
+
+class GeminiExerciseGenerator:
+    def __init__(self, api_key: str, model: str = DEFAULT_GEMINI_MODEL) -> None:
+        self._api_key = api_key
+        self._model = model
+
+    def generate(self, skill: str, count: int) -> list[dict]:
+        prompt, min_d, max_d = build_prompt(skill, count)
+        payload = {
+            "contents": [{
+                "role": "user",
+                "parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt}"}],
+            }],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseJsonSchema": {
+                    "type": "object",
+                    "required": ["exercises"],
+                    "properties": {
+                        "exercises": {
+                            "type": "array",
+                            "minItems": count,
+                            "maxItems": count,
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "statement",
+                                    "expected_answer",
+                                    "difficulty",
+                                ],
+                                "properties": {
+                                    "statement": {"type": "string"},
+                                    "expected_answer": {"type": "string"},
+                                    "difficulty": {"type": "number"},
+                                },
+                            },
+                        }
+                    },
+                },
+                "maxOutputTokens": 12000,
+            },
+        }
+        url = GEMINI_GENERATE_URL.format(model=self._model)
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "x-goog-api-key": self._api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Gemini HTTP {e.code}: {body}") from e
+
+        raw = _extract_gemini_output_text(data)
+        parsed = extract_json(raw)
+        items = coerce_items(parsed)
+        return normalize_items(items, min_d, max_d)
+
+
+def _extract_gemini_output_text(data: dict) -> str:
+    candidates = data.get("candidates") or []
+    for candidate in candidates:
+        content = candidate.get("content") or {}
+        for part in content.get("parts") or []:
+            if "text" in part:
+                return part["text"]
+    raise ValueError("Resposta Gemini sem texto")
+
+
+class OllamaExerciseGenerator:
+    def __init__(
+        self,
+        model: str = DEFAULT_OLLAMA_MODEL,
+        base_url: str = DEFAULT_OLLAMA_BASE_URL,
+    ) -> None:
+        self._model = model
+        self._base_url = base_url.rstrip("/")
+
+    def generate(self, skill: str, count: int) -> list[dict]:
+        prompt, min_d, max_d = build_prompt(skill, count)
+        payload = {
+            "model": self._model,
+            "system": SYSTEM_PROMPT,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+            "options": {
+                "temperature": 0.4,
+                "num_predict": 12000,
+            },
+        }
+        request = urllib.request.Request(
+            OLLAMA_GENERATE_URL.format(base_url=self._base_url),
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=240) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Ollama HTTP {e.code}: {body}") from e
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Ollama indisponivel em {self._base_url}: {e}") from e
+
+        raw = data.get("response", "")
+        parsed = extract_json(raw)
+        items = coerce_items(parsed)
+        return normalize_items(items, min_d, max_d)
 
 # ── Inserção no banco ────────────────────────────────────────────────────────
 
@@ -574,7 +707,7 @@ async def main() -> None:
     parser.add_argument("--count", type=int, default=10, help="Exercícios por skill (padrão: 10)")
     parser.add_argument("--batch-size", type=int, default=25, help="Chamadas por skill em lotes (padrão: 25)")
     parser.add_argument("--dry-run", action="store_true", help="Apenas gera, nao salva no banco")
-    parser.add_argument("--provider", choices=["auto", "anthropic", "openai"], default="auto")
+    parser.add_argument("--provider", choices=["auto", "anthropic", "openai", "gemini", "ollama"], default="auto")
     parser.add_argument("--model", type=str, help="Modelo do provedor escolhido")
     parser.add_argument("--api-key", type=str, help="API key (sobrescreve .env/variavel de ambiente)")
     args = parser.parse_args()
@@ -598,8 +731,18 @@ async def main() -> None:
 
     provider = args.provider
     if provider == "auto":
-        explicit_key = args.api_key or os.environ.get("OPENAI_API_KEY", "")
-        provider = "openai" if explicit_key.startswith(("sk-proj-", "sk-")) else "anthropic"
+        explicit_key = (
+            args.api_key
+            or os.environ.get("OPENAI_API_KEY", "")
+            or os.environ.get("GEMINI_API_KEY", "")
+            or os.environ.get("GOOGLE_API_KEY", "")
+        )
+        if explicit_key.startswith(("sk-proj-", "sk-")):
+            provider = "openai"
+        elif explicit_key.startswith("AIza") or os.environ.get("GEMINI_API_KEY"):
+            provider = "gemini"
+        else:
+            provider = "anthropic"
 
     if provider == "openai":
         api_key = args.api_key or os.environ.get("OPENAI_API_KEY", "")
@@ -609,10 +752,28 @@ async def main() -> None:
             "  2) python generate_exercises.py ... --provider openai --api-key sk-proj-...",
         ]
         generator: ExerciseGenerator = OpenAIExerciseGenerator(api_key, model)
+    elif provider == "gemini":
+        api_key = (
+            args.api_key
+            or os.environ.get("GEMINI_API_KEY", "")
+            or os.environ.get("GOOGLE_API_KEY", "")
+        )
+        model = args.model or os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+        missing_help = [
+            "  1) Set variavel de ambiente GEMINI_API_KEY",
+            "  2) python generate_exercises.py ... --provider gemini --api-key AIza...",
+        ]
+        generator = GeminiExerciseGenerator(api_key, model)
+    elif provider == "ollama":
+        api_key = "local"
+        model = args.model or os.environ.get("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
+        base_url = os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
+        missing_help = ["  1) Inicie Ollama: ollama serve"]
+        generator = OllamaExerciseGenerator(model=model, base_url=base_url)
     else:
         api_key = (
             args.api_key
-            or settings.anthropic_api_key
+            or getattr(settings, "anthropic_api_key", "")
             or os.environ.get("ANTHROPIC_API_KEY", "")
         )
         model = args.model or os.environ.get("ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL)

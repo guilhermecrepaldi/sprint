@@ -450,3 +450,76 @@ Resposta inclui `total_generated`, `total_inserted`, `total_duplicates`, `total_
 - `python -m py_compile api\exercise_generation.py main.py scripts\generate_exercises.py` passou.
 - Teste rápido com `TestClient` sem chave retornou `503` e `{"detail": "OPENAI_API_KEY nao configurada"}`.
 - `python -m unittest -v` continua falhando nos mesmos 9 testes por `api.submit.extract_answer` ausente. Não é uma falha do endpoint novo.
+
+---
+
+## APPEND 2026-05-24 — Gemini e IA local
+
+Pedido: tentar Gemini e considerar IA local.
+
+### Estado atual do banco
+
+Após a geração com Gemini ser interrompida manualmente duas vezes, o banco ficou com:
+
+| source_library | count |
+|---|---:|
+| generated_v1 | 2838 |
+| seed_v2 | 47 |
+
+Critério mínimo do handoff (`generated_v1 >= 2720`) já foi atingido. Para a meta informal de 5.000, faltam cerca de 2.162 exercícios.
+
+Skills ainda abaixo de 148 exercícios:
+
+- 16 skills com 0 exercícios: `aplicacoes_derivadas`, `aplicacoes_integrais`, `combinatoria`, `continuidade`, `derivadas_basicas`, `derivadas_produto_quociente`, `derivadas_regra_cadeia`, `integrais_definidas`, `integrais_indefinidas`, `nocao_de_limite`, `probabilidade`, `progressoes_pa_pg`, `trig_equacoes`, `trig_identidades`, `trig_razoes`, `trig_seno_cosseno_tangente`.
+- `funcao_modular`: 25 exercícios.
+
+### Gemini
+
+`backend/scripts/generate_exercises.py` agora aceita:
+
+```powershell
+python scripts\generate_exercises.py --skills equacoes_lineares --count 5 --dry-run --provider gemini
+```
+
+Também existe endpoint:
+
+```text
+POST /api/exercises/generate/gemini
+```
+
+O dry-run com Gemini em `equacoes_lineares`, `equacoes_quadraticas` e `sistemas_equacoes` gerou JSON válido. A amostra completa foi conferida manualmente e estava matematicamente correta. Depois o teste real inseriu 15 exercícios no banco sem duplicatas.
+
+### IA local
+
+Ollama está instalado localmente e foi iniciado com:
+
+```powershell
+ollama serve
+```
+
+Modelos disponíveis incluem `qwen2.5:14b`, `qwen2.5:7b`, `llama3.1:8b`, `mistral`, `gemma3`, entre outros.
+
+`backend/scripts/generate_exercises.py` agora aceita:
+
+```powershell
+python scripts\generate_exercises.py --skills equacoes_lineares --count 1 --dry-run --provider ollama --model qwen2.5:14b
+```
+
+Endpoint local:
+
+```text
+POST /api/exercises/generate/local
+```
+
+Observação importante: a primeira amostra local com `qwen2.5:14b` retornou JSON parseável, mas uma resposta matemática errada. Uma segunda amostra via endpoint local veio correta. Portanto, IA local funciona tecnicamente, mas ainda não deve inserir em lote sem um filtro/verificador matemático.
+
+### Arquivos tocados
+
+- `backend/scripts/generate_exercises.py`: providers `gemini` e `ollama`, parser mais tolerante para array, objeto único ou `{ "exercises": [...] }`.
+- `backend/api/exercise_generation.py`: endpoints `/openai`, `/gemini` e `/local` compartilham a mesma rotina.
+- `backend/db.py`: settings para OpenAI, Gemini e Ollama preservando Anthropic.
+- `backend/.env.example`: variáveis dos três provedores.
+
+### Próximo passo recomendado
+
+Continuar com Gemini para preencher as skills faltantes, porque a qualidade da amostra foi melhor. Usar IA local apenas depois de adicionar validação automática por SymPy nos tipos de exercício mais estruturados.

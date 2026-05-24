@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     anthropic_api_key: str = ""
     claude_ocr_model: str = "claude-haiku-4-5-20251001"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:14b"
     auto_create_tables: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
