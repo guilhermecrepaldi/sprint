@@ -1281,3 +1281,885 @@ Abrir o projeto Android no Android Studio:
 - Build → `Run app` no emulador apontando para `http://10.0.2.2:8000` (IP do host no emulador Android)
 
 **O backend está 100% pronto e estável para receber o app.**
+
+---
+
+# APPEND — 2026-05-25: Nova Sessão de Design — Próximas Implementações
+
+## Contexto desta sessão
+
+Esta sessão foi 100% de design e arquitetura. Nenhum código foi quebrado.
+O Android já compila e o backend já roda. Esta sessão definiu as próximas
+camadas do produto. Leia tudo antes de escrever uma linha.
+
+---
+
+## O que já está implementado (não reimplementar)
+
+### Android — UX uma-exercício-por-tela (JÁ FEITO)
+
+`FolhaScreen.kt` foi completamente redesenhada nesta sessão:
+- Mostra **um exercício por vez** em tela cheia (não lista rolável).
+- Barra superior exibe: Pág. / Dif. / Ex. N/Total / Termômetro.
+- `AdvanceGestureOverlay` detecta dois gestos para avançar:
+  - **2 dedos + arrasto horizontal ≥ 80dp** → consome evento, avança.
+  - **3 toques rápidos em 600ms** → não consome (canvas continua desenhando), avança.
+- `FolhaViewModel` tem: `currentExerciseIndex`, `advanceExercise(totalFields)`,
+  `resetForNextFolha()`.
+- `MainActivity` conecta `onAdvance`: ao chegar no último exercício da folha,
+  chama `submitFolha(folhaState)` automaticamente.
+- `ExerciseField` sem `height(190.dp)` hardcoded — preenche o espaço dado pelo pai.
+
+**Não alterar estes arquivos sem ler o código atual primeiro.**
+
+---
+
+## Fase A — Split Canvas (PRIORIDADE 1 — desbloqueia OCR)
+
+### Por quê é urgente
+
+O OCR atual envia o canvas inteiro para o Claude Vision. Isso é caro e impreciso.
+Com o split, o OCR recebe apenas a caixa de resposta (pequena, limpa).
+Sem isso, o pipeline de agentes não tem input confiável.
+
+### Layout alvo por exercício
+
+```
+┌──────────────────────────────────────┐
+│ 01  álgebra_linear       2x + 1 = 7  │  ← header (existente)
+│──────────────────────────────────────│
+│                                      │
+│   ÁREA DE RASCUNHO                   │  ← ~65% da altura
+│   (InkCanvas livre, não enviado)     │
+│                                      │
+│──────────────────────────────────────│
+│  RESPOSTA FINAL                      │
+│ ┌────────────────────────────────┐   │  ← ~35% da altura
+│ │  InkCanvas isolado             │   │  ← ÚNICO canvas enviado ao OCR
+│ │  borda destacada (primary)     │   │
+│ └────────────────────────────────┘   │
+└──────────────────────────────────────┘
+```
+
+### Mudanças em `ExerciseField.kt`
+
+Dividir o Column interno em dois InkCanvas separados:
+
+```kotlin
+@Composable
+fun ExerciseField(
+    field: FolhaField,
+    isActive: Boolean,
+    backgroundMode: BackgroundMode,
+    penColor: String,
+    modifier: Modifier = Modifier,
+    initialScratchStrokes: List<List<Offset>> = emptyList(),
+    initialAnswerStrokes: List<List<Offset>> = emptyList(),
+    initialScratchRedoStack: List<List<Offset>> = emptyList(),
+    initialAnswerRedoStack: List<List<Offset>> = emptyList(),
+    clearSignal: Int = 0,
+    undoSignal: Int = 0,
+    redoSignal: Int = 0,
+    onClick: () -> Unit = {},
+    onSyncScratch: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
+    onSyncAnswer: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
+    onPenEvent: (PenEvent) -> Unit = {},
+) {
+    Column(modifier = modifier.fillMaxWidth().background(...).border(...).clickable(onClick)) {
+        // header (igual ao atual: número + skill + statement)
+
+        // RASCUNHO — 65% do peso
+        Box(
+            modifier = Modifier.weight(0.65f).fillMaxWidth()
+                .background(fieldColor, RoundedCornerShape(4.dp))
+        ) {
+            InkCanvas(
+                modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                penColor = penColor,
+                enabled = isActive,
+                clearSignal = clearSignal,
+                undoSignal = undoSignal,
+                redoSignal = redoSignal,
+                initialStrokes = initialScratchStrokes,
+                initialRedoStack = initialScratchRedoStack,
+                onSyncStrokes = onSyncScratch,
+                onPenEvent = onPenEvent,
+            )
+        }
+
+        Spacer(Modifier.height(Spacing.sm))
+
+        // LABEL
+        Text(
+            "Resposta final",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+        )
+        Spacer(Modifier.height(Spacing.xs))
+
+        // QUADRADO DE RESPOSTA — 35% do peso, borda primária
+        Box(
+            modifier = Modifier.weight(0.35f).fillMaxWidth()
+                .background(fieldColor, RoundedCornerShape(4.dp))
+                .border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                        RoundedCornerShape(4.dp)),
+        ) {
+            InkCanvas(
+                modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                penColor = penColor,
+                enabled = isActive,
+                clearSignal = clearSignal,  // clear limpa ambos
+                undoSignal = 0,             // undo/redo operam só no rascunho
+                redoSignal = 0,
+                initialStrokes = initialAnswerStrokes,
+                initialRedoStack = initialAnswerRedoStack,
+                onSyncStrokes = onSyncAnswer,
+                onPenEvent = onPenEvent,
+            )
+        }
+    }
+}
+```
+
+### Mudanças em `FolhaUiState` / `FolhaViewModel`
+
+```kotlin
+data class FolhaUiState(
+    val currentExerciseIndex: Int = 0,
+    val activeFieldIndex: Int? = null,
+    val fieldScratchStrokes: Map<Int, List<List<Offset>>> = emptyMap(),   // rascunho
+    val fieldAnswerStrokes: Map<Int, List<List<Offset>>> = emptyMap(),    // resposta
+    val fieldScratchRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldAnswerRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldEvents: Map<Int, List<PenEvent>> = emptyMap(),
+    val fieldTiming: Map<Int, FieldTiming> = emptyMap(),
+    val isSubmitting: Boolean = false,
+    val elapsedMs: Long = 0,
+)
+
+// Manter fieldStrokes como alias de fieldAnswerStrokes para compatibilidade
+// com SessionViewModel.submitFolha (que usa fieldStrokes para gerar image_base64)
+val FolhaUiState.fieldStrokes: Map<Int, List<List<Offset>>>
+    get() = fieldAnswerStrokes
+
+fun syncScratch(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>)
+fun syncAnswer(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>)
+```
+
+### Mudança no `SessionViewModel.submitFolha`
+
+Já usa `fieldStrokes` — como o alias acima aponta para `fieldAnswerStrokes`,
+`ImageUtils.exportBitmap(strokes)` enviará **apenas a caixa de resposta** ao OCR.
+Zero mudança em `submitFolha`.
+
+### Mudança em `FolhaScreen`
+
+Passar `onSyncScratch` e `onSyncAnswer` separados para `ExerciseField`:
+```kotlin
+onSyncScratch = { strokes, redo -> folhaViewModel.syncScratch(field.fieldIndex, strokes, redo) },
+onSyncAnswer  = { strokes, redo -> folhaViewModel.syncAnswer(field.fieldIndex, strokes, redo) },
+```
+
+**Verificação Fase A:** Aluno escreve no rascunho e na caixa. Ao avançar, apenas
+a caixa vira Base64. Log do OCR mostra apenas a parte inferior da tela.
+
+---
+
+## Fase B — Settings Panel na folha
+
+### Conceito
+
+Ícone de engrenagem na barra superior. Toca → abre `ModalBottomSheet`.
+Fecha sozinho ao tocar fora. Aplica imediato.
+
+### Arquivo novo: `ui/folha/FolhaSettingsSheet.kt`
+
+```kotlin
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolhaSettingsSheet(
+    config: SessionConfig,
+    onConfigChange: (SessionConfig) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(Spacing.lg).fillMaxWidth()) {
+
+            Text("APARÊNCIA", style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(Spacing.sm))
+
+            // Fundo
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Fundo", modifier = Modifier.weight(1f))
+                SingleChoiceSegmentedButtonRow {
+                    SegmentedButton(selected = config.background == "white",
+                        onClick = { onConfigChange(config.copy(background = "white")) },
+                        shape = ...) { Text("Branco") }
+                    SegmentedButton(selected = config.background == "dark",
+                        onClick = { onConfigChange(config.copy(background = "dark")) },
+                        shape = ...) { Text("Escuro") }
+                }
+            }
+
+            // Cor da caneta — ColorPickerRow (botões de cor pré-definidos)
+            ColorPickerRow(
+                label = "Caneta",
+                selected = config.penColor,
+                options = listOf("#1a1a1a", "#1565C0", "#2E7D32", "#B71C1C"),
+                onSelect = { onConfigChange(config.copy(penColor = it)) },
+            )
+
+            Divider(modifier = Modifier.padding(vertical = Spacing.md))
+
+            Text("VISIBILIDADE", style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(Spacing.sm))
+
+            ToggleRow("Termômetro", config.showThermometer) {
+                onConfigChange(config.copy(showThermometer = it))
+            }
+            // showCorrectCount e showPercentage: adicionar a SessionConfig
+            ToggleRow("Acertos / Erros", config.showCorrectCount) {
+                onConfigChange(config.copy(showCorrectCount = it))
+            }
+            ToggleRow("Porcentagem de domínio", config.showPercentage) {
+                onConfigChange(config.copy(showPercentage = it))
+            }
+            ToggleRow("Modo cego total", config.blindMode) {
+                onConfigChange(config.copy(blindMode = it))
+            }
+
+            Divider(modifier = Modifier.padding(vertical = Spacing.md))
+
+            Text("QUESTÕES POR FOLHA", style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(Spacing.sm))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { if (config.exercisesPerPage > 1)
+                    onConfigChange(config.copy(exercisesPerPage = config.exercisesPerPage - 1)) }) {
+                    Icon(Icons.Outlined.Remove, null)
+                }
+                Text("${config.exercisesPerPage}", style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.width(40.dp), textAlign = TextAlign.Center)
+                IconButton(onClick = { if (config.exercisesPerPage < 10)
+                    onConfigChange(config.copy(exercisesPerPage = config.exercisesPerPage + 1)) }) {
+                    Icon(Icons.Outlined.Add, null)
+                }
+            }
+        }
+    }
+}
+```
+
+### Campos novos em `SessionConfig.kt`
+
+```kotlin
+@Serializable
+data class SessionConfig(
+    // ... campos existentes ...
+    @SerialName("show_correct_count") val showCorrectCount: Boolean = true,
+    @SerialName("show_percentage") val showPercentage: Boolean = true,
+    @SerialName("blind_mode") val blindMode: Boolean = false,
+    // exercisesPerPage já existe
+)
+```
+
+### Integração em `FolhaScreen`
+
+```kotlin
+var showSettings by remember { mutableStateOf(false) }
+
+// Na barra superior, adicionar:
+IconButton(onClick = { showSettings = true }) {
+    Icon(Icons.Outlined.Settings, "Configurações")
+}
+
+// Ao final do Column principal:
+if (showSettings) {
+    FolhaSettingsSheet(
+        config = config,
+        onConfigChange = onConfigChange,   // novo param de FolhaScreen
+        onDismiss = { showSettings = false },
+    )
+}
+```
+
+**Verificação Fase B:** Aluno abre settings durante exercício, troca fundo para
+escuro, fecha → tela muda sem sair do exercício. Contador de questões por folha
+muda em real-time.
+
+---
+
+## Fase C — Arquitetura Multi-Matéria (Backend)
+
+### Contexto
+
+O app hoje é só matemática. A arquitetura deve suportar:
+`math`, `physics`, `chemistry`, `biology`, `portuguese`, `redacao`.
+Cada matéria tem tipo de exercício, validador e modo de canvas diferente.
+
+### Campos a adicionar em `backend/models/exercise.py`
+
+```python
+class Exercise(Base):
+    __tablename__ = "exercises"
+
+    # ... campos existentes ...
+    subject: Mapped[str] = mapped_column(String(32), default="math", index=True)
+    canvas_mode: Mapped[str] = mapped_column(String(32), default="calculation")
+    # "calculation" | "lined" | "full_page"
+    validator: Mapped[str] = mapped_column(String(32), default="sympy")
+    # "sympy" | "ai" | "rubric" | "exact_match"
+```
+
+### Migration nova: `0005_add_subject_fields`
+
+```python
+def upgrade():
+    op.add_column("exercises", sa.Column("subject", sa.String(32),
+                  nullable=False, server_default="math"))
+    op.add_column("exercises", sa.Column("canvas_mode", sa.String(32),
+                  nullable=False, server_default="calculation"))
+    op.add_column("exercises", sa.Column("validator", sa.String(32),
+                  nullable=False, server_default="sympy"))
+    op.create_index("ix_exercises_subject", "exercises", ["subject"])
+```
+
+### Campos a adicionar em `FolhaField.kt` (Android)
+
+```kotlin
+@Serializable
+data class FolhaField(
+    @SerialName("field_index") val fieldIndex: Int,
+    @SerialName("exercise_id") val exerciseId: String,
+    val subject: String = "math",
+    @SerialName("canvas_mode") val canvasMode: String = "calculation",
+    val statement: String,
+    @SerialName("skill_tags") val skillTags: List<String>,
+    @SerialName("estimated_time_ms") val estimatedTimeMs: Int? = null,
+)
+```
+
+O `ExerciseField` lê `field.canvasMode` para decidir layout:
+- `"calculation"` → layout atual (rascunho livre + caixa resposta)
+- `"lined"` → papel pautado + caixa resposta curta
+- `"full_page"` → página inteira (redação) — avaliação é a página toda
+
+### Interface de validador no backend
+
+```python
+# backend/engine/validators.py
+class ValidatorInterface(ABC):
+    @abstractmethod
+    async def validate(self, recognized: str, expected: str | None) -> dict:
+        ...
+
+class SympyValidator(ValidatorInterface):
+    async def validate(self, recognized, expected):
+        # lógica atual de correction.py
+        ...
+
+class AIValidator(ValidatorInterface):
+    async def validate(self, recognized, expected):
+        # Claude avalia qualidade/corretude de texto
+        ...
+
+class RubricValidator(ValidatorInterface):  # para redação
+    async def validate(self, recognized, expected):
+        # avalia competências 1-5 ENEM
+        ...
+
+def get_validator(validator_type: str) -> ValidatorInterface:
+    return {
+        "sympy": SympyValidator(),
+        "ai": AIValidator(),
+        "rubric": RubricValidator(),
+        "exact_match": ExactMatchValidator(),
+    }[validator_type]
+```
+
+Em `submit.py`, substituir `validate_answer(...)` por:
+```python
+validator = get_validator(exercise.validator)
+correction = await validator.validate(ocr_result["answer_latex"], exercise.expected_answer)
+```
+
+**Verificação Fase C:** `POST /api/session/start` com `subject=physics` retorna
+exercício com `canvas_mode="calculation"`. Android renderiza igual ao de math.
+
+---
+
+## Fase D — Quatro Agentes no Backend
+
+### Visão geral
+
+Após o submit de cada exercício, o pipeline atual é linear. Refatorar para
+agentes especializados com responsabilidades claras.
+
+```
+submit recebido
+    │
+    ├── ScoringAgent       → score numérico (sem LLM)
+    ├── FeedbackAgent      → 1 frase pedagógica (Haiku)
+    │
+    └── [background task, async, não bloqueia resposta ao cliente]
+            │
+            └── ProgressionResearchAgent  (a cada 5 exercícios)
+                    │ StudentBrief
+                    └── ExerciseCreatorAgent  → próximos exercícios gerados
+```
+
+### `backend/agents/__init__.py` — estrutura
+
+```
+backend/agents/
+    scoring_agent.py
+    feedback_agent.py
+    progression_agent.py
+    exercise_creator_agent.py
+```
+
+### `scoring_agent.py`
+
+```python
+class ScoringAgent:
+    def compute(self, result: ExerciseAttempt, config: SessionConfig) -> float:
+        return compute_score(
+            is_correct=result.is_correct,
+            total_time_ms=result.total_time_ms,
+            hesitation_ms=result.time_to_first_stroke_ms,
+            difficulty=result.difficulty,
+            estimated_time_ms=result.estimated_time_ms or 45000,
+        )
+```
+
+Sem mudança de lógica — apenas encapsulamento.
+
+### `feedback_agent.py`
+
+```python
+class FeedbackAgent:
+    def __init__(self):
+        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    async def generate(
+        self,
+        is_correct: bool,
+        error_type: str | None,
+        statement: str,
+        recognized: str,
+        expected: str,
+        student_streak: int,
+    ) -> str:
+        if is_correct and student_streak >= 3:
+            return ""   # silêncio: aluno está no ritmo, não interromper
+        if is_correct:
+            return "✓"  # mínimo
+
+        prompt = f"""Exercício: {statement}
+Resposta do aluno: {recognized}
+Resposta correta: {expected}
+Tipo de erro: {error_type or "desconhecido"}
+
+Escreva UMA frase curta (máximo 12 palavras) em português apontando o erro.
+Não resolva. Não explique tudo. Só aponte onde errou.
+Exemplos bons: "Sinal trocou ao transpor o termo.", "3×4 = 12, não 11."
+"""
+        response = self.client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=60,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text.strip()
+```
+
+### `progression_agent.py`
+
+Roda async, a cada 5 exercícios. Produz `StudentBrief`:
+
+```python
+@dataclass
+class StudentBrief:
+    student_id: str
+    focus_skills: list[str]         # top 2 skills mais fracas
+    recurring_errors: list[str]     # erros que se repetem
+    recommended_difficulty: float
+    narrative: str                  # instrução em prosa para ExerciseCreator
+
+class ProgressionResearchAgent:
+    async def analyze(self, db: AsyncSession, student_id: str) -> StudentBrief:
+        # 1. Buscar últimos 20 ExerciseAttempts do aluno
+        # 2. Buscar StudentSkillMemory (status fraco/instável)
+        # 3. Calcular erro mais frequente por tipo
+        # 4. Montar narrative com Claude Sonnet
+        # 5. Salvar brief em Redis (TTL 24h) para uso imediato do ExerciseCreator
+        ...
+```
+
+### `exercise_creator_agent.py`
+
+```python
+class ExerciseCreatorAgent:
+    async def generate(self, brief: StudentBrief, subject: str = "math") -> dict:
+        prompt = f"""{brief.narrative}
+
+Crie um exercício de {subject} com estas regras:
+- Habilidade alvo: {brief.focus_skills[0] if brief.focus_skills else "álgebra"}
+- Dificuldade: {brief.recommended_difficulty:.1f} (escala 1–10)
+- Resposta deve ser inteiro ou fração simples
+- Inclua o gabarito em LaTeX
+
+Retorne JSON exato:
+{{
+  "statement": "...",
+  "expected_answer": "...",
+  "skill_tags": ["..."],
+  "difficulty": {brief.recommended_difficulty:.1f},
+  "estimated_time_ms": 45000
+}}"""
+        response = self.client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        data = json.loads(response.content[0].text)
+        # Validar com SymPy antes de retornar
+        # Se inválido, salvar no DB com flag needs_review=true
+        return data
+```
+
+### Integração em `submit.py`
+
+```python
+@router.post("/api/session/{session_id}/submit")
+async def submit_folha(session_id, body, db, background_tasks: BackgroundTasks):
+    # ... pipeline atual de OCR + validação + score ...
+
+    feedback = await feedback_agent.generate(
+        is_correct=correction["is_correct"],
+        error_type=correction["error_type"],
+        statement=exercise.statement,
+        recognized=ocr_result["answer_latex"],
+        expected=exercise.expected_answer,
+        student_streak=current_streak,
+    )
+
+    # Rodar ProgressionResearch async (não bloqueia resposta)
+    attempt_count = await get_attempt_count(db, student_id)
+    if attempt_count % 5 == 0:
+        background_tasks.add_task(
+            progression_agent.analyze, db, student_id
+        )
+
+    # Incluir feedback na resposta
+    return SubmitOut(..., feedback=feedback)
+```
+
+### Adicionar `feedback` nos schemas
+
+```python
+# schemas/submit.py
+class FieldResult(BaseModel):
+    # ... campos existentes ...
+    feedback: str = ""   # frase do FeedbackAgent; vazio se acertou no ritmo
+```
+
+```kotlin
+// model/SubmitResult.kt
+@Serializable
+data class FieldResult(
+    // ... campos existentes ...
+    val feedback: String = "",
+)
+```
+
+**Verificação Fase D:** Submit com resposta errada retorna `feedback` com 1 frase
+em português no JSON. Submit com acerto em streak retorna `feedback: ""`.
+
+---
+
+## Fase E — Mastery Engine (Porcentagem com Peso Acumulado)
+
+### Conceito
+
+O aluno tem um percentual de domínio por habilidade. Quanto mais alto, mais
+difícil mover. Isso impede "gaming" e reflete aprendizagem real.
+
+```python
+# backend/engine/mastery.py
+
+def update_mastery(current: float, correct: bool) -> float:
+    """
+    Rendimento decrescente nos acertos.
+    Regressão proporcional nos erros.
+
+    0%→50%:  fácil mover (acerto vale ~4%)
+    50%→80%: médio (acerto vale ~2%)
+    80%→95%: difícil (acerto vale ~0.8%)
+    95%→100%: muito difícil (acerto vale ~0.25%)
+    """
+    if correct:
+        gain = 0.08 * (1.0 - current)
+        return min(1.0, current + gain)
+    else:
+        loss = 0.06 * current
+        return max(0.0, current - loss)
+```
+
+### Integração em `adaptive.py` — `update_skill_memory`
+
+Substituir a média exponencial atual por `update_mastery`:
+
+```python
+async def update_skill_memory(db, student_id, skill_tags, vector):
+    for skill in skill_tags:
+        mem = await get_or_create_skill_memory(db, student_id, skill)
+        mem.accuracy = update_mastery(mem.accuracy, vector.correctness > 0.5)
+        mem.status = classify_status(mem.accuracy)
+        # classify_status:
+        #   >= 0.85 → "automatizado"
+        #   0.70-0.85 → "em_desenvolvimento"
+        #   0.50-0.70 → "instavel"
+        #   < 0.50 → "fraco"
+```
+
+### Unlock de dificuldade e matéria
+
+```python
+# backend/engine/unlock.py
+
+@dataclass
+class UnlockRequirement:
+    min_attempts: int
+    min_accuracy: float
+    max_consecutive_errors: int
+
+DIFFICULTY_UNLOCK = UnlockRequirement(
+    min_attempts=15,
+    min_accuracy=0.75,
+    max_consecutive_errors=3,
+)
+
+SUBJECT_UNLOCK = {
+    "physics": {"math": 0.70},         # math ≥ 70% para desbloquear física
+    "chemistry": {"math": 0.65},
+    "biology": {},                      # sem requisito
+    "portuguese": {},
+    "redacao": {"portuguese": 0.60},
+}
+
+async def check_difficulty_unlock(db, student_id, session) -> bool:
+    recent = await get_recent_attempts(db, student_id, n=15)
+    if len(recent) < DIFFICULTY_UNLOCK.min_attempts:
+        return False
+    accuracy = sum(1 for a in recent if a.is_correct) / len(recent)
+    consecutive_errors = count_consecutive_errors_from_end(recent)
+    return (accuracy >= DIFFICULTY_UNLOCK.min_accuracy
+            and consecutive_errors <= DIFFICULTY_UNLOCK.max_consecutive_errors)
+
+async def check_subject_unlock(db, student_id, target_subject: str) -> bool:
+    reqs = SUBJECT_UNLOCK.get(target_subject, {})
+    for prereq_subject, min_mastery in reqs.items():
+        mastery = await get_subject_mastery(db, student_id, prereq_subject)
+        if mastery < min_mastery:
+            return False
+    return True
+```
+
+**Verificação Fase E:** Aluno com 15 tentativas e 76% de acerto tem
+`difficulty_unlocked=true` na resposta do submit. Abaixo de 75%, não.
+
+---
+
+## Fase F — Ritmo Adaptativo
+
+### Micro-ritmo (dentro da sessão)
+
+Sequência padrão dentro de uma rodada de 10 exercícios:
+
+```
+[1-3]   aquecimento  → difficulty_start
+[4-7]   zona de fluxo → difficulty_start + progressão normal
+[8]     respiração   → se 2+ erros nos últimos 3, baixa 1 nível
+[9-10]  sprint       → difficulty atual + 0.5 extra
+```
+
+Implementar em `adaptive.py`:
+
+```python
+def get_exercise_role(exercise_num_in_session: int, recent_errors: int) -> str:
+    pos = exercise_num_in_session % 10
+    if pos < 3:
+        return "warmup"
+    if pos == 7 and recent_errors >= 2:
+        return "breathing"
+    if pos >= 8:
+        return "sprint"
+    return "flow"
+
+def adjust_difficulty_for_role(base: float, role: str) -> float:
+    return {
+        "warmup": base * 0.9,
+        "breathing": base * 0.8,
+        "flow": base,
+        "sprint": base + 0.5,
+    }[role]
+```
+
+### Macro-ritmo (entre sessões)
+
+```python
+# backend/engine/rhythm.py
+
+async def get_session_recommendation(db, student_id: str) -> dict:
+    history = await get_session_history(db, student_id, days=7)
+
+    avg_duration = mean(s.duration_ms for s in history) if history else None
+    best_accuracy_hour = find_best_hour(history)  # horário com maior acerto
+    trend = calculate_accuracy_trend(history)     # subindo, estável, caindo
+
+    return {
+        "suggested_duration_ms": suggest_duration(avg_duration, trend),
+        "best_hour": best_accuracy_hour,
+        "trend": trend,          # "improving" | "stable" | "declining"
+        "message": build_message(trend),
+        # ex: "Você performa melhor às 9h. Que tal treinar agora?"
+    }
+```
+
+**Verificação Fase F:** `GET /api/student/{id}/rhythm` retorna `trend` e
+`suggested_duration_ms` baseados no histórico real.
+
+---
+
+## Fase G — Calibração de Legibilidade (pré-sessão)
+
+### Quando aparece
+
+Apenas na primeira sessão, ou se OCR error rate > 30% nas últimas 20 tentativas.
+Pode ser pulada. Salva amostras no perfil do aluno.
+
+### Tela Android: `ui/calibration/CalibrationScreen.kt`
+
+```
+┌──────────────────────────────────┐
+│  Vamos calibrar sua escrita      │
+│  Escreva cada caractere          │
+│  no quadrado e avance            │
+│──────────────────────────────────│
+│           Caractere:  7          │
+│                                  │
+│  ┌────────────────────────────┐  │
+│  │   [InkCanvas]              │  │
+│  └────────────────────────────┘  │
+│                                  │
+│  [Avançar]    3/10               │
+└──────────────────────────────────┘
+```
+
+Sequência: `0 1 2 3 4 5 6 7 8 9` (10 caracteres).
+Após os 10: envia amostras ao backend, recebe score por caractere.
+
+### Backend: `POST /api/student/{id}/calibrate`
+
+```python
+@router.post("/api/student/{student_id}/calibrate")
+async def calibrate(student_id: str, body: CalibrationIn, db):
+    results = []
+    for sample in body.samples:
+        ocr = await extract_answer(sample.image_base64)
+        correct = ocr["answer_latex"].strip() == sample.expected_char
+        results.append(CharCalibrationResult(
+            char=sample.expected_char,
+            recognized=ocr["answer_latex"],
+            correct=correct,
+            confidence=ocr["confidence"],
+        ))
+        if correct:
+            # Salvar crop como exemplo para few-shot futuro
+            await save_handwriting_sample(db, student_id,
+                                         sample.expected_char,
+                                         sample.image_base64)
+
+    weak_chars = [r.char for r in results if not r.correct]
+    return CalibrationOut(results=results, weak_chars=weak_chars)
+```
+
+### Few-shot OCR personalizado (depois da calibração)
+
+Em `engine/ocr.py`, adicionar contexto personalizado:
+
+```python
+async def extract_answer(image_base64: str, student_id: str | None = None) -> dict:
+    examples = []
+    if student_id:
+        # Buscar até 3 amostras confirmadas de dígitos problemáticos do aluno
+        samples = await get_handwriting_samples(student_id, limit=3)
+        for s in samples:
+            examples.append(f"Este aluno escreve '{s.char}' assim: [ver exemplo]")
+
+    context = "\n".join(examples) if examples else ""
+    prompt = f"""{context}
+Você está analisando um campo de resposta manuscrita de matemática.
+Extraia APENAS a resposta final escrita no campo.
+Retorne em formato LaTeX.
+Retorne JSON: {{"answer_latex": "...", "confidence": 0.0}}
+"""
+    ...
+```
+
+**Verificação Fase G:** `POST /api/student/{id}/calibrate` com imagem de "7"
+retorna `correct=true` e confidence > 0.8.
+
+---
+
+## Ordem de Implementação Recomendada
+
+```
+Fase A  Split canvas (rascunho + caixa resposta)     ← COMECE AQUI
+Fase B  Settings panel na folha
+Fase C  Multi-matéria: subject + canvas_mode + validator
+Fase D  Quatro agentes (Scoring, Feedback, Progression, Creator)
+Fase E  Mastery engine (rendimento decrescente)
+Fase F  Ritmo adaptativo (micro + macro)
+Fase G  Calibração de legibilidade
+```
+
+---
+
+## Regras que não mudam
+
+1. **Android thin client.** Zero OCR, zero LLM no device. Sempre.
+2. **OCR só da caixa de resposta** (Fase A desbloqueia isso).
+3. **Feedback nunca resolve o exercício por o aluno.** 1 frase, cirúrgica.
+4. **Streak silencioso.** Acertos em sequência recebem feedback mínimo.
+5. **Progressão não é escolha do aluno.** É conquistada por performance.
+6. **Gestos de avanço já implementados.** Não reimplementar `AdvanceGestureOverlay`.
+7. **`fieldStrokes` no ViewModel = strokes da caixa de resposta** (após Fase A).
+8. **Branch de trabalho:** criar `feat/split-canvas` para Fase A. Merge em `main` após verificação.
+
+---
+
+## Estado dos arquivos relevantes hoje
+
+```
+D:\LOVE CLASS\
+├── backend/                ← 100% operacional. Docker+Postgres rodando.
+│   ├── engine/             ← ocr, correction, scoring, vector, adaptive
+│   ├── agents/             ← CRIAR nesta sessão (Fase D)
+│   └── migrations/         ← 0001–0004 aplicadas. 0005 a criar (Fase C)
+│
+└── app/src/main/java/com/strava_matematica/
+    ├── ui/folha/
+    │   ├── ExerciseField.kt    ← modificar (Fase A)
+    │   ├── FolhaScreen.kt      ← modificar (Fase A + B)
+    │   ├── InkToolbar.kt       ← não mudar
+    │   └── FolhaSettingsSheet.kt  ← CRIAR (Fase B)
+    ├── viewmodel/
+    │   └── FolhaViewModel.kt   ← modificar (Fase A)
+    ├── model/
+    │   ├── Folha.kt            ← modificar (Fase C)
+    │   └── SessionConfig.kt    ← modificar (Fase B)
+    └── MainActivity.kt         ← pequeno ajuste (Fase B)
+```
+
+*Handoff gerado em 2026-05-25. Arquitetura de agentes e UX definida em sessão de design.*

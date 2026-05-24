@@ -14,6 +14,7 @@ data class FieldTiming(
 )
 
 data class FolhaUiState(
+    val currentExerciseIndex: Int = 0,
     val activeFieldIndex: Int? = null,
     val fieldEvents: Map<Int, List<PenEvent>> = emptyMap(),
     val fieldStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
@@ -45,6 +46,21 @@ class FolhaViewModel : ViewModel() {
                 fieldRedoStacks = state.fieldRedoStacks + (fieldIndex to redoStack)
             )
         }
+    }
+
+    /** Returns true when the student has passed the last exercise (caller should submit). */
+    fun advanceExercise(totalFields: Int): Boolean {
+        val next = _uiState.value.currentExerciseIndex + 1
+        return if (next >= totalFields) {
+            true
+        } else {
+            _uiState.update { it.copy(currentExerciseIndex = next) }
+            false
+        }
+    }
+
+    fun resetForNextFolha() {
+        _uiState.value = FolhaUiState()
     }
 
     fun clearField(fieldIndex: Int) {

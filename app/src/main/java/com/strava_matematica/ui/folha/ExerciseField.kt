@@ -62,7 +62,6 @@ fun ExerciseField(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(190.dp)
             .background(surfaceColor, RoundedCornerShape(8.dp))
             .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)

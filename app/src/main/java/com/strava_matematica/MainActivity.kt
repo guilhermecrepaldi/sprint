@@ -42,14 +42,18 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
             )
 
             SessionStatus.ACTIVE,
-            SessionStatus.SUBMITTING -> state.currentFolha?.let {
+            SessionStatus.SUBMITTING -> state.currentFolha?.let { folha ->
                 val folhaState by folhaViewModel.uiState.collectAsState()
                 FolhaScreen(
-                    folha = it,
+                    folha = folha,
                     config = state.config,
+                    currentExerciseIndex = folhaState.currentExerciseIndex,
                     fieldStrokes = folhaState.fieldStrokes,
                     fieldRedoStacks = folhaState.fieldRedoStacks,
-                    onSubmit = { viewModel.submitFolha(folhaState) },
+                    onAdvance = {
+                        val done = folhaViewModel.advanceExercise(folha.fields.size)
+                        if (done) viewModel.submitFolha(folhaState)
+                    },
                     onSyncStrokes = folhaViewModel::syncStrokes,
                 )
             }
@@ -57,7 +61,10 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
             SessionStatus.RESULT -> state.lastResult?.let {
                 PageResultScreen(
                     result = it,
-                    onNext = viewModel::goToNextFolha,
+                    onNext = {
+                        folhaViewModel.resetForNextFolha()
+                        viewModel.goToNextFolha()
+                    },
                     onSummary = {},
                 )
             }
