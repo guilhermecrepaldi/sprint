@@ -22,6 +22,7 @@ python -m unittest
 ```
 
 The suite includes user workflow tests for config -> first folha -> submit -> next folha, incomplete page rejection, duplicate submit rejection, and page-limit session finish.
+It also includes HTTP-level workflow tests using FastAPI `TestClient` with an in-memory fake DB.
 
 ## Smoke Test
 

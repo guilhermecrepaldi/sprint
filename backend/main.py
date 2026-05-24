@@ -1,6 +1,6 @@
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -18,35 +18,41 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    except SQLAlchemyError:
-        logger.exception("Database startup check failed")
-        raise
+async def lifespan(app: FastAPI, run_startup_db: bool = True) -> AsyncGenerator[None, None]:
+    if run_startup_db:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except SQLAlchemyError:
+            logger.exception("Database startup check failed")
+            raise
     yield
 
 
-app = FastAPI(title="Strava da Matemática API", lifespan=lifespan)
+def create_app(run_startup_db: bool = True) -> FastAPI:
+    app = FastAPI(title="Strava da Matemática API", lifespan=lambda app: lifespan(app, run_startup_db))
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-app.include_router(telemetry_router)
-app.include_router(health_router)
-app.include_router(session_router)
-app.include_router(submit_router)
+    app.include_router(telemetry_router)
+    app.include_router(health_router)
+    app.include_router(session_router)
+    app.include_router(submit_router)
+
+    @app.get("/")
+    def read_root() -> dict[str, str]:
+        return {"status": "Math Ink Vector Engine is running (Thin Client Architecture)"}
+
+    return app
 
 
-@app.get("/")
-def read_root() -> dict[str, str]:
-    return {"status": "Math Ink Vector Engine is running (Thin Client Architecture)"}
+app = create_app()
 
 
 if __name__ == "__main__":
