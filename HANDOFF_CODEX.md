@@ -2317,3 +2317,94 @@ class UnlockTests(unittest.TestCase):
         mem = {"equacoes_lineares": {"accuracy": 0.90, "attempt_count": 100}}
         self.assertTrue(check_unlock("equacoes_quadraticas", mem).unlocked)
 ```
+
+---
+
+# APPEND — 2026-05-25: Fase G + Macro-Ritmo + Testes de Integração
+
+## O que foi feito nesta sessão
+
+### Parte 1 — Fase G: Calibração de Legibilidade (backend)
+
+- `backend/schemas/calibration.py` criado: `CharSample`, `CalibrationIn`, `CharCalibrationResult`, `CalibrationOut`.
+- `backend/api/calibration.py` criado: `POST /api/student/{student_id}/calibrate`.
+  - Itera sobre samples, chama `extract_answer` (com fallback `latex:...` para testes), computa `correct`, `confidence`, `weak_chars`, `overall_score`.
+- Registrado em `backend/main.py` (`calibration_router`).
+
+### Parte 2 — Macro-Ritmo (backend)
+
+- `backend/engine/rhythm.py` criado: `get_session_recommendation(sessions)`.
+  - Analisa tendência de acurácia (últimas 5 sessões), calcula `trend` (improving/declining/stable/no_data).
+  - Sugere duração (+10% se melhorando, -15% se caindo, cap 2h, floor 20min).
+  - Identifica `best_hour` por accuracy média horária.
+- `backend/api/rhythm.py` criado: `GET /api/student/{student_id}/rhythm`.
+  - Busca últimas 20 sessões do aluno, usa `started_at` e campos `session_accuracy`/`duration_ms`.
+- Registrado em `backend/main.py` (`rhythm_router`).
+- `backend/models/session.py` atualizado: campos `duration_ms: int` e `session_accuracy: float` adicionados ao model `Session`.
+- `backend/migrations/versions/0008_add_session_accuracy_duration.py` criado (revises `0007_add_last_practiced_at`).
+
+### Parte 3 — Testes
+
+- `backend/tests/test_calibration.py`: 5 testes de schema (CalibrationOut, CharSample, weak_chars, overall_score).
+- `backend/tests/test_rhythm.py`: 13 testes unitários cobrindo no_data, improving, declining, stable, best_hour, duration caps/floors, single session.
+
+### Parte 4 — Android: CalibrationScreen
+
+- `app/src/main/java/com/strava_matematica/ui/calibration/CalibrationScreen.kt` criado.
+  - Fluxo de 10 caracteres ("1"–"9"+"0"), InkCanvas isolado por caractere.
+  - Botões "Pular", "Avançar"/"Concluir", "Limpar" (clearSignal).
+  - `onComplete(skipped: Boolean)` callback para integração com ViewModel.
+- `SessionStatus` enum atualizado: `CALIBRATION` adicionado entre `CONFIG` e `ACTIVE`.
+- `MainActivity.kt` atualizado: novo `when` case `SessionStatus.CALIBRATION -> CalibrationScreen(...)`.
+- `SessionViewModel.startSession()` recebeu comentário explicando Fase G.2 (lógica de "primeira sessão" pendente).
+
+## Testes Rodados
+
+```
+python -m unittest -v
+Ran 85 tests in 0.926s
+OK
+```
+
+(Era 67 antes desta sessão. +18 novos testes.)
+
+```
+python -m compileall . -q
+compileall OK
+
+python -c "from engine.rhythm import get_session_recommendation; print(get_session_recommendation([])['trend'])"
+no_data
+```
+
+Android:
+```
+JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" bash gradlew assembleDebug
+BUILD SUCCESSFUL in 15s
+```
+
+## Commit
+
+`75a6e51` — feat: add Fase G calibration API, macro-rhythm engine, and CalibrationScreen
+
+Branch: `main`. Push: OK para `origin/main`.
+
+## Estimativa Atualizada
+
+| Componente | Estado |
+|---|---|
+| Backend Python/FastAPI | ✅ Fases A–G implementadas |
+| Banco de dados (migrations) | ✅ 0001–0008 prontas |
+| Android código fonte | ✅ CalibrationScreen + CALIBRATION enum |
+| Android compilação | ✅ BUILD SUCCESSFUL |
+| Integração E2E (runtime) | ⏳ Docker/Postgres necessário para smoke real |
+
+- Backend MVP: ~2% restante (smoke runtime real).
+- Android MVP: ~5–10% restante (Fase G.2: lógica de primeira sessão; ligar CalibrationScreen ao envio real das amostras ao backend).
+- Projeto completo: ~10–15% restante.
+
+## Próximas Ações Recomendadas
+
+1. Migration 0008: rodar `alembic upgrade head` quando DB estiver disponível.
+2. Fase G.2: em `SessionViewModel.startSession()`, checar se aluno tem tentativas no histórico; se zero, setar `status = SessionStatus.CALIBRATION` antes de ir para ACTIVE.
+3. `CalibrationScreen` → conectar ao endpoint real `POST /api/student/{id}/calibrate`: coletar bitmaps por caractere via `ImageUtils.exportBitmap`, enviar ao backend, exibir resultado de `weak_chars`.
+4. Continuar smoke real com Docker+Postgres.
