@@ -564,6 +564,7 @@ Backend antes do Android:
 
 Android MVP depois do backend:
 
+0. Ler `APP_LAYOUT_SPEC.md` para a direção visual e layout completo.
 1. Criar projeto Android/Kotlin.
 2. `SessionConfigScreen`.
 3. `FolhaScreen` com campos.
