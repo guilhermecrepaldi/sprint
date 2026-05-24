@@ -26,6 +26,7 @@ class SessionConfig(Base):
     restart_on_avg: Mapped[float | None] = mapped_column(Float)
     restart_window: Mapped[int] = mapped_column(Integer, default=10, server_default="10")
     exercises_per_page: Mapped[int] = mapped_column(Integer, default=5, server_default="5")
+    subject: Mapped[str] = mapped_column(String(32), default="math", server_default="math")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -42,6 +43,8 @@ class Session(Base):
     exercise_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     restart_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status: Mapped[str] = mapped_column(String(20), default="active", server_default="active")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    session_accuracy: Mapped[float] = mapped_column(Float, default=0.0, server_default="0.0")
 
 
 class Folha(Base):

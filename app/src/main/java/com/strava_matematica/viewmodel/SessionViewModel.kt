@@ -42,6 +42,9 @@ class SessionViewModel : ViewModel() {
     }
 
     fun startSession() {
+        // Se primeira sessão (sem histórico), ir para CALIBRATION primeiro.
+        // Por ora, ir direto para ACTIVE — calibração pode ser ativada via settings.
+        // (implementar lógica de "primeira sessão" na Fase G.2)
         val config = _uiState.value.config
         _uiState.update { it.copy(apiStatus = ApiStatus.CONNECTING, errorMessage = null) }
         viewModelScope.launch {

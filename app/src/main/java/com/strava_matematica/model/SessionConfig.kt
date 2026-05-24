@@ -6,11 +6,12 @@ import kotlinx.serialization.Serializable
 enum class BackgroundMode { WHITE, DARK }
 enum class DurationMode { UNLIMITED, TIMED, PAGES }
 enum class DifficultyProgression { ARITHMETIC, GEOMETRIC }
-enum class SessionStatus { CONFIG, ACTIVE, SUBMITTING, RESULT, FINISHED, ERROR }
+enum class SessionStatus { CONFIG, CALIBRATION, ACTIVE, SUBMITTING, RESULT, FINISHED, ERROR }
 enum class ApiStatus { CONNECTING, OK, OFFLINE, ERROR }
 
 @Serializable
 data class SessionConfig(
+    val subject: String = "math",
     @SerialName("show_thermometer") val showThermometer: Boolean = true,
     val background: String = "white",
     @SerialName("pen_color") val penColor: String = "#1a1a1a",

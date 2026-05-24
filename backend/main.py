@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from api.calibration import router as calibration_router
 from api.health import router as health_router
+from api.rhythm import router as rhythm_router
 from api.session import router as session_router
 from api.submit import router as submit_router
 from api.telemetry import router as telemetry_router
@@ -44,6 +46,8 @@ def create_app(run_startup_db: bool = True) -> FastAPI:
     app.include_router(health_router)
     app.include_router(session_router)
     app.include_router(submit_router)
+    app.include_router(calibration_router)
+    app.include_router(rhythm_router)
 
     @app.get("/")
     def read_root() -> dict[str, str]:

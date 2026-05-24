@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.strava_matematica.design.StravaMathTheme
 import com.strava_matematica.model.SessionStatus
+import com.strava_matematica.ui.calibration.CalibrationScreen
 import com.strava_matematica.ui.config.SessionConfigScreen
 import com.strava_matematica.ui.folha.FolhaScreen
 import com.strava_matematica.ui.result.PageResultScreen
@@ -41,6 +42,10 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
                 onStart = viewModel::startSession,
             )
 
+            SessionStatus.CALIBRATION -> CalibrationScreen(
+                onComplete = { _ -> viewModel.startSession() }
+            )
+
             SessionStatus.ACTIVE,
             SessionStatus.SUBMITTING -> state.currentFolha?.let { folha ->
                 val folhaState by folhaViewModel.uiState.collectAsState()
@@ -54,10 +59,11 @@ fun StravaMathApp(viewModel: SessionViewModel, folhaViewModel: FolhaViewModel = 
                     fieldAnswerRedoStacks = folhaState.fieldAnswerRedoStacks,
                     onAdvance = {
                         val done = folhaViewModel.advanceExercise(folha.fields.size)
-                        if (done) viewModel.submitFolha(folhaState)
+                        if (done) viewModel.submitFolha(folhaViewModel.uiState.value)
                     },
                     onSyncScratch = folhaViewModel::syncScratch,
                     onSyncAnswer = folhaViewModel::syncAnswer,
+                    onPenEvent = folhaViewModel::appendEvent,
                     onConfigChange = viewModel::updateConfig,
                 )
             }
