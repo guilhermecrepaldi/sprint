@@ -14,6 +14,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // MyScript iink SDK — uncomment after registering at developer.myscript.com
+        // and adding myscript-certificate.json to app/src/main/assets/.
+        // maven { url = uri("https://developer.myscript.com/sdk/android/maven") }
     }
 }
 

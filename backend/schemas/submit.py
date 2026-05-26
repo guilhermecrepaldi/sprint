@@ -23,6 +23,11 @@ class FieldSubmit(BaseModel):
     total_time_ms: int = Field(ge=0)
     time_to_first_stroke_ms: int = Field(default=0, ge=0)
     pen_events: list[PenEventIn] = Field(default_factory=list)
+    # On-device recognition result (ML Kit or MyScript iink).
+    # When present, validated locally with sympy — no Claude call for this field.
+    recognized_text: str | None = None
+    recognition_engine: str | None = None
+    recognition_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class SubmitIn(BaseModel):
@@ -45,8 +50,12 @@ class FieldResult(BaseModel):
     is_correct: bool
     score: int
     error_type: str | None
-    feedback: str = ""
     vector: dict[str, Any]
+    feedback: str = ""
+    intervention_signal: str | None = None
+    recognition_engine: str | None = None
+    recognition_confidence: float | None = None
+    analysis_reliable: bool | None = None
 
 
 class ThermometerOut(BaseModel):
@@ -60,4 +69,6 @@ class SubmitOut(BaseModel):
     thermometer: ThermometerOut
     restart_triggered: bool
     session_status: str
+    xp_earned: int = 0        # XP desta folha
+    xp_total: int = 0         # XP acumulado do student
     next_folha: FolhaOut | None = None

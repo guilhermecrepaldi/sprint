@@ -1,3 +1,8 @@
+# DEPRECADO — feedback textual removido.
+# O "feedback" agora é a próxima folha: o motor adaptativo seleciona
+# exercícios de revisão da skill onde o aluno errou.
+# Este arquivo existe apenas para não quebrar testes legados.
+
 import anthropic
 from db import settings
 

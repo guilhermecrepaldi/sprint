@@ -13,6 +13,7 @@ class SessionConfig(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id"))
+    contributor_mode: Mapped[bool] = mapped_column(default=False, server_default="false")
     show_thermometer: Mapped[bool] = mapped_column(default=True, server_default="true")
     background: Mapped[str] = mapped_column(String(10), default="white", server_default="white")
     pen_color: Mapped[str] = mapped_column(String(7), default="#1a1a1a", server_default="#1a1a1a")
@@ -27,6 +28,13 @@ class SessionConfig(Base):
     restart_window: Mapped[int] = mapped_column(Integer, default=10, server_default="10")
     exercises_per_page: Mapped[int] = mapped_column(Integer, default=5, server_default="5")
     subject: Mapped[str] = mapped_column(String(32), default="math", server_default="math")
+    skill_pin: Mapped[str | None] = mapped_column(String(80), nullable=True)  # Fixação mode
+    template_pin: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    focus_source_exercise_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    focus_mode: Mapped[bool] = mapped_column(default=False, server_default="false")
+    difficulty_block_size: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
+    focus_target_count: Mapped[int] = mapped_column(Integer, default=300, server_default="300")
+    fixation_density: Mapped[str] = mapped_column(String(20), default="fixa", server_default="fixa")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -45,6 +53,7 @@ class Session(Base):
     status: Mapped[str] = mapped_column(String(20), default="active", server_default="active")
     duration_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     session_accuracy: Mapped[float] = mapped_column(Float, default=0.0, server_default="0.0")
+    xp: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class Folha(Base):

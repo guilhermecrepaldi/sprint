@@ -19,6 +19,13 @@ class SessionConfigIn(BaseModel):
     restart_on_avg: float | None = Field(default=None, ge=0.0, le=10.0)
     restart_window: int = Field(default=10, ge=1)
     exercises_per_page: int = Field(default=5, ge=1, le=20)
+    skill_pin: str | None = None  # Fixação mode: pin all exercises to this skill_tag
+    template_pin: str | None = None  # Zoom exato: pin pelo template do exercício atual
+    focus_source_exercise_id: uuid.UUID | None = None
+    focus_mode: bool = False
+    difficulty_block_size: int = Field(default=30, ge=1, le=300)
+    focus_target_count: int = Field(default=300, ge=30, le=3000)
+    fixation_density: Literal["leve", "fixa", "densa", "exata"] = "fixa"
 
     @model_validator(mode="after")
     def validate_duration_limits(self) -> "SessionConfigIn":
@@ -37,6 +44,10 @@ class FolhaField(BaseModel):
     statement: str
     skill_tags: list[str]
     estimated_time_ms: int | None = None
+    node_id: str | None = None
+    template_id: str | None = None
+    method_tags: list[str] | None = None
+    difficulty_vector: dict | None = None
 
 
 class FolhaOut(BaseModel):

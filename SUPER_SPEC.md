@@ -1,6 +1,9 @@
 # SUPER SPEC v2.0 — "Strava da Matemática"
 # Math Ink Vector Memory Engine
 
+> STATUS: HISTORICO. Para a fonte curta e atual do projeto SPRINT, leia primeiro `AGENTS.md` e `docs/README.md`.
+> Este arquivo continua util como contexto de arquitetura original, mas pode estar defasado em relacao a Sprint limpa, scrolls, densidade e zoom exato.
+
 > Este documento substitui e expande o SPEC.txt original.
 > É auto-suficiente: qualquer IA ou dev pode começar a construção lendo só este arquivo.
 
@@ -746,3 +749,16 @@ python-dotenv
 ---
 
 *Documento gerado em 2026-05-23. Para dúvidas sobre qualquer seção, referenciar SPEC.txt original.*
+
+---
+
+## 17. Atualizações Arquiteturais (v2.1 - Drill Engine & Proof of Work)
+
+*Adendos baseados em definições estratégicas de Produto (MVP 2.1)*
+
+1. **Marathon Mode Exclusivo**: O sistema opera estritamente em "Modo Maratona". Não existe o conceito de resolver "um exercício avulso". Toda interação é tratada como um lote contínuo (*Batch*), avaliando resistência e velocidade.
+2. **Deep Work UX**: A interface do aplicativo Android (FolhaScreen) é totalmente minimalista. Sem gamificação infantil, sem sirenes ou cores vermelhas agressivas ao errar. O foco absoluto é o "Estado de Fluxo" (Zen/Deep Work).
+3. **Folha Flexível (1 a 30 itens)**: A renderização visual permite desde 1 exercício focado na tela (para cálculos complexos em LaTeX) até 30 questões listadas para simular planilhas de *sprint* rápido, exigindo o mínimo de esforço do usuário para transitar entre questões.
+4. **Sprints Algorítmicos On-The-Fly**: Para construir agilidade de sinais (5-2, -5+8), as rotas de API injetarão milhares de cálculos baseados apenas em algoritmos python, sem depender de IA ou banco de dados. UX projetada para auto-submit (o aluno digita e a tela avança no milissegundo seguinte).
+5. **Proof of Work & Public Profile**: O Dashboard do usuário consolida os dados de *telemetria de stylus* e performance para gerar um Perfil Público compartilhável. Ele exibirá "Trilhas Concluídas" (Tracks), um *Heatmap* de constância e métricas de foco, agindo como um portfólio matemático técnico.
+6. **Arquitetura Modular (Future-Proof)**: O código nasce preparado para expansões B2B/B2C, contendo chaves de roles e relatórios estruturados para, no futuro, acoplar painéis de supervisão para Professores e Pais (multi-licenças).

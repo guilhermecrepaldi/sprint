@@ -3,6 +3,8 @@
 **Projeto:** `D:\LOVE CLASS\`  
 **Tarefa:** Gerar, validar e persistir a biblioteca de exercícios de matemática
 
+> STATUS: HISTORICO. Para estado atual da biblioteca, leia `AGENTS.md`, `docs/README.md`, `docs/PROJECT_SPEC.md` e `docs/HANDOFF.md`.
+
 ---
 
 ## Contexto em 3 linhas

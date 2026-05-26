@@ -57,8 +57,18 @@ class HttpUserWorkflowTests(unittest.TestCase):
 
         self.assertEqual(len(submit["results"]), 3)
         self.assertEqual(submit["page_score"], 1000)
+        self.assertEqual(submit["results"][0]["recognition_engine"], "local_text_fallback")
+        self.assertIn("analysis_reliable", submit["results"][0])
         self.assertEqual(submit["session_status"], "active")
         self.assertIsNotNone(submit["next_folha"])
+
+        history_response = self.client.get("/api/student/11111111-1111-4111-8111-111111111111/sessions")
+        self.assertEqual(history_response.status_code, 200, history_response.text)
+        history = history_response.json()
+        self.assertGreaterEqual(len(history), 1)
+        self.assertEqual(history[0]["density"], "fixa")
+        self.assertIn("template", history[0])
+        self.assertIsNone(history[0]["template"])
 
     def test_http_rejects_incomplete_page(self):
         start_response = self.client.post(

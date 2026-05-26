@@ -2,6 +2,8 @@
 # Para: Codex / Gemini
 # Data: 2026-05-23
 
+> STATUS: HISTORICO. Para handoff atual, leia `AGENTS.md`, `docs/README.md` e `docs/HANDOFF.md`.
+
 ---
 
 ## CONTEXTO

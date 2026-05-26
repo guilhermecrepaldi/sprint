@@ -7,6 +7,7 @@ import api.submit as submit_module
 from api.session import start_session
 from api.submit import submit_folha
 from models.attempt import ExerciseAttempt
+from models.exercise import Exercise
 from models.session import Folha, FolhaExercise
 from models.vector import CognitiveVector, StudentSkillMemory
 from schemas.session import SessionConfigIn, SessionStartIn
@@ -149,6 +150,56 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(submit.results[0].is_correct)
         self.assertTrue(submit.results[0].feedback)
+        self.assertEqual(submit.results[0].recognition_engine, "local_text_fallback")
+        self.assertIsNotNone(submit.results[0].analysis_reliable)
+
+    async def test_exact_exercise_density_creates_similar_focus_pool(self):
+        source = Exercise(
+            id=uuid.uuid4(),
+            statement="Calcule: 3^{4}",
+            expected_answer=str(3 ** 4),
+            skill_tags=["potenciacao_radiciacao"],
+            difficulty=3.5,
+            estimated_time_ms=30000,
+            source_library="test",
+            source_license="proprietary_generated",
+            subject="math",
+            canvas_mode="calculation",
+            validator="sympy",
+            node_id="potenciacao_radiciacao.core",
+            template_id="potenciacao_radiciacao.family_power",
+            method_tags=["potenciacao_radiciacao"],
+            affinity_tags=["fixacao"],
+            parameter_vector={"family_index": 1, "variation_index": 1},
+            difficulty_vector={"algebra": 0.3, "steps": 0.2, "error_risk": 0.3},
+        )
+        self.db.add(source)
+
+        start = await start_session(
+            SessionStartIn(
+                student_id=uuid.uuid4(),
+                config=SessionConfigIn(
+                    duration_mode="pages",
+                    pages_limit=1,
+                    exercises_per_page=5,
+                    skill_pin="potenciacao_radiciacao",
+                    template_pin=source.template_id,
+                    focus_source_exercise_id=source.id,
+                    focus_mode=True,
+                    difficulty_block_size=200,
+                    focus_target_count=200,
+                ),
+            ),
+            db=self.db,
+        )
+
+        focus_pool = [
+            exercise for exercise in self.db.all_of(Exercise)
+            if exercise.template_id == source.template_id
+        ]
+        self.assertGreaterEqual(len(focus_pool), 200)
+        self.assertEqual({field.template_id for field in start.first_folha.fields}, {source.template_id})
+        self.assertTrue(all("fixacao_exata" in (exercise.affinity_tags or []) for exercise in focus_pool if exercise.id != source.id))
 
     def _submit_body_for_folha(self, folha_id: uuid.UUID, fields: list, answer: str = "x = 5") -> SubmitIn:
         return SubmitIn(

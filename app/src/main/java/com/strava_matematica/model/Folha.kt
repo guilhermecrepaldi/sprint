@@ -12,6 +12,9 @@ data class FolhaField(
     val statement: String,
     @SerialName("skill_tags") val skillTags: List<String>,
     @SerialName("estimated_time_ms") val estimatedTimeMs: Int? = null,
+    @SerialName("template_id") val templateId: String? = null,
+    @SerialName("node_id") val nodeId: String? = null,
+    @SerialName("method_tags") val methodTags: List<String>? = null,
 )
 
 @Serializable

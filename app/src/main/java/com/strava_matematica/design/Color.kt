@@ -3,7 +3,9 @@ package com.strava_matematica.design
 import androidx.compose.ui.graphics.Color
 
 object FocusColors {
-    val WhiteBackground = Color(0xFFF7F8F6)
+    val WhiteBackground   = Color(0xFFF7F8F6)
+    val ParchmentBackground = Color(0xFFF5EFD0)   // papel amarelo quente
+    val SlateBackground   = Color(0xFFE8EAE6)     // cinza frio suave
     val WhiteSurface = Color(0xFFFFFFFF)
     val WhiteField = Color(0xFFFBFCFA)
     val WhiteTextPrimary = Color(0xFF151713)

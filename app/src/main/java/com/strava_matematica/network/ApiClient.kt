@@ -1,5 +1,6 @@
 package com.strava_matematica.network
 
+import com.strava_matematica.BuildConfig
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
@@ -11,7 +12,7 @@ object ApiClient {
         explicitNulls = false
     }
 
-    fun create(baseUrl: String = "http://10.0.2.2:8000/"): StravaMathApi {
+    fun create(baseUrl: String = BuildConfig.API_BASE_URL): StravaMathApi {
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))

@@ -1,6 +1,9 @@
 # APP LAYOUT SPEC v1.0 — Strava da Matemática
 # Para IA Especializada em UI/UX Android
 
+> STATUS: HISTORICO. Para UX atual, leia `AGENTS.md`, `docs/README.md` e `docs/UX_SPEC.md`.
+> A navegacao atual prioriza Sprint limpa, scroll superior discreto e scrolls secundarios pelo enter.
+
 > Objetivo: construir o layout completo do app Android do "Strava da Matemática" com estética premium, funcionalidade real e foco em adolescentes 13-17 treinando matemática de alta performance.
 > Este documento é auto-suficiente para design e implementação visual. Para backend/API, ler `SUPER_SPEC.md`.
 

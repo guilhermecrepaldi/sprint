@@ -1,34 +1,37 @@
 package com.strava_matematica.ui.folha
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.strava_matematica.design.FocusColors
 import com.strava_matematica.design.Spacing
 import com.strava_matematica.model.BackgroundMode
@@ -43,6 +46,7 @@ fun ExerciseField(
     isActive: Boolean,
     backgroundMode: BackgroundMode,
     penColor: String,
+    penWidth: Float = 2.2f,
     modifier: Modifier = Modifier,
     // Split-canvas params
     initialScratchStrokes: List<List<Offset>> = emptyList(),
@@ -58,15 +62,24 @@ fun ExerciseField(
     // Legacy alias: callers that still pass onSyncStrokes are wired to the answer canvas
     onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
+    isErasing: Boolean = false,
+    userGuideMode: String = "nenhuma",
 ) {
-    val fieldColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkField else FocusColors.WhiteField
-    val surfaceColor = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkSurface else FocusColors.WhiteSurface
-    val hairline = if (backgroundMode == BackgroundMode.DARK) FocusColors.DarkHairline else FocusColors.WhiteHairline
-    val borderColor = if (isActive) MaterialTheme.colorScheme.primary else hairline
+    val isDark = backgroundMode == BackgroundMode.DARK
+    val fieldColor = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.background
+    // Single ink color — everything reads from here, varying only alpha
+    val ink = if (isDark) FocusColors.DarkTextPrimary else FocusColors.WhiteTextPrimary
     val isFullPage = field.canvasMode == "full_page"
     val isLined = field.canvasMode == "lined"
-    val scratchWeight = if (isLined) 0.75f else 0.65f
-    val answerWeight = if (isFullPage) 1f else if (isLined) 0.25f else 0.35f
+    val defaultScratchRatio = if (isLined) 0.80f else if (field.statement.length > 90) 0.66f else 0.75f
+    val scratchRatio = remember(field.fieldIndex) { mutableFloatStateOf(defaultScratchRatio) }
+    // Map config.guideMode → InkCanvas guideMode values. "nenhuma" defers to field.canvasMode logic.
+    val mappedGuideMode: String? = when (userGuideMode) {
+        "horizontal", "grade" -> "lined"
+        "dots" -> "dots"
+        else -> null   // "nenhuma" — use field-based default
+    }
 
     // Merge legacy onSyncStrokes into onSyncAnswer so old callers still work.
     val answerSync: (List<List<Offset>>, List<List<Offset>>) -> Unit = { s, r ->
@@ -78,95 +91,116 @@ fun ExerciseField(
         modifier = modifier
             .fillMaxWidth()
             .background(surfaceColor, RoundedCornerShape(8.dp))
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
             .padding(Spacing.md),
     ) {
-        // ── Header ──────────────────────────────────────────────────────────
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "%02d".format(field.fieldIndex + 1),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-            )
-            Spacer(Modifier.width(Spacing.sm))
-            Text(
-                text = field.skillTags.firstOrNull()?.replace("_", " ") ?: "exercício",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.50f),
-            )
-            if (field.subject != "math") {
-                Spacer(Modifier.width(Spacing.xs))
-                Text(
-                    text = field.subject.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = field.statement,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
+        // ── Statement ────────────────────────────────────────────────────────
+        Text(
+            text = renderLatex(field.statement),
+            fontSize = if (isActive) 24.sp else 22.sp,
+            lineHeight = if (isActive) 32.sp else 30.sp,
+            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+            color = ink,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(Spacing.sm))
 
         if (!isFullPage) {
-            // ── Scratch area — not sent to OCR ───────────────────────────
+            // ── Scratch area ─────────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .weight(scratchWeight)
+                    .weight(scratchRatio.floatValue)
                     .fillMaxWidth()
-                    .background(fieldColor, RoundedCornerShape(4.dp))
-                    .border(BorderStroke(1.dp, hairline.copy(alpha = 0.65f)), RoundedCornerShape(4.dp)),
+                    .background(fieldColor, RoundedCornerShape(4.dp)),
             ) {
                 InkCanvas(
                     modifier = Modifier.matchParentSize().padding(Spacing.xs),
                     penColor = penColor,
+                    penWidth = penWidth,
                     enabled = isActive,
+                    isErasing = isErasing,
                     clearSignal = clearSignal,
                     undoSignal = undoSignal,
                     redoSignal = redoSignal,
                     initialStrokes = initialScratchStrokes,
                     initialRedoStack = initialScratchRedoStack,
-                    guideMode = if (isLined) "lined" else "single",
+                    guideMode = mappedGuideMode ?: if (isLined) "lined" else "dots",
                     onSyncStrokes = onSyncScratch,
                     onPenEvent = onPenEvent,
                 )
             }
-
-            Spacer(Modifier.height(Spacing.sm))
+            SplitHeightHandle(
+                ink = ink,
+                ratio = scratchRatio.floatValue,
+                onRatioChange = { scratchRatio.floatValue = it },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
-        Text(
-            text = if (isFullPage) "Resposta" else "Resposta final",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-        )
-        Spacer(Modifier.height(Spacing.xs))
-
-        // ── Answer box — 35% of remaining height, primary border ─────────
+        // ── Answer box ───────────────────────────────────────────────────
         Box(
             modifier = Modifier
-                .weight(answerWeight)
+                .weight(if (isFullPage) 1f else 1f - scratchRatio.floatValue)
                 .fillMaxWidth()
-                .background(fieldColor, RoundedCornerShape(4.dp))
-                .border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary), RoundedCornerShape(4.dp)),
+                .background(fieldColor, RoundedCornerShape(4.dp)),
         ) {
             InkCanvas(
                 modifier = Modifier.matchParentSize().padding(Spacing.xs),
                 penColor = penColor,
+                penWidth = penWidth,
                 enabled = isActive,
+                isErasing = isErasing,
                 clearSignal = clearSignal,
                 undoSignal = if (isFullPage) undoSignal else 0,
                 redoSignal = if (isFullPage) redoSignal else 0,
                 initialStrokes = initialAnswerStrokes,
                 initialRedoStack = initialAnswerRedoStack,
-                guideMode = if (isFullPage || isLined) "lined" else "single",
+                guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "dots",
                 onSyncStrokes = answerSync,
                 onPenEvent = onPenEvent,
             )
         }
+    }
+}
+
+@Composable
+private fun SplitHeightHandle(
+    ink: Color,
+    ratio: Float,
+    onRatioChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(30.dp)
+            .drawBehind {
+                val y = size.height / 2f
+                drawLine(
+                    color = ink.copy(alpha = 0.14f),
+                    start = Offset(30.dp.toPx(), y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            },
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(28.dp)
+                .pointerInput(ratio) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        val delta = dragAmount.y / 420f
+                        onRatioChange((ratio + delta).coerceIn(0.42f, 0.88f))
+                    }
+                }
+                .drawBehind {
+                    drawCircle(
+                        color = ink.copy(alpha = 0.24f),
+                        radius = 8.dp.toPx(),
+                        center = Offset(size.width / 2f, size.height / 2f),
+                    )
+                },
+        )
     }
 }
 
@@ -176,6 +210,7 @@ fun InkCanvas(
     penColor: String = "#1a1a1a",
     penWidth: Float = 2.2f,
     enabled: Boolean = true,
+    isErasing: Boolean = false,
     clearSignal: Int = 0,
     undoSignal: Int = 0,
     redoSignal: Int = 0,
@@ -219,62 +254,106 @@ fun InkCanvas(
     }
 
     Canvas(
-        modifier = modifier.pointerInput(enabled, penColor, penWidth) {
+        modifier = modifier.pointerInput(enabled, penColor, penWidth, isErasing) {
             if (!enabled) return@pointerInput
-            detectDragGestures(
-                onDragStart = { offset ->
+            val eraserRadiusPx = 24.dp.toPx()
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                down.consume()
+
+                if (isErasing) {
+                    eraseNear(down.position, strokes, eraserRadiusPx)
+                } else {
                     strokeStartedAt = System.currentTimeMillis()
                     previousUptime = strokeStartedAt
-                    previousPoint = offset
-                    currentStroke = mutableListOf(offset)
+                    previousPoint = down.position
+                    currentStroke = mutableListOf(down.position)
                     redoStack.clear()
                     strokes.add(currentStroke.toList())
-                    onPenEvent(offset.toPenEvent(strokeStartedAt, 0f, "stroke_start"))
-                },
-                onDrag = { change, _ ->
+                    onPenEvent(down.position.toPenEvent(strokeStartedAt, 0f, "stroke_start", down.pressure))
+                }
+
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                    if (isErasing) {
+                        if (change.pressed) {
+                            eraseNear(change.position, strokes, eraserRadiusPx)
+                            change.consume()
+                        } else {
+                            onSyncStrokes(strokes.toList(), redoStack.toList())
+                            break
+                        }
+                        continue
+                    }
+
+                    if (change.position != previousPoint) {
+                        val now = System.currentTimeMillis()
+                        val offset = change.position
+                        val elapsed = (now - previousUptime).coerceAtLeast(1L)
+                        val distance = hypot(offset.x - previousPoint.x, offset.y - previousPoint.y)
+                        val velocity = distance / elapsed
+                        currentStroke.add(offset)
+                        if (strokes.isNotEmpty()) {
+                            strokes[strokes.lastIndex] = currentStroke.toList()
+                        }
+                        previousPoint = offset
+                        previousUptime = now
+                        onPenEvent(offset.toPenEvent(strokeStartedAt, velocity, "stroke_move", change.pressure))
+                    }
                     change.consume()
-                    val now = System.currentTimeMillis()
-                    val offset = change.position
-                    val elapsed = (now - previousUptime).coerceAtLeast(1L)
-                    val distance = hypot(offset.x - previousPoint.x, offset.y - previousPoint.y)
-                    val velocity = distance / elapsed
-                    currentStroke.add(offset)
-                    if (strokes.isNotEmpty()) {
-                        strokes[strokes.lastIndex] = currentStroke.toList()
-                    }
-                    previousPoint = offset
-                    previousUptime = now
-                    onPenEvent(offset.toPenEvent(strokeStartedAt, velocity, "stroke_move"))
-                },
-                onDragEnd = {
-                    if (currentStroke.isNotEmpty()) {
+
+                    if (!change.pressed) {
                         onSyncStrokes(strokes.toList(), redoStack.toList())
-                        onPenEvent(currentStroke.last().toPenEvent(strokeStartedAt, 0f, "stroke_end"))
+                        if (currentStroke.isNotEmpty()) {
+                            onPenEvent(currentStroke.last().toPenEvent(strokeStartedAt, 0f, "stroke_end"))
+                        }
+                        break
                     }
-                },
-            )
+                }
+            }
         },
     ) {
-        if (guideMode == "lined") {
-            val gap = 32.dp.toPx()
-            var y = gap
-            while (y < size.height) {
+        when (guideMode) {
+            "lined" -> {
+                val gap = 32.dp.toPx()
+                var y = gap
+                while (y < size.height) {
+                    drawLine(
+                        color = Color.Gray.copy(alpha = 0.22f),
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = 1.dp.toPx(),
+                    )
+                    y += gap
+                }
+            }
+            "dots" -> {
+                val gap = 28.dp.toPx()
+                var x = gap / 2
+                while (x < size.width) {
+                    var y = gap / 2
+                    while (y < size.height) {
+                        drawCircle(
+                            color = inkColor.copy(alpha = 0.12f),
+                            radius = 1.5f,
+                            center = Offset(x, y),
+                        )
+                        y += gap
+                    }
+                    x += gap
+                }
+            }
+            else -> {
+                val y = size.height * 0.72f
                 drawLine(
-                    color = Color.Gray.copy(alpha = 0.22f),
+                    color = Color.Gray.copy(alpha = 0.35f),
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx(),
                 )
-                y += gap
             }
-        } else {
-            val y = size.height * 0.72f
-            drawLine(
-                color = Color.Gray.copy(alpha = 0.35f),
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 1.dp.toPx(),
-            )
         }
         strokes.forEach { stroke ->
             if (stroke.size == 1) {
@@ -294,16 +373,32 @@ fun InkCanvas(
     }
 }
 
-private fun Offset.toPenEvent(strokeStartedAt: Long, velocity: Float, eventType: String): PenEvent {
+private fun Offset.toPenEvent(
+    strokeStartedAt: Long,
+    velocity: Float,
+    eventType: String,
+    pressure: Float? = null,
+): PenEvent {
     return PenEvent(
         ts = (System.currentTimeMillis() - strokeStartedAt).coerceAtLeast(0L),
         x = x,
         y = y,
-        pressure = null,
+        pressure = pressure,
         tilt = null,
         velocity = velocity,
         eventType = eventType,
     )
+}
+
+private fun eraseNear(point: Offset, strokes: MutableList<List<Offset>>, radiusPx: Float) {
+    val r2 = radiusPx * radiusPx
+    strokes.removeAll { stroke ->
+        stroke.any { pt ->
+            val dx = pt.x - point.x
+            val dy = pt.y - point.y
+            dx * dx + dy * dy <= r2
+        }
+    }
 }
 
 private fun parseHexColor(hex: String): Color {

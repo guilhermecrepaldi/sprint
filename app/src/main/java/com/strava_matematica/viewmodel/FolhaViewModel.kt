@@ -14,6 +14,7 @@ data class FieldTiming(
 )
 
 data class FolhaUiState(
+    val folhaId: String? = null,
     val currentExerciseIndex: Int = 0,
     val activeFieldIndex: Int? = null,
     val fieldEvents: Map<Int, List<PenEvent>> = emptyMap(),
@@ -39,15 +40,23 @@ class FolhaViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(FolhaUiState())
     val uiState: StateFlow<FolhaUiState> = _uiState
 
+    private fun FolhaUiState.scopedTo(folhaId: String): FolhaUiState =
+        if (this.folhaId == folhaId) this else FolhaUiState(folhaId = folhaId)
+
+    fun resetForFolha(folhaId: String) {
+        _uiState.value = FolhaUiState(folhaId = folhaId)
+    }
+
     fun activateField(index: Int) {
         _uiState.update { it.copy(activeFieldIndex = index) }
     }
 
-    fun appendEvent(fieldIndex: Int, event: PenEvent) {
+    fun appendEvent(folhaId: String, fieldIndex: Int, event: PenEvent) {
         val now = System.currentTimeMillis()
         _uiState.update { state ->
-            val events = state.fieldEvents[fieldIndex].orEmpty() + event
-            val currentTiming = state.fieldTiming[fieldIndex] ?: FieldTiming(startedAtMs = now)
+            val scoped = state.scopedTo(folhaId)
+            val events = scoped.fieldEvents[fieldIndex].orEmpty() + event
+            val currentTiming = scoped.fieldTiming[fieldIndex] ?: FieldTiming(startedAtMs = now)
             val startedAt = currentTiming.startedAtMs ?: now
             val firstStrokeAt = currentTiming.firstStrokeAtMs
                 ?: if (event.eventType == "stroke_start") now - startedAt else null
@@ -57,34 +66,54 @@ class FolhaViewModel : ViewModel() {
                 totalTimeMs = now - startedAt,
             )
 
-            state.copy(
-                fieldEvents = state.fieldEvents + (fieldIndex to events),
-                fieldTiming = state.fieldTiming + (fieldIndex to timing),
+            scoped.copy(
+                fieldEvents = scoped.fieldEvents + (fieldIndex to events),
+                fieldTiming = scoped.fieldTiming + (fieldIndex to timing),
+            )
+        }
+    }
+
+    fun appendEvent(fieldIndex: Int, event: PenEvent) {
+        val folhaId = _uiState.value.folhaId ?: return
+        appendEvent(folhaId, fieldIndex, event)
+    }
+
+    fun syncScratch(folhaId: String, fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
+        _uiState.update { state ->
+            val scoped = state.scopedTo(folhaId)
+            scoped.copy(
+                fieldScratchStrokes = scoped.fieldScratchStrokes + (fieldIndex to strokes),
+                fieldScratchRedoStacks = scoped.fieldScratchRedoStacks + (fieldIndex to redoStack),
             )
         }
     }
 
     fun syncScratch(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
+        val folhaId = _uiState.value.folhaId ?: return
+        syncScratch(folhaId, fieldIndex, strokes, redoStack)
+    }
+
+    fun syncAnswer(folhaId: String, fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
         _uiState.update { state ->
-            state.copy(
-                fieldScratchStrokes = state.fieldScratchStrokes + (fieldIndex to strokes),
-                fieldScratchRedoStacks = state.fieldScratchRedoStacks + (fieldIndex to redoStack),
+            val scoped = state.scopedTo(folhaId)
+            scoped.copy(
+                fieldAnswerStrokes = scoped.fieldAnswerStrokes + (fieldIndex to strokes),
+                fieldAnswerRedoStacks = scoped.fieldAnswerRedoStacks + (fieldIndex to redoStack),
             )
         }
     }
 
     fun syncAnswer(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) {
-        _uiState.update { state ->
-            state.copy(
-                fieldAnswerStrokes = state.fieldAnswerStrokes + (fieldIndex to strokes),
-                fieldAnswerRedoStacks = state.fieldAnswerRedoStacks + (fieldIndex to redoStack),
-            )
-        }
+        val folhaId = _uiState.value.folhaId ?: return
+        syncAnswer(folhaId, fieldIndex, strokes, redoStack)
     }
 
     /** Kept for call-sites that haven't migrated yet; routes to answer canvas. */
     fun syncStrokes(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) =
         syncAnswer(fieldIndex, strokes, redoStack)
+
+    fun syncStrokes(folhaId: String, fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) =
+        syncAnswer(folhaId, fieldIndex, strokes, redoStack)
 
     /** Returns true when the student has passed the last exercise (caller should submit). */
     fun advanceExercise(totalFields: Int): Boolean {

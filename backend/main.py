@@ -7,9 +7,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from api.activity import router as activity_router
 from api.calibration import router as calibration_router
+from api.drill import router as drill_router
 from api.exercise_generation import router as exercise_generation_router
+from api.export import router as export_router
 from api.health import router as health_router
+from api.identify_topic import router as identify_topic_router
+from api.ml_data import router as ml_data_router
+from api.profile import router as profile_router
+from api.ranking import router as ranking_router
 from api.rhythm import router as rhythm_router
 from api.session import router as session_router
 from api.submit import router as submit_router
@@ -45,10 +52,17 @@ def create_app(run_startup_db: bool = True) -> FastAPI:
 
     app.include_router(telemetry_router)
     app.include_router(health_router)
+    app.include_router(export_router)
     app.include_router(session_router)
     app.include_router(submit_router)
+    app.include_router(activity_router)
     app.include_router(calibration_router)
+    app.include_router(drill_router)
     app.include_router(exercise_generation_router)
+    app.include_router(identify_topic_router)
+    app.include_router(ml_data_router)
+    app.include_router(profile_router)
+    app.include_router(ranking_router)
     app.include_router(rhythm_router)
 
     @app.get("/")

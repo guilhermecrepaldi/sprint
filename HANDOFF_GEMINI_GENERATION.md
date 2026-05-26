@@ -4,6 +4,8 @@ Projeto: LOVE CLASS
 
 Workspace: `D:\LOVE CLASS`
 
+> STATUS: HISTORICO. Para biblioteca atual e zoom exato, leia `AGENTS.md`, `docs/README.md`, `docs/PROJECT_SPEC.md` e `docs/HANDOFF.md`.
+
 Objetivo: completar a biblioteca de exercicios gerados (`source_library = generated_v1`) usando Gemini, mantendo qualidade matematica e evitando duplicatas.
 
 ---
@@ -232,4 +234,3 @@ python -m py_compile scripts\generate_exercises.py api\exercise_generation.py db
 - Se Gemini retornar erro de quota/rate limit, reduza `--batch-size` para 10 ou aguarde.
 - Preferir grupos pequenos para facilitar retomada se o usuario interromper.
 - Depois de qualquer alteracao de codigo/documentacao: rodar verificacao, commitar, push para `origin/main`, e adicionar APPEND no handoff relevante.
-

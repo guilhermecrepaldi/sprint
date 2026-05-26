@@ -1,5 +1,7 @@
 # SPEC v1.0 — Math Ink Vector Memory Engine
 
+STATUS: HISTORICO. Para a fonte atual do projeto SPRINT, leia AGENTS.md e docs/README.md.
+
 ## 1. Visão Geral
 
 Este documento descreve o módulo responsável por transformar a escrita do aluno no tablet em dados estruturados, vetores comportamentais e memória cognitiva matemática.

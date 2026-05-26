@@ -24,11 +24,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,12 +39,23 @@ import com.strava_matematica.model.SessionConfig
 
 private val PenColorOptions = listOf("#1a1a1a", "#1565C0", "#2E7D32", "#B71C1C")
 
+// background_id → display colour (preview swatch)
+private val BackgroundOptions = listOf(
+    "white"     to Color(0xFFF8F8F8),
+    "parchment" to Color(0xFFF5EFD0),
+    "slate"     to Color(0xFFE8EAE6),
+    "dark"      to Color(0xFF1A1A1A),
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolhaSettingsSheet(
     config: SessionConfig,
     onConfigChange: (SessionConfig) -> Unit,
     onDismiss: () -> Unit,
+    onEndSession: () -> Unit = {},
+    sessionCorrect: Int = 0,
+    sessionTotal: Int = 0,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -60,6 +69,28 @@ fun FolhaSettingsSheet(
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
+            // ── SESSÃO ATUAL ─────────────────────────────────────────────────
+            if (sessionTotal > 0) {
+                val pct = (sessionCorrect * 100f / sessionTotal).toInt()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "$sessionCorrect corretas de $sessionTotal",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "$pct%",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (pct >= 70) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error,
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
+            }
+
             // ── APARÊNCIA ────────────────────────────────────────────────────
             Text(
                 text = "APARÊNCIA",
@@ -68,23 +99,33 @@ fun FolhaSettingsSheet(
             )
             Spacer(Modifier.height(Spacing.xs))
 
-            // Background toggle
+            // Background colour picker (4 swatches: white, parchment, slate, dark)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(text = "Fundo", modifier = Modifier.weight(1f))
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(
-                        selected = config.background == "white",
-                        onClick = { onConfigChange(config.copy(background = "white")) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    ) { Text("Branco") }
-                    SegmentedButton(
-                        selected = config.background == "dark",
-                        onClick = { onConfigChange(config.copy(background = "dark")) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    ) { Text("Escuro") }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    BackgroundOptions.forEach { (id, color) ->
+                        val isSelected = config.background == id
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(color, CircleShape)
+                                .then(
+                                    if (isSelected) Modifier.border(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        CircleShape,
+                                    ) else Modifier.border(
+                                        1.dp,
+                                        Color.Black.copy(alpha = 0.12f),
+                                        CircleShape,
+                                    )
+                                )
+                                .clickable { onConfigChange(config.copy(background = id)) },
+                        )
+                    }
                 }
             }
 
@@ -172,7 +213,20 @@ fun FolhaSettingsSheet(
                 }
             }
 
-            Spacer(Modifier.height(Spacing.lg))
+            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
+
+            // ── SESSÃO ───────────────────────────────────────────────────────
+            TextButton(
+                onClick = { onEndSession(); onDismiss() },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Encerrar sessão",
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+
+            Spacer(Modifier.height(Spacing.md))
         }
     }
 }
