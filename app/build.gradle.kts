@@ -1,7 +1,16 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+// Leia a URL do servidor de local.properties (não commitar credenciais).
+// Crie local.properties com: API_BASE_URL_RELEASE=https://api.seudominio.com/
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
 }
 
 android {
@@ -24,7 +33,8 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "API_BASE_URL", "\"https://SEU_SERVIDOR.com/\"")
+            val releaseUrl = localProps.getProperty("API_BASE_URL_RELEASE", "https://api.sprint.app/")
+            buildConfigField("String", "API_BASE_URL", "\"$releaseUrl\"")
         }
     }
 }

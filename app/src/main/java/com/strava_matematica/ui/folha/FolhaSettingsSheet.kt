@@ -177,6 +177,9 @@ fun FolhaSettingsSheet(
             ToggleRow(label = "Modo cego total", checked = config.blindMode) {
                 onConfigChange(config.copy(blindMode = it))
             }
+            ToggleRow(label = "Só avança se acertar", checked = config.requireCorrectToAdvance) {
+                onConfigChange(config.copy(requireCorrectToAdvance = it))
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
 

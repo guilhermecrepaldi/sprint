@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +58,7 @@ import com.strava_matematica.ui.tabs.NotesTab
 import com.strava_matematica.ui.tabs.PenTab
 import com.strava_matematica.viewmodel.FolhaUiState
 import com.strava_matematica.viewmodel.FolhaViewModel
+import com.strava_matematica.viewmodel.ResultMark
 import com.strava_matematica.viewmodel.SessionViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -85,17 +89,30 @@ fun SprintApp(
 ) {
     val state      by sessionViewModel.uiState.collectAsState()
     val folhaState by folhaViewModel.uiState.collectAsState()
+    val haptic     = LocalHapticFeedback.current
 
-    // Auto-advance through result / finished
+    // Auto-advance through result / finished — instantâneo (sem delay)
     LaunchedEffect(state.status) {
         when (state.status) {
             SessionStatus.RESULT -> {
-                kotlinx.coroutines.delay(720L)
-                folhaViewModel.resetForNextFolha()
-                sessionViewModel.goToNextFolha()
+                val allCorrect = state.lastResult?.results?.all { it.isCorrect } ?: true
+                // B4: vibração
+                if (allCorrect) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                } else {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+                if (state.config.requireCorrectToAdvance && !allCorrect) {
+                    val fieldIndex = state.currentFolha?.fields
+                        ?.getOrNull(folhaState.currentExerciseIndex)?.fieldIndex ?: 0
+                    folhaViewModel.clearFieldAndRetry(fieldIndex)
+                    sessionViewModel.resetToActive()
+                } else {
+                    folhaViewModel.resetForNextFolha()
+                    sessionViewModel.goToNextFolha()
+                }
             }
             SessionStatus.FINISHED -> {
-                kotlinx.coroutines.delay(720L)
                 folhaViewModel.resetForNextFolha()
                 sessionViewModel.startSessionFromDashboard()
             }
@@ -219,6 +236,8 @@ fun SprintApp(
                                 folhaIndex = state.currentFolha?.pageIndex ?: 0,
                                 onAddNote = sessionViewModel::addNote,
                                 gestureConfig = state.gestureConfig,
+                                retrySignal = folhaState.retryCount,
+                                recentResults = state.recentResults,
                             )
                         } else if (state.apiStatus == ApiStatus.ERROR) {
                             SprintErrorState(
@@ -229,6 +248,33 @@ fun SprintApp(
                             SprintLoadingState()
                         }
                         // else: papel em branco (sessão lançada, aguardando folha)
+
+                        // D3: alerta de falha consecutiva
+                        if (state.showConsecutiveFailureAlert) {
+                            AlertDialog(
+                                onDismissRequest = sessionViewModel::dismissConsecutiveFailureAlert,
+                                text = {
+                                    Text(
+                                        text = "Você errou 3 vezes seguidas. Isso está afetando seu score — quer respirar fundo e tentar de novo ou ir ao painel ajustar?",
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                                    )
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = sessionViewModel::dismissConsecutiveFailureAlert) {
+                                        Text("continuar")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        sessionViewModel.dismissConsecutiveFailureAlert()
+                                        selectedTab = SprintTab.DASHBOARD
+                                    }) {
+                                        Text("ver painel")
+                                    }
+                                },
+                            )
+                        }
                     }
 
                     SprintTab.MATHTREE -> MathTreeTab(

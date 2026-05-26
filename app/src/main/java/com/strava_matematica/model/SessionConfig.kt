@@ -39,6 +39,8 @@ data class SessionConfig(
     @SerialName("guide_mode") val guideMode: String = "nenhuma",  // nenhuma | horizontal | dots | grade
     @SerialName("pen_width") val penWidth: Float = 2.2f,
     @SerialName("show_eraser_button") val showEraserButton: Boolean = false,
+    // Quando true, o aluno só avança para a próxima questão se acertar.
+    @SerialName("require_correct_to_advance") val requireCorrectToAdvance: Boolean = false,
 ) {
     val backgroundMode: BackgroundMode
         get() = when (background) {

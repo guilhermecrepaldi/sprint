@@ -16,6 +16,7 @@ data class FieldTiming(
 data class FolhaUiState(
     val folhaId: String? = null,
     val currentExerciseIndex: Int = 0,
+    val retryCount: Int = 0,
     val activeFieldIndex: Int? = null,
     val fieldEvents: Map<Int, List<PenEvent>> = emptyMap(),
     val fieldScratchStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
@@ -133,6 +134,21 @@ class FolhaViewModel : ViewModel() {
     fun clearField(fieldIndex: Int) {
         _uiState.update { state ->
             state.copy(
+                fieldEvents = state.fieldEvents - fieldIndex,
+                fieldScratchStrokes = state.fieldScratchStrokes - fieldIndex,
+                fieldAnswerStrokes = state.fieldAnswerStrokes - fieldIndex,
+                fieldScratchRedoStacks = state.fieldScratchRedoStacks - fieldIndex,
+                fieldAnswerRedoStacks = state.fieldAnswerRedoStacks - fieldIndex,
+                fieldTiming = state.fieldTiming - fieldIndex,
+            )
+        }
+    }
+
+    /** Limpa o campo atual e força recomposição do canvas (modo "só avança se acertar"). */
+    fun clearFieldAndRetry(fieldIndex: Int) {
+        _uiState.update { state ->
+            state.copy(
+                retryCount = state.retryCount + 1,
                 fieldEvents = state.fieldEvents - fieldIndex,
                 fieldScratchStrokes = state.fieldScratchStrokes - fieldIndex,
                 fieldAnswerStrokes = state.fieldAnswerStrokes - fieldIndex,

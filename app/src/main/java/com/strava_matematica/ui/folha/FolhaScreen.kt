@@ -1,11 +1,13 @@
 package com.strava_matematica.ui.folha
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,8 +20,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -38,8 +45,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import com.strava_matematica.design.Spacing
 import com.strava_matematica.model.Folha
+import com.strava_matematica.viewmodel.ResultMark
 import com.strava_matematica.model.FolhaField
 import com.strava_matematica.model.GestureConfig
 import com.strava_matematica.model.PenEvent
@@ -75,9 +85,12 @@ fun FolhaScreen(
     folhaIndex: Int = 0,
     onAddNote: (SprintNote) -> Unit = {},
     gestureConfig: GestureConfig = GestureConfig(),
+    retrySignal: Int = 0,
+    recentResults: List<ResultMark> = emptyList(),
 ) {
     val field = folha.fields[currentExerciseIndex]
-    val exerciseRenderKey = "${folha.folhaId}:${field.exerciseId}:${field.fieldIndex}"
+    // retrySignal muda quando o usuário erra + requireCorrectToAdvance=true — força recomposição do canvas.
+    val exerciseRenderKey = "${folha.folhaId}:${field.exerciseId}:${field.fieldIndex}:$retrySignal"
     // Signals reset whenever the exercise changes, giving each field a fresh canvas state.
     val clearSignal = remember(exerciseRenderKey) { mutableIntStateOf(0) }
     val undoSignal = remember(exerciseRenderKey) { mutableIntStateOf(0) }
@@ -174,6 +187,89 @@ fun FolhaScreen(
                         .align(Alignment.CenterEnd)
                         .padding(end = 92.dp),
                 )
+            }
+            // Histórico visual dos últimos 7 resultados — canto inferior esquerdo
+            if (!showSprintScrolls.value && recentResults.isNotEmpty()) {
+                ResultHistoryRow(
+                    results = recentResults,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = Spacing.md, bottom = Spacing.md),
+                )
+            }
+            // Toggle inline livre/precisa acertar — ícone pequeno no canto superior direito
+            // Sincronizado com FolhaSettingsSheet via config.requireCorrectToAdvance
+            if (!showSprintScrolls.value) {
+                IconButton(
+                    onClick = { onConfigChange(config.copy(requireCorrectToAdvance = !config.requireCorrectToAdvance)) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = Spacing.sm, end = 52.dp)
+                        .size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = if (config.requireCorrectToAdvance) Icons.Outlined.Lock else Icons.Outlined.LockOpen,
+                        contentDescription = if (config.requireCorrectToAdvance) "Precisa acertar para avançar" else "Avança mesmo errando",
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.30f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Fila horizontal dos últimos N resultados (máx 7).
+ * Mais antigo à esquerda / menor — mais recente à direita / maior.
+ * □ acerto · ○ erro · × não preenchido
+ */
+@Composable
+private fun ResultHistoryRow(
+    results: List<ResultMark>,
+    modifier: Modifier = Modifier,
+) {
+    val n = results.size.coerceAtLeast(1)
+    val minSizeDp = 9f
+    val maxSizeDp = 26f
+
+    // Cores pastel alinhadas ao tema SPRINT (neutras, sem distração)
+    val colorCorrect = Color(0xFF6B8C5A)   // verde oliva suave
+    val colorWrong   = Color(0xFF9E6B5A)   // terracota suave
+    val colorEmpty   = Color(0xFFAA9E8C)   // bege acinzentado
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        results.forEachIndexed { i, mark ->
+            // index 0 = mais antigo (menor), index n-1 = mais recente (maior)
+            val t = if (n > 1) i.toFloat() / (n - 1) else 1f
+            val sizeDp = (minSizeDp + t * (maxSizeDp - minSizeDp)).dp
+            val strokeDp = (sizeDp.value / 7f).coerceAtLeast(1.2f).dp
+            val color = when (mark) {
+                ResultMark.CORRECT -> colorCorrect
+                ResultMark.WRONG   -> colorWrong
+                ResultMark.EMPTY   -> colorEmpty
+            }
+            Canvas(modifier = Modifier.size(sizeDp)) {
+                val sw = strokeDp.toPx()
+                when (mark) {
+                    ResultMark.CORRECT -> drawRect(
+                        color = color,
+                        style = Stroke(width = sw),
+                    )
+                    ResultMark.WRONG -> drawCircle(
+                        color = color,
+                        style = Stroke(width = sw),
+                    )
+                    ResultMark.EMPTY -> {
+                        val pad = sw
+                        drawLine(color, Offset(pad, pad), Offset(size.width - pad, size.height - pad), sw)
+                        drawLine(color, Offset(size.width - pad, pad), Offset(pad, size.height - pad), sw)
+                    }
+                }
             }
         }
     }

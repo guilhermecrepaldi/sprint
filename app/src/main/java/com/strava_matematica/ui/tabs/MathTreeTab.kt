@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -85,6 +86,14 @@ fun MathTreeTab(
                     Spacer(Modifier.height(4.dp))
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "● verde: >85%   ● neutro: 60–85%   ● vermelho: <60%",
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -107,6 +116,12 @@ private fun SkillNode(
         "instavel"          -> 0.22f
         else                -> 0.08f
     }
+    val circleColor = when {
+        isActive -> ink.copy(alpha = 0.70f)
+        accuracy != null && accuracy > 0.85f -> Color(0xFF388E3C)
+        accuracy != null && accuracy < 0.60f -> Color(0xFFD32F2F)
+        else -> ink.copy(alpha = fillAlpha)
+    }
     Column(
         modifier = modifier
             .clickable(onClick = onClick)
@@ -117,11 +132,7 @@ private fun SkillNode(
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .background(
-                    if (isActive) ink.copy(alpha = 0.70f)
-                    else ink.copy(alpha = fillAlpha),
-                    CircleShape,
-                ),
+                .background(circleColor, CircleShape),
         )
         Text(
             text = label,

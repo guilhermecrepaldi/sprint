@@ -2,6 +2,7 @@ package com.strava_matematica.ui.tabs
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,7 @@ import com.strava_matematica.model.SprintHistoryItem
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.roundToInt
 
 // ── Section enum ──────────────────────────────────────────────────────────────
 
@@ -65,6 +69,18 @@ private fun groupLabelFor(startedAt: String): String {
 /** Convert snake_case skill tag to human-readable label. */
 private fun displaySkill(tag: String): String =
     tag.replace("_", " ").replaceFirstChar { it.uppercase() }
+
+/** Extract average seconds per exercise for last 7 sessions (filter out zero exercises). */
+private fun averageTimePerSession(history: List<SprintHistoryItem>): List<Pair<String, Float>> {
+    val last7 = history.takeLast(7)
+    return last7
+        .filter { it.exercisesDone > 0 }
+        .map { item ->
+            val label = if (item.startedAt.length >= 10) item.startedAt.substring(5, 10) else item.startedAt  // MM-DD
+            val avgSecPerExercise = (item.durationMin * 60f) / item.exercisesDone
+            label to avgSecPerExercise
+        }
+}
 
 // ── Root composable ───────────────────────────────────────────────────────────
 
@@ -177,6 +193,8 @@ private fun PerfilSection(
         ?: history.groupBy { it.skill }.maxByOrNull { entry -> entry.value.sumOf { it.exercisesDone } }?.key
         ?: "variado"
     val activeSessions = history.count { it.isActive }
+    val velocityData = averageTimePerSession(history)
+    val overallAvg = if (velocityData.isNotEmpty()) velocityData.map { it.second }.average().toFloat() else 0f
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabPill(onTap = onBack)  // toque no pill = volta para lista
@@ -195,6 +213,19 @@ private fun PerfilSection(
             StatRow("Sessões no histórico", history.size.toString())
             StatRow("Sessões ativas", activeSessions.toString())
             StatRow("Tema mais praticado", displaySkill(mostPracticed))
+            StatRow("Velocidade média", if (overallAvg > 0) "${overallAvg.roundToInt()} seg/ex" else "—")
+
+            // Velocity graph
+            if (velocityData.size >= 2) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Velocidade (seg/ex)",
+                    fontSize = 10.sp,
+                    color = ink.copy(alpha = 0.30f),
+                )
+                Spacer(Modifier.height(8.dp))
+                VelocityGraph(velocityData, ink)
+            }
         }
     }
 }
@@ -210,6 +241,71 @@ private fun StatRow(label: String, value: String) {
         Text(text = value, fontSize = 14.sp, color = ink.copy(alpha = 0.80f), fontWeight = FontWeight.Medium)
     }
     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.07f))
+}
+
+@Composable
+private fun VelocityGraph(data: List<Pair<String, Float>>, ink: androidx.compose.ui.graphics.Color) {
+    val canvasHeight = 56.dp
+    val graphColor = ink.copy(alpha = 0.40f)
+    val labelColor = ink.copy(alpha = 0.25f)
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(canvasHeight)
+    ) {
+        val canvasWidth = size.width
+        val canvasHeightPx = size.height
+
+        if (data.size < 2) return@Canvas
+
+        val values = data.map { it.second }
+        val minVal = values.minOrNull() ?: 0f
+        val maxVal = values.maxOrNull() ?: 1f
+        val range = maxVal - minVal + 0.001f
+
+        val points = data.mapIndexed { i, (_, value) ->
+            val x = (canvasWidth / (data.size - 1)) * i
+            val normalizedValue = (value - minVal) / range
+            val y = canvasHeightPx * (1f - normalizedValue)
+            x to y
+        }
+
+        // Draw line connecting points
+        for (i in 0 until points.size - 1) {
+            val (x1, y1) = points[i]
+            val (x2, y2) = points[i + 1]
+            drawLine(
+                color = graphColor,
+                start = androidx.compose.ui.geometry.Offset(x1, y1),
+                end = androidx.compose.ui.geometry.Offset(x2, y2),
+                strokeWidth = 1.5f,
+            )
+        }
+
+        // Draw circles at data points
+        points.forEach { (x, y) ->
+            drawCircle(
+                color = graphColor,
+                radius = 2f,
+                center = androidx.compose.ui.geometry.Offset(x, y),
+            )
+        }
+
+        // Draw labels below points
+        val paint = android.graphics.Paint().apply {
+            textSize = 20f
+            alpha = 64
+            textAlign = android.graphics.Paint.Align.CENTER
+            color = android.graphics.Color.GRAY
+        }
+
+        data.forEachIndexed { i, (label, _) ->
+            val x = (canvasWidth / (data.size - 1)) * i
+            val labelY = canvasHeightPx + 16f
+            drawContext.canvas.nativeCanvas.drawText(label, x, labelY, paint)
+        }
+    }
 }
 
 // ── Histórico section ─────────────────────────────────────────────────────────

@@ -2,8 +2,8 @@
 Projeto: SPRINT (Strava da Matemática)
 Data: 2026-05-26
 Início: 00:13
-Duração até agora: ~1h 30min
-Tarefas: 8/8 (todas concluídas neste sprint)
+Duração até agora: ~3h 00min
+Tarefas: 22/29 concluídas
 Pass rate: 100%
 
 ## ✅ Concluídas (sessões anteriores)
@@ -27,9 +27,6 @@ Pass rate: 100%
 - [x] [CODE] Bug fix: NotesTab `remember` shadowing built-in
 - [x] [CODE] Bug fix: GestureConfig import missing in SessionViewModel
 - [x] [CODE] Bug fix: TextAlign import missing in SprintNoteSheet
-
-## ✅ Concluídas (sprint 2026-05-26)
-
 - [x] [CODE] Bug fix: `getOffsetFractionForPage` → `currentPageOffsetFraction` (BUILD OK)
 - [x] [ARCH] Sprint automation: CLAUDE.md project-level auto-start sprint on session open
 - [x] [CODE] .sprint/session.md criado como persistent state
@@ -39,41 +36,33 @@ Pass rate: 100%
 - [x] [ARCH] Backend: GET /api/student/{student_id}/sessions endpoint (activity.py)
 - [x] [CODE] Android: SprintHistoryItem model, StravaMathApi.getSessionHistory, SessionViewModel.fetchHistory
 - [x] [CODE] DashboardTab: real API history, groupLabelFor(), displaySkill(), remove mock
-- [x] [DOCS] Documentacao viva criada em `docs/`: PROJECT_SPEC, UX_SPEC, ROADMAP, HANDOFF e FUTURE_SPEC
-- [x] [DOCS] `AGENTS.md` criado para leitura obrigatoria por agentes futuros
-- [x] [DOCS] `CLAUDE.md` atualizado para apontar para `AGENTS.md` e `docs/`
-- [x] [DOCS] `docs/README.md` criado como indice oficial de leitura
-- [x] [DOCS] Specs e handoffs antigos marcados como historicos
-- [x] [CODE] Painel/Perfil ligado a dados reais de progresso/historico em vez de mocks
-- [x] [CODE] Historico/progresso atualizados apos iniciar/submeter sessao
-- [x] [CODE] Estado local da folha limpo ao iniciar nova sessao
-- [x] [UX] Scroll superior ampliado e troca de aba estabilizada
-- [x] [CODE] Densidade da sessao persistida em `fixation_density` e exibida no Historico
-- [x] [CODE] Historico expoe `template` para zoom exato e Painel mostra marcador discreto
-- [x] [CODE] Arvore inicia Sprint com a skill tocada diretamente e limpa zoom anterior
-- [x] [UX] Painel abre direto no Perfil com dados reais
-- [x] [UX] Feedback breve `certo`/`erro` antes de avancar apos submit
-- [x] [CODE] Sprint força `exercisesPerPage = 1` para registrar cada exercício individualmente
-- [x] [UX] Feedback mostra a interpretacao reconhecida em verde/vermelho e nao bloqueia avanço
-- [x] [BUGFIX] Canvas de resposta agora reseta por `folha_id + exercise_id`, nao por `fieldIndex`
-- [x] [BUGFIX] Estado enviado ao backend agora pertence a `folhaId`; traços antigos não são reutilizados se `fieldIndex` repetir
-- [x] [BUGFIX] Escrita restaurada: callbacks de traço agora salvam com `folhaId` explícito e submit usa o estado mais recente da folha atual
-- [x] [BUGFIX] Canvas troca `detectDragGestures` por captura bruta de ponteiro: traços curtos, pontos e sinais começam no primeiro toque
-- [x] [BUGFIX] Removido `clickable` vazio envolvendo a folha para reduzir competição de gestos com o canvas
-- [x] [DOCS] Handoff atualizado para passagem ao Claude com bugfix de escrita, riscos e checklist manual
-- [x] [DOCS] Criado `docs/TRANSITION_SPEC.md` como spec de transição Codex -> Claude
-- [x] [DOCS] `CLAUDE.md`, `AGENTS.md`, `docs/README.md`, `PROJECT_SPEC.md` e `UX_SPEC.md` apontam para contratos de transição/escrita
-
-## ✅ Concluídas (sprint 2026-05-26 lote 3 — agentes paralelos)
-
-- [x] [ARCH] BuildConfig.API_BASE_URL: buildConfig=true + buildConfigField por variant (debug/release)
+- [x] [CODE] Sprint automation + docs live criados
 - [x] [CODE] ApiClient.create() usa BuildConfig.API_BASE_URL como default
-- [x] [CODE] TAB_SPRINT: SprintErrorState + SprintLoadingState (ui visível em erro/conexão)
-- [x] [CODE] Notes persistence: SprintNoteJson + NotesJson + toJson/toSprintNote (SharedPrefs sprint_notes_v1)
-- [x] [CODE] SessionViewModel.init carrega notas do disco; addNote() persiste após cada adição
-- [x] [CODE] GuideMode wired: ExerciseField recebe userGuideMode, mapeia "horizontal"→"lined", "dots"→"dots", "nenhuma"→field.canvasMode
-- [x] [CODE] FolhaScreen passa userGuideMode = config.guideMode ao ExerciseField
-- [x] [BUILD] BUILD SUCCESSFUL 1s (38 tasks UP-TO-DATE) — integração limpa
+- [x] [CODE] TAB_SPRINT: SprintErrorState + SprintLoadingState
+- [x] [CODE] Notes persistence: SharedPreferences sprint_notes_v1
+- [x] [CODE] GuideMode wired: ExerciseField recebe userGuideMode
+- [x] [BUILD] BUILD SUCCESSFUL (lote 3)
+
+## ✅ Concluídas (sprint 2026-05-26 lote 4 — agentes paralelos)
+
+- [x] [BUGFIX] build.gradle.kts: import java.util.Properties + localProps no top-level (corrige BUILD FAILED)
+- [x] [CODE] A2: Watermark "resposta" em ExerciseField — texto fantasma alpha=0.18f, some ao primeiro stroke
+- [x] [CODE] B2: Toggle inline livre/precisa acertar — ícone Lock/LockOpen no canto superior direito da folha ativa (FolhaScreen.kt)
+- [x] [CODE] B2: Sincronizado com FolhaSettingsSheet via config.requireCorrectToAdvance
+- [x] [CODE] D1: averageTimePerSession() — helper que extrai avg seg/ex das últimas 7 sessões (DashboardTab.kt)
+- [x] [CODE] D1: VelocityGraph composable — gráfico de linha fina Canvas API, pontos, labels MM-DD (DashboardTab.kt)
+- [x] [CODE] D1: StatRow "Velocidade média" exibe média geral em seg/ex
+- [x] [CODE] D2: MathTreeTab — nós coloridos por accuracy: verde >85%, vermelho <60%, neutro entre os dois
+- [x] [CODE] D2: Legenda discreta de cores abaixo do título (3 pontos coloridos)
+- [x] [CODE] D3: Alert após 3 falhas consecutivas com botões "continuar"/"ver painel"
+- [x] [CODE] requireCorrectToAdvance: campo em SessionConfig + retry via retryCount/clearFieldAndRetry
+- [x] [CODE] ResultHistoryRow: □○× histórico dos últimos 7 resultados, tamanho crescente, Canvas-drawn
+- [x] [CODE] Haptic feedback: TextHandleMove (acerto), LongPress (erro)
+- [x] [CODE] Avanço instantâneo: removido delay 720ms
+- [x] [QA] Backend: skill-progress endpoint existe em activity.py; attempt_count mapeado corretamente
+- [x] [QA] Backend: adaptive engine N=3 erros consecutivos → RECOVERY_DIFFICULTY_FACTOR=0.65 ✅
+- [x] [QA] Backend: 32/34 skills com < 3 templates estruturais — gap documentado para Gemini
+- [x] [BUILD] BUILD SUCCESSFUL (lote 4)
 
 ## 🔄 Em progresso
 
@@ -85,15 +74,16 @@ Pass rate: 100%
 
 ## 📋 Pendentes
 
-- [ ] [FEAT] ZoomableCanvas / Platform Map — canvas infinito zoomável (plano salvo em .claude/plans/floofy-coalescing-mccarthy.md)
-- [ ] [CODE] MathTreeTab: Canvas API completo — árvore visual com círculos, linhas, labels (low priority — grid atual funciona)
-- [ ] [QA] Teste end-to-end: abrir app → exercício → anotar → ver nota em NotesTab
-- [ ] [QA] Teste de gesto: 2-finger tap → avança exercício
-- [ ] [QA] Teste de background: parchment/slate mudam fundo corretamente
-- [ ] [CODE] DashboardTab Perfil: conectar com API real (stats reais: XP, sequência, etc.)
-- [ ] [INFRA] Sprint automation at 9h: instalar_task.ps1 (requer usuário rodar como Administrador)
-- [ ] [INFRA] Preencher .env com ANTHROPIC_API_KEY + WA_PHONE/WA_APIKEY ou TG_BOT_TOKEN/TG_CHAT_ID
-- [ ] [PROD] Release URL: substituir placeholder "SEU_SERVIDOR.com" em build.gradle.kts release buildType
+- [ ] [CODE] Split ratio persistence: salvar scratchRatio por fieldIndex em SharedPreferences (SplitRatioPrefs.kt helper + ExerciseField.kt) (M)
+- [ ] [QA] Canvas guia: verificar visualmente se guideMode "horizontal" e "dots" desenham corretamente no emulador
+- [ ] [QA] Feedback overlay z-order: confirmar SprintFeedbackOverlay está acima de ResultHistoryRow
+- [ ] [QA] exercisesPerPage=1: verificar que SessionStartRequest envia corretamente e backend respeita
+- [ ] [QA] clearFieldAndRetry(): confirmar que retryCount reseta ao avançar para próxima questão
+- [ ] [QA] Testar fluxo completo emulador: write → Enter → OCR → feedback → reset → próxima
+- [ ] [BACKEND] skill-progress: campo attempt_count (não attempts) — Android já mapeado corretamente
+- [ ] [BACKEND] Exercise library: 25 skills com 1 template estrutural — sessão Gemini para gerar mais
+- [ ] [FEAT] ZoomableCanvas / Platform Map — canvas infinito zoomável (plano salvo em .claude/plans/)
+- [ ] [INFRA] Sprint automation at 9h: instalar_task.ps1
 
 ## Decisões tomadas
 
@@ -105,29 +95,27 @@ Pass rate: 100%
 - [ARCH] `getOffsetFractionForPage` não disponível no BOM 2024.10.00 — usar `currentPage - page + currentPageOffsetFraction`
 - [ARCH] SprintHistoryItem usa `skill_pin` do `session_configs` como skill label
 - [ARCH] Gesture detection usa PointerEventPass.Initial para interceptar multi-touch antes do InkCanvas
-- [DOCS] `docs/` passa a ser a fonte curta e atual do produto; specs antigas ficam como referencia historica
-- [DOCS] Arquivos antigos na raiz nao devem ser usados como fonte primaria sem conferir `docs/`
-- [UX] Sprint limpa continua regra central: sem tutorial/texto fixo, configuracoes por gesto e scroll secundario
-- [ARCH] Densidade exata usa `template_pin` + `focus_source_exercise_id`
-- [ARCH] Historico deve diferenciar densidade `leve`, `fixa`, `densa` e `exata`
-- [UX] Painel pode ter dados textuais, mas Sprint continua sem UI explicativa fixa
 - [UX] Feedback de resultado deve ser momentaneo e discreto, sem interromper fluxo
 - [UX] Se errar, apenas contabiliza erro, mostra leitura reconhecida em vermelho e avanca
 - [ARCH] Registro de acerto/erro acontece por exercício no Sprint, nao por lote visual
 - [BUGFIX] Como `exercisesPerPage = 1`, `fieldIndex` fica sempre 0; nunca usar apenas `fieldIndex` como chave visual do canvas
-- [BUGFIX] `FolhaUiState` deve carregar `folhaId` para proteger OCR/submissao contra respostas antigas
-- [BUGFIX] Callbacks do canvas precisam receber `folhaId` no MainActivity; método legado sem id só deve ser fallback quando o estado já está escopado
 - [BUGFIX] Para escrita matemática, não usar detector com touch slop no canvas principal; números pequenos, pontos e sinais precisam ser registrados imediatamente no down
+- [UX] requireCorrectToAdvance: toggle discreto lock/unlock no canto superior direito do exercício ativo
+- [UX] Histórico de resultados: ○□× crescentes, canvas-drawn, canto inferior esquerdo
+- [UX] Haptic: leve no acerto, forte no erro
+- [ARCH] D1 velocity: avgSecPerExercise = durationMin * 60 / exercisesDone, last 7 sessions
+- [ARCH] D2 node colors: verde #388E3C >85%, vermelho #D32F2F <60%, neutro entre os dois
+- [ARCH] build.gradle.kts: import java.util.Properties no topo do arquivo, Properties() fora do bloco release
 
 ## Retomar em
 
-[ ] QA Android Studio/emulador: scroll superior, triplo toque no enter, bolinha divisoria e scrolls secundarios
-[ ] QA dispositivo real/tablet USB: confirmar escrita na resposta, avanço, leitura reconhecida e reset da resposta no próximo exercício
-[ ] MathTreeTab Canvas API (baixa prioridade)
-[ ] QA testing (alta prioridade — app nunca foi testado em dispositivo após as mudanças)
+[ ] Split ratio persistence (Prioridade 4)
+[ ] QA emulador: fluxo completo de escrita → avanço → histórico → retry
+[ ] ZoomableCanvas (Prioridade baixa — feature futura)
 
 ## Log de lotes
 
 - [00:13] Lote 1: 3/3 ✅ — 100% — build fix + 2-finger tap + settings
 - [01:30] Lote 2: 5/5 ✅ — 100% — sprint automation + backend history API + dashboard real data
 - [02:15] Lote 3: 8/8 ✅ — 100% — BuildConfig URL, error/loading UI, notes persistence, guideMode wiring; BUILD SUCCESSFUL 1s
+- [03:00] Lote 4: 18/18 ✅ — 100% — build.gradle fix, A2 watermark, B2 lock toggle, D1 velocity graph, D2 node colors, D3 alert, requireCorrectToAdvance, ResultHistoryRow, haptic, instant advance; BUILD SUCCESSFUL 3s

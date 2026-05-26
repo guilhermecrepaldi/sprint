@@ -35,6 +35,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.util.UUID
 
+/** Resultado visual de cada tentativa — alimenta o histórico scrollável na Sprint. */
+enum class ResultMark { CORRECT, WRONG, EMPTY }
+
 data class SessionUiState(
     val studentId: String = UUID.randomUUID().toString(),
     val sessionId: String? = null,
@@ -66,6 +69,10 @@ data class SessionUiState(
     val gestureConfig: GestureConfig = GestureConfig(),
     // Sprint history — loaded from API
     val sprintHistory: List<SprintHistoryItem> = emptyList(),
+    // Histórico visual dos últimos 7 resultados (newest = último da lista)
+    val recentResults: List<ResultMark> = emptyList(),
+    // D3: alerta de falha consecutiva (dispara na 3ª seguida)
+    val showConsecutiveFailureAlert: Boolean = false,
 )
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
@@ -274,6 +281,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         apiStatus = ApiStatus.OK,
                         sessionCorrect = 0,
                         sessionTotal = 0,
+                        recentResults = emptyList(),
+                        showConsecutiveFailureAlert = false,
                     )
                 }
                 fetchHistory()
@@ -333,13 +342,28 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 val finished = res.sessionStatus == "finished"
                 val folhaCorrect = res.results.count { it.isCorrect }
                 val folhaTotal = res.results.size
+                // Histórico visual: determina marca da tentativa
+                val mark = when {
+                    res.results.isEmpty() -> ResultMark.EMPTY
+                    res.results.first().recognizedAnswer.isNullOrBlank() -> ResultMark.EMPTY
+                    res.results.first().isCorrect -> ResultMark.CORRECT
+                    else -> ResultMark.WRONG
+                }
                 _uiState.update {
+                    val updatedRecent = (it.recentResults + mark).takeLast(7)
+                    val consecutiveFails = updatedRecent
+                        .reversed()
+                        .takeWhile { m -> m == ResultMark.WRONG }
+                        .size
                     it.copy(
                         lastResult = res,
                         status = if (finished) SessionStatus.FINISHED else SessionStatus.RESULT,
                         apiStatus = ApiStatus.OK,
                         sessionCorrect = it.sessionCorrect + folhaCorrect,
                         sessionTotal = it.sessionTotal + folhaTotal,
+                        recentResults = updatedRecent,
+                        // D3: mostra alerta exatamente na 3ª falha seguida
+                        showConsecutiveFailureAlert = consecutiveFails == 3,
                     )
                 }
                 fetchSkillProgress()
@@ -360,6 +384,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // Session finished — start a fresh one on the same skill automatically.
             startSessionFromDashboard()
         }
+    }
+
+    fun resetToActive() {
+        _uiState.update { it.copy(status = SessionStatus.ACTIVE) }
+    }
+
+    fun dismissConsecutiveFailureAlert() {
+        _uiState.update { it.copy(showConsecutiveFailureAlert = false) }
     }
 
     fun resetToConfig() {

@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,7 +83,9 @@ fun ExerciseField(
     }
 
     // Merge legacy onSyncStrokes into onSyncAnswer so old callers still work.
+    val hasAnswerStroke = remember(initialAnswerStrokes) { mutableStateOf(initialAnswerStrokes.isNotEmpty()) }
     val answerSync: (List<List<Offset>>, List<List<Offset>>) -> Unit = { s, r ->
+        if (s.isNotEmpty()) hasAnswerStroke.value = true
         onSyncAnswer(s, r)
         onSyncStrokes(s, r)
     }
@@ -138,6 +141,7 @@ fun ExerciseField(
 
         // ── Answer box ───────────────────────────────────────────────────
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .weight(if (isFullPage) 1f else 1f - scratchRatio.floatValue)
                 .fillMaxWidth()
@@ -158,6 +162,14 @@ fun ExerciseField(
                 onSyncStrokes = answerSync,
                 onPenEvent = onPenEvent,
             )
+            if (!isFullPage && !hasAnswerStroke.value) {
+                Text(
+                    text = "resposta",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    color = ink.copy(alpha = 0.18f),
+                )
+            }
         }
     }
 }
