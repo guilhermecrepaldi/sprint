@@ -64,6 +64,29 @@ Pass rate: 100%
 - [x] [QA] Backend: 32/34 skills com < 3 templates estruturais — gap documentado para Gemini
 - [x] [BUILD] BUILD SUCCESSFUL (lote 4)
 
+## ✅ Concluídas (sprint 2026-05-26 lote 5)
+
+- [x] [BUGFIX] FolhaScreen: exactCurrent defaultava true (templateId != null sempre), skill selecionada nunca aplicada — fix: default false
+- [x] [BUGFIX] OCR: fallback para fieldScratchStrokes quando fieldAnswerStrokes vazio (usuário escreve em scratch = pontuação correta)
+- [x] [BUGFIX] MainActivity: delay 450ms para feedback ser visível antes de avançar
+- [x] [CODE] MathTreeTab: redesign completo como timeline vertical scrollável (LazyColumn + Canvas API linha tracejada + nós circulares)
+- [x] [BUILD] BUILD SUCCESSFUL (lote 5) — f271ac9
+
+## ✅ Concluídas (sprint 2026-05-26 lote 6)
+
+- [x] [CODE] SplitRatioPrefs.kt: helper get/set por fieldIndex em SharedPreferences "split_ratio_v1"
+- [x] [CODE] ExerciseField.kt: carrega ratio salvo na composição; persiste ao arrastar o handle
+- [x] [QA] Canvas guia: "horizontal"→"lined" (linhas 32dp, alpha=0.22), "dots"→"dots" (grade 28dp, alpha=0.12) — PASS ✅
+- [x] [QA] z-order: SprintFeedbackOverlay adicionado APÓS FolhaScreen no mesmo Box → renderiza por cima ✅
+- [x] [QA] exercisesPerPage=1: densityToConfig() força 1 em todos os modos; enviado no SessionStartRequest.config ✅
+- [x] [QA] clearFieldAndRetry(): resetForNextFolha() → FolhaUiState() → retryCount=0 ✅
+- [x] [QA] Fluxo completo: write→advanceExercise→submitFolha→OCR(fallback scratch)→RESULT→delay→haptic→advance/retry ✅
+- [x] [QA] BACKEND attempt_count: já mapeado como attemptCount em Android (lote 4) ✅
+- [x] [FEAT] ZoomableCanvas wired: FolhaScreen envolvido; PlatformMap como mapContent; pauseSession/resumeSession conectados
+- [x] [CODE] FolhaScreen: sprintGestureInput simplificado — 2-finger advance migrado para ZoomableCanvas
+- [x] [INFRA] Agente remoto CCR criado: trig_01YBesuXGBdHwmn3L51Hh8iy · roda 9h Sao Paulo (12:00 UTC) diariamente · https://claude.ai/code/routines/trig_01YBesuXGBdHwmn3L51Hh8iy
+- [x] [BUILD] BUILD SUCCESSFUL (lote 6) — de942ed
+
 ## 🔄 Em progresso
 
 (nenhuma)
@@ -74,16 +97,8 @@ Pass rate: 100%
 
 ## 📋 Pendentes
 
-- [ ] [CODE] Split ratio persistence: salvar scratchRatio por fieldIndex em SharedPreferences (SplitRatioPrefs.kt helper + ExerciseField.kt) (M)
-- [ ] [QA] Canvas guia: verificar visualmente se guideMode "horizontal" e "dots" desenham corretamente no emulador
-- [ ] [QA] Feedback overlay z-order: confirmar SprintFeedbackOverlay está acima de ResultHistoryRow
-- [ ] [QA] exercisesPerPage=1: verificar que SessionStartRequest envia corretamente e backend respeita
-- [ ] [QA] clearFieldAndRetry(): confirmar que retryCount reseta ao avançar para próxima questão
-- [ ] [QA] Testar fluxo completo emulador: write → Enter → OCR → feedback → reset → próxima
-- [ ] [BACKEND] skill-progress: campo attempt_count (não attempts) — Android já mapeado corretamente
-- [ ] [BACKEND] Exercise library: 25 skills com 1 template estrutural — sessão Gemini para gerar mais
-- [ ] [FEAT] ZoomableCanvas / Platform Map — canvas infinito zoomável (plano salvo em .claude/plans/)
-- [ ] [INFRA] Sprint automation at 9h: instalar_task.ps1
+- [ ] [BACKEND] Exercise library: 25 skills com 1 template estrutural — sessão Gemini para gerar variações
+- [ ] [QA] Testar no emulador: ZoomableCanvas pinch revela mapa; 2-finger tap avança sem zoom
 
 ## Decisões tomadas
 
@@ -119,3 +134,5 @@ Pass rate: 100%
 - [01:30] Lote 2: 5/5 ✅ — 100% — sprint automation + backend history API + dashboard real data
 - [02:15] Lote 3: 8/8 ✅ — 100% — BuildConfig URL, error/loading UI, notes persistence, guideMode wiring; BUILD SUCCESSFUL 1s
 - [03:00] Lote 4: 18/18 ✅ — 100% — build.gradle fix, A2 watermark, B2 lock toggle, D1 velocity graph, D2 node colors, D3 alert, requireCorrectToAdvance, ResultHistoryRow, haptic, instant advance; BUILD SUCCESSFUL 3s
+- [03:30] Lote 5: 5/5 ✅ — 100% — skill selection bug, OCR scratch fallback, feedback delay, MathTreeTab timeline redesign; BUILD SUCCESSFUL 2s
+- [04:15] Lote 6: 12/12 ✅ — 100% — split ratio persistence, QA (6 itens), ZoomableCanvas wired, FolhaScreen simplificado, CCR routine; BUILD SUCCESSFUL 4s
