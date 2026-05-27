@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -257,6 +256,12 @@ fun SprintApp(
                                         gestureConfig = state.gestureConfig,
                                         retrySignal = folhaState.retryCount,
                                         recentResults = state.recentResults,
+                                        skillAccuracy = state.skillAccuracy,
+                                        masteryDetected = state.masteryDetected,
+                                        suggestedNextSkill = state.suggestedNextSkill,
+                                        difficultyAdapted = state.difficultyAdapted,
+                                        onDismissMastery = sessionViewModel::dismissMasterySuggestion,
+                                        onAdvanceToNextSkill = sessionViewModel::advanceToNextSkill,
                                     )
                                 },
                             )
@@ -270,32 +275,6 @@ fun SprintApp(
                         }
                         // else: papel em branco (sessão lançada, aguardando folha)
 
-                        // D3: alerta de falha consecutiva
-                        if (state.showConsecutiveFailureAlert) {
-                            AlertDialog(
-                                onDismissRequest = sessionViewModel::dismissConsecutiveFailureAlert,
-                                text = {
-                                    Text(
-                                        text = "Você errou 3 vezes seguidas. Isso está afetando seu score — quer respirar fundo e tentar de novo ou ir ao painel ajustar?",
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                                    )
-                                },
-                                confirmButton = {
-                                    TextButton(onClick = sessionViewModel::dismissConsecutiveFailureAlert) {
-                                        Text("continuar")
-                                    }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = {
-                                        sessionViewModel.dismissConsecutiveFailureAlert()
-                                        selectedTab = SprintTab.DASHBOARD
-                                    }) {
-                                        Text("ver painel")
-                                    }
-                                },
-                            )
-                        }
                     }
 
                     SprintTab.MATHTREE -> MathTreeTab(

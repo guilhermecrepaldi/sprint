@@ -71,8 +71,11 @@ data class SessionUiState(
     val sprintHistory: List<SprintHistoryItem> = emptyList(),
     // Histórico visual dos últimos 7 resultados (newest = último da lista)
     val recentResults: List<ResultMark> = emptyList(),
-    // D3: alerta de falha consecutiva (dispara na 3ª seguida)
-    val showConsecutiveFailureAlert: Boolean = false,
+    // Flow adaptativo — sem popups
+    val consecutiveFails: Int = 0,           // engine já baixa dificuldade no backend aos 3
+    val difficultyAdapted: Boolean = false,  // indicador sutil: dificuldade foi reduzida
+    val masteryDetected: Boolean = false,    // 5 corretos seguidos → sugerir próximo tema
+    val suggestedNextSkill: String? = null,  // skill sugerida (linear na árvore)
 )
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
@@ -198,14 +201,19 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startSessionFromDashboard()
     }
 
-    fun applySprintScrollSelection(skillTag: String, density: String, exactCurrent: Boolean, field: FolhaField?) {
-        val fieldSkill = field?.skillTags?.firstOrNull() ?: skillTag
-        val chosenSkill = if (exactCurrent) fieldSkill else skillTag
+    fun applySprintScrollSelection(
+        skillTag: String,
+        density: String,
+        difficultyStart: Double?,   // null = engine decide (auto)
+        field: FolhaField?,
+    ) {
+        val chosenSkill = skillTag
         val base = _uiState.value.config.copy(
             skillPin = null,
             templatePin = null,
             focusSourceExerciseId = null,
         )
+        val exactCurrent = false   // "exato" agora é opção de dificuldade no scroll
         val selectedConfig = if (exactCurrent && field?.templateId != null) {
             base.copy(
                 skillPin = chosenSkill,
@@ -219,16 +227,21 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 fixationDensity = "exata",
             )
         } else {
-            densityToConfig(density, base)
+            val densityConfig = densityToConfig(density, base)
+            // Aplica dificuldade manual se o usuário escolheu explicitamente (não "auto")
+            if (difficultyStart != null) densityConfig.copy(difficultyStart = difficultyStart)
+            else densityConfig
         }
 
         _uiState.update {
             it.copy(
                 selectedSkillTag = chosenSkill,
-                densityLevel = if (exactCurrent) "exact" else density,
+                densityLevel = density,
                 config = selectedConfig,
                 apiStatus = ApiStatus.CONNECTING,
                 errorMessage = null,
+                masteryDetected = false,
+                suggestedNextSkill = null,
             )
         }
         startSessionFromDashboard()
@@ -282,7 +295,6 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         sessionCorrect = 0,
                         sessionTotal = 0,
                         recentResults = emptyList(),
-                        showConsecutiveFailureAlert = false,
                     )
                 }
                 fetchHistory()
@@ -356,10 +368,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 }
                 _uiState.update {
                     val updatedRecent = (it.recentResults + mark).takeLast(7)
-                    val consecutiveFails = updatedRecent
-                        .reversed()
-                        .takeWhile { m -> m == ResultMark.WRONG }
-                        .size
+                    val fails = updatedRecent.reversed().takeWhile { m -> m == ResultMark.WRONG }.size
+                    val corrects = updatedRecent.reversed().takeWhile { m -> m == ResultMark.CORRECT }.size
+                    // 5 corretos seguidos → mastery: sugere próximo tema, mas usuário decide
+                    val mastery = corrects >= 5
+                    val nextSkill = if (mastery && !it.masteryDetected) nextSkillInTree(it.selectedSkillTag) else it.suggestedNextSkill
                     it.copy(
                         lastResult = res,
                         status = if (finished) SessionStatus.FINISHED else SessionStatus.RESULT,
@@ -367,8 +380,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         sessionCorrect = it.sessionCorrect + folhaCorrect,
                         sessionTotal = it.sessionTotal + folhaTotal,
                         recentResults = updatedRecent,
-                        // D3: mostra alerta exatamente na 3ª falha seguida
-                        showConsecutiveFailureAlert = consecutiveFails == 3,
+                        consecutiveFails = fails,
+                        difficultyAdapted = fails >= 3,   // backend já adapta; só mostramos ponto sutil
+                        masteryDetected = mastery,
+                        suggestedNextSkill = nextSkill,
                     )
                 }
                 fetchSkillProgress()
@@ -395,8 +410,19 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(status = SessionStatus.ACTIVE) }
     }
 
-    fun dismissConsecutiveFailureAlert() {
-        _uiState.update { it.copy(showConsecutiveFailureAlert = false) }
+    fun dismissMasterySuggestion() {
+        _uiState.update { it.copy(masteryDetected = false, suggestedNextSkill = null) }
+    }
+
+    fun advanceToNextSkill() {
+        val next = _uiState.value.suggestedNextSkill ?: return
+        dismissMasterySuggestion()
+        selectSkill(next)
+    }
+
+    private fun nextSkillInTree(current: String): String? {
+        val idx = SKILL_SEQUENCE.indexOf(current)
+        return if (idx in 0 until SKILL_SEQUENCE.lastIndex) SKILL_SEQUENCE[idx + 1] else null
     }
 
     fun resetToConfig() {
@@ -515,5 +541,24 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         "high" -> base.copy(difficultyStep = 0.8, focusMode = true, difficultyBlockSize = 15, focusTargetCount = 150, exercisesPerPage = 1, fixationDensity = "leve")
         "low"  -> base.copy(difficultyStep = 0.25, focusMode = true, difficultyBlockSize = 60, focusTargetCount = 600, exercisesPerPage = 1, fixationDensity = "densa")
         else   -> base.copy(difficultyStep = 0.5, focusMode = true, difficultyBlockSize = 30, focusTargetCount = 300, exercisesPerPage = 1, fixationDensity = "fixa")
+    }
+
+    companion object {
+        /** Ordem linear da árvore — usada para sugerir próximo tema no mastery. */
+        val SKILL_SEQUENCE = listOf(
+            "soma_subtracao", "multiplicacao_divisao", "fracoes_decimais",
+            "porcentagem_razao", "potenciacao_radiciacao",
+            "equacoes_lineares", "sistemas_equacoes", "fatoracao_produtos_notaveis",
+            "inequacoes", "equacoes_quadraticas",
+            "funcao_afim", "funcao_quadratica", "funcao_exponencial",
+            "funcao_logaritmica", "funcao_modular",
+            "geometria_plana", "geometria_espacial", "geometria_analitica",
+            "progressoes_pa_pg", "combinatoria", "probabilidade",
+            "trig_razoes", "trig_seno_cosseno_tangente", "trig_identidades", "trig_equacoes",
+            "nocao_de_limite", "continuidade", "derivadas_basicas",
+            "derivadas_regra_cadeia", "derivadas_produto_quociente",
+            "aplicacoes_derivadas", "integrais_indefinidas",
+            "integrais_definidas", "aplicacoes_integrais",
+        )
     }
 }

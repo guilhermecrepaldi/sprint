@@ -72,7 +72,7 @@ fun FolhaScreen(
     onAdvance: () -> Unit,
     selectedSkillTag: String = "soma_subtracao",
     densityLevel: String = "medium",
-    onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, field: FolhaField) -> Unit = { _, _, _, _ -> },
+    onApplySprintScrollSelection: (skillTag: String, density: String, difficultyStart: Double?, field: FolhaField?) -> Unit = { _, _, _, _ -> },
     onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
@@ -87,6 +87,12 @@ fun FolhaScreen(
     gestureConfig: GestureConfig = GestureConfig(),
     retrySignal: Int = 0,
     recentResults: List<ResultMark> = emptyList(),
+    skillAccuracy: Map<String, Float> = emptyMap(),
+    masteryDetected: Boolean = false,
+    suggestedNextSkill: String? = null,
+    difficultyAdapted: Boolean = false,
+    onDismissMastery: () -> Unit = {},
+    onAdvanceToNextSkill: () -> Unit = {},
 ) {
     val field = folha.fields[currentExerciseIndex]
     // retrySignal muda quando o usuário erra + requireCorrectToAdvance=true — força recomposição do canvas.
@@ -117,13 +123,13 @@ fun FolhaScreen(
         ) {
             if (showSprintScrolls.value) {
                 SprintScrollConfigPage(
-                    currentField = field,
                     selectedSkillTag = selectedSkillTag,
                     densityLevel = densityLevel,
+                    skillAccuracy = skillAccuracy,
                     modifier = Modifier.fillMaxSize(),
-                    onApply = { skill, density, exact ->
+                    onApply = { skill, density, difficultyStart ->
                         showSprintScrolls.value = false
-                        onApplySprintScrollSelection(skill, density, exact, field)
+                        onApplySprintScrollSelection(skill, density, difficultyStart, field)
                     },
                 )
             } else {
@@ -187,6 +193,30 @@ fun FolhaScreen(
                         .align(Alignment.CenterEnd)
                         .padding(end = 92.dp),
                 )
+            }
+            // Mastery chip — 5 corretos seguidos, sugestão não-bloqueante
+            if (!showSprintScrolls.value && masteryDetected && suggestedNextSkill != null) {
+                MasteryChip(
+                    nextSkill = suggestedNextSkill,
+                    onAdvance = onAdvanceToNextSkill,
+                    onDismiss = onDismissMastery,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = Spacing.sm),
+                )
+            }
+            // Ponto sutil quando dificuldade foi reduzida automaticamente
+            if (!showSprintScrolls.value && difficultyAdapted) {
+                Canvas(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = Spacing.md + 28.dp, end = Spacing.md),
+                ) {
+                    drawCircle(
+                        color = androidx.compose.ui.graphics.Color(0xFF888888).copy(alpha = 0.30f),
+                        radius = 3.dp.toPx(),
+                    )
+                }
             }
             // Histórico visual dos últimos 7 resultados — canto inferior esquerdo
             if (!showSprintScrolls.value && recentResults.isNotEmpty()) {
@@ -275,6 +305,75 @@ private fun ResultHistoryRow(
     }
 }
 
+/**
+ * Chip não-bloqueante que aparece quando o aluno acerta 5 seguidos.
+ * Sugere avançar para o próximo tema, mas o usuário decide.
+ */
+@Composable
+private fun MasteryChip(
+    nextSkill: String,
+    onAdvance: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = nextSkill.replace('_', ' ')
+    val ink = MaterialTheme.colorScheme.onBackground
+    Row(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
+                shape = RoundedCornerShape(20.dp),
+            )
+            .border(1.dp, ink.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            letterSpacing = 0.sp,
+            color = ink.copy(alpha = 0.45f),
+        )
+        Text(
+            text = "→",
+            fontSize = 13.sp,
+            letterSpacing = 0.sp,
+            color = ink.copy(alpha = 0.60f),
+            modifier = Modifier
+                .pointerInput(onAdvance) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        onAdvance()
+                    }
+                }
+                .padding(horizontal = 2.dp),
+        )
+        Text(
+            text = "×",
+            fontSize = 13.sp,
+            letterSpacing = 0.sp,
+            color = ink.copy(alpha = 0.30f),
+            modifier = Modifier
+                .pointerInput(onDismiss) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        onDismiss()
+                    }
+                }
+                .padding(horizontal = 2.dp),
+        )
+    }
+}
+
+private val SPRINT_DIFFICULTIES = listOf(
+    "auto"  to "auto",
+    "1.0"   to "fácil",
+    "3.0"   to "médio",
+    "5.5"   to "difícil",
+    "8.0"   to "expert",
+)
+
 private val SPRINT_SKILLS = listOf(
     "soma_subtracao" to "soma",
     "multiplicacao_divisao" to "mult",
@@ -301,20 +400,19 @@ private val SPRINT_DENSITIES = listOf(
 
 @Composable
 private fun SprintScrollConfigPage(
-    currentField: FolhaField,
     selectedSkillTag: String,
     densityLevel: String,
-    onApply: (skillTag: String, density: String, exactCurrent: Boolean) -> Unit,
+    skillAccuracy: Map<String, Float>,
+    onApply: (skillTag: String, density: String, difficultyStart: Double?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val initialSkill = selectedSkillTag.takeIf { tag -> SPRINT_SKILLS.any { it.first == tag } }
-        ?: currentField.skillTags.firstOrNull()
         ?: SPRINT_SKILLS.first().first
     val selectedSkill = remember { mutableStateOf(initialSkill) }
     val selectedDensity = remember { mutableStateOf(densityLevel.takeIf { it in listOf("high", "medium", "low") } ?: "medium") }
-    // Padrão "tema" — o usuário escolhe a skill no scroll e ela é aplicada.
-    // "exato" só faz sentido quando o aluno quer praticar EXATAMENTE o template atual.
-    val exactCurrent = remember { mutableStateOf(false) }
+    val selectedDifficulty = remember { mutableStateOf("auto") }
+
+    val ink = MaterialTheme.colorScheme.onBackground
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(
@@ -329,6 +427,19 @@ private fun SprintScrollConfigPage(
                 selectedKey = selectedSkill.value,
                 onSelected = { selectedSkill.value = it },
             )
+            // Accuracy do tema selecionado — exibida discretamente abaixo do scroll
+            val acc = skillAccuracy[selectedSkill.value]
+            if (acc != null) {
+                val pct = (acc * 100).toInt()
+                Text(
+                    text = "$pct% acerto",
+                    fontSize = 9.sp,
+                    letterSpacing = 0.sp,
+                    color = ink.copy(alpha = 0.22f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             SprintScrollRow(
                 label = "densidade",
                 options = SPRINT_DENSITIES,
@@ -336,15 +447,21 @@ private fun SprintScrollConfigPage(
                 onSelected = { selectedDensity.value = it },
             )
             SprintScrollRow(
-                label = "zoom",
-                options = listOf("theme" to "tema", "exact" to "exato"),
-                selectedKey = if (exactCurrent.value) "exact" else "theme",
-                onSelected = { exactCurrent.value = it == "exact" },
+                label = "dificuldade",
+                options = SPRINT_DIFFICULTIES,
+                selectedKey = selectedDifficulty.value,
+                onSelected = { selectedDifficulty.value = it },
             )
         }
         EnterSquare(
-            onAdvance = { onApply(selectedSkill.value, selectedDensity.value, exactCurrent.value) },
-            onTripleTap = { onApply(selectedSkill.value, selectedDensity.value, exactCurrent.value) },
+            onAdvance = {
+                val diff = selectedDifficulty.value.toDoubleOrNull()
+                onApply(selectedSkill.value, selectedDensity.value, diff)
+            },
+            onTripleTap = {
+                val diff = selectedDifficulty.value.toDoubleOrNull()
+                onApply(selectedSkill.value, selectedDensity.value, diff)
+            },
             onRegisterVisibilityChange = {},
             modifier = Modifier
                 .align(Alignment.CenterEnd)
