@@ -10,6 +10,8 @@ Inspiracao principal: Kumon, mas com escrita digital, telemetria, analise de flu
 
 O aluno aprende por resolucao repetida, graduada e parametrizada. Cada exercicio feito vira dado: resposta, tempo, escrita, apagamentos, pausa, dificuldade, template, tema, acerto, erro e contexto da sessao.
 
+Regra central do motor: a engine sugere, sinaliza e mede; ela nao muda tema, densidade, zoom ou dificuldade como decisao oculta. Mudancas de Sprint devem ser confirmadas pelo usuario.
+
 ## Experiencia central
 
 A tela inicial real e a aba Sprint. Ela deve mostrar somente:
@@ -50,6 +52,8 @@ Existem dois modos de foco:
 
 Exemplo esperado: se o aluno esta em potencia dificil e quer fixar aquele formato, ele aumenta a densidade daquele exercicio exato. O sistema cria ou seleciona cerca de 200 variacoes extremamente semelhantes, mudando parametros sem mudar o metodo mental principal.
 
+`zoom exato` e escolha explicita. Nao substituir por dificuldade manual. O aluno pode escolher tema/densidade/zoom/dificuldade nos scrolls secundarios.
+
 ## Arquitetura atual
 
 - Android/Kotlin/Jetpack Compose em `app/`.
@@ -68,6 +72,14 @@ Exemplo esperado: se o aluno esta em potencia dificil e quer fixar aquele format
 - `difficulty_block_size`: tamanho do bloco antes da dificuldade mudar.
 - `difficulty_step`: velocidade de progressao.
 - `fixation_density`: densidade registrada da sessao (`leve`, `fixa`, `densa`, `exata`).
+
+## Score e sugestoes
+
+- 5 erros consecutivos disparam alerta discreto: `5 erros consecutivos podem afetar seu score. Deseja permanecer nesta Sprint?`
+- `permanecer` mantem a Sprint exatamente como esta.
+- `ajustar` abre controles de tema/densidade/zoom/dificuldade para o usuario escolher.
+- A engine nao reduz dificuldade automaticamente por erro consecutivo.
+- Mastery/acertos seguidos podem sugerir proximo tema, mas so avancam por toque do usuario.
 
 ## Contrato de escrita e submissao
 

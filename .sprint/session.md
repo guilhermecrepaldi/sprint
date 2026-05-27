@@ -64,6 +64,28 @@ Pass rate: 100%
 - [x] [QA] Backend: 32/34 skills com < 3 templates estruturais — gap documentado para Gemini
 - [x] [BUILD] BUILD SUCCESSFUL (lote 4)
 
+## ✅ Concluídas (sprint 2026-05-26 lote 8)
+
+- [x] [CODE] MasteryChip: chip não-bloqueante no topo ao detectar 5 acertos seguidos (→ avança, × descarta)
+- [x] [CODE] SprintScrollConfigPage: "zoom" row substituída por "dificuldade" (auto/fácil/médio/difícil/expert)
+- [x] [CODE] SprintScrollConfigPage: accuracy do tema selecionado exibida discretamente abaixo do scroll
+- [x] [CODE] FolhaScreen: onApplySprintScrollSelection recebe Double? (difficultyStart) ao invés de Boolean
+- [x] [BUGFIX] SessionViewModel: removido showConsecutiveFailureAlert = false órfão em startSession
+- [x] [BUGFIX] MainActivity: removido D3 AlertDialog (referenciava campos inexistentes)
+- [x] [CODE] MainActivity: passa masteryDetected/suggestedNextSkill/difficultyAdapted/onDismissMastery/onAdvanceToNextSkill/skillAccuracy para FolhaScreen
+- [x] [BUILD] BUILD SUCCESSFUL (lote 8) — 51c616f
+- [x] [QA] Simulacao Android resolvida: build/install/launch OK no emulador `emulator-5554`
+- [x] [TOOL] Criado `simular_android.ps1` para subir/verificar backend, instalar, abrir app e capturar crash/screenshot
+- [x] [TOOL] Criado `.run/Sprint Debug.run.xml` para Android Studio exibir Run Configuration compartilhada
+- [x] [BUGFIX] Engine nao reduz dificuldade automaticamente por recovery; erros viram sinalizacao para o usuario
+- [x] [UX] 5 erros consecutivos mostram aviso de score com escolhas `permanecer` e `ajustar`
+- [x] [UX] `ajustar` abre scrolls secundarios; `permanecer` nao altera Sprint
+- [x] [BUGFIX] Zoom exato restaurado nos scrolls secundarios e ligado a `template_pin`/`focus_source_exercise_id`
+- [x] [BUGFIX] ZoomableCanvas nao deixa folha invisivel bloquear toque no mapa
+- [x] [BUGFIX] PlatformMap passa densidades canonicas (`high`, `medium`, `low`)
+- [x] [BUGFIX] `backend/seed/exercises.py` ficou aditivo/idempotente e nao apaga attempts/historico
+- [x] [DOCS] Specs, handoff e handoff Gemini atualizados para regra: engine sugere, usuario decide
+
 ## ✅ Concluídas (sprint 2026-05-26 lote 5)
 
 - [x] [BUGFIX] FolhaScreen: exactCurrent defaultava true (templateId != null sempre), skill selecionada nunca aplicada — fix: default false
@@ -115,6 +137,9 @@ Pass rate: 100%
 - [ARCH] Registro de acerto/erro acontece por exercício no Sprint, nao por lote visual
 - [BUGFIX] Como `exercisesPerPage = 1`, `fieldIndex` fica sempre 0; nunca usar apenas `fieldIndex` como chave visual do canvas
 - [BUGFIX] Para escrita matemática, não usar detector com touch slop no canvas principal; números pequenos, pontos e sinais precisam ser registrados imediatamente no down
+- [ARCH] Engine sugere, nao decide: mudancas de tema/densidade/zoom/dificuldade dependem de escolha do usuario
+- [UX] 5 erros consecutivos alertam sobre score; permanecer mantem Sprint; ajustar abre scrolls
+- [ARCH] Seeds e geracao Gemini devem ser aditivos; nunca apagar historico/attempts/pen_events
 - [UX] requireCorrectToAdvance: toggle discreto lock/unlock no canto superior direito do exercício ativo
 - [UX] Histórico de resultados: ○□× crescentes, canvas-drawn, canto inferior esquerdo
 - [UX] Haptic: leve no acerto, forte no erro
@@ -126,6 +151,9 @@ Pass rate: 100%
 
 [ ] Split ratio persistence (Prioridade 4)
 [ ] QA emulador: fluxo completo de escrita → avanço → histórico → retry
+[ ] QA Android Studio UI: abrir `Sprint Debug` e confirmar que aparece no seletor de Run Configurations
+[ ] QA fluxo score: forçar 5 erros seguidos e confirmar aviso sem auto-adaptacao
+[ ] QA zoom exato: escolher zoom `exato` e confirmar historico com densidade `exata`
 [ ] ZoomableCanvas (Prioridade baixa — feature futura)
 
 ## Log de lotes

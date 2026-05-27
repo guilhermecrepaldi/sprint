@@ -7,6 +7,7 @@
 - Garantir registro confiavel de cada tentativa.
 - Expandir biblioteca parametrica de exercicios por tema/template.
 - Validar densidade por tema e zoom exato por exercicio.
+- Garantir que a engine apenas sugira; mudancas de Sprint dependem do usuario.
 
 ## Proximo bloco
 
@@ -18,6 +19,9 @@
 - Persistir altura do divisor por exercicio/sessao.
 - Registrar no backend quando a sessao usa densidade leve/fixa/densa/exata.
 - Expor no historico: tema, template, densidade, tempo, acertos, erros, OCR e confianca.
+- Validar aviso de score apos 5 erros consecutivos.
+- Validar que `permanecer` nao altera dificuldade/tema/zoom.
+- Validar que `ajustar` abre scrolls secundarios.
 
 ## Biblioteca de exercicios
 
@@ -45,6 +49,7 @@
 - Backend: manter `python -m unittest` verde.
 - Android: manter `.\gradlew.bat :app:assembleDebug` verde.
 - Testar em emulador/tablet antes de considerar UX concluida.
+- Seeds e geracao de exercicios devem ser idempotentes/aditivos, sem apagar historico.
 
 ## Nao agora
 

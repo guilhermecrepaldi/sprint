@@ -5,15 +5,12 @@ import asyncio
 import sys
 from pathlib import Path
 
-from sqlalchemy import select, delete
+from sqlalchemy import select
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from db import AsyncSessionLocal
 from models.exercise import Exercise
-from models.attempt import ExerciseAttempt, PenEvent
-from models.session import FolhaExercise
-from models.vector import CognitiveVector
 
 EXERCISES = [
     # ── soma_subtracao ────────────────────────────────────────────────────────
@@ -410,41 +407,6 @@ _DEFAULTS = {
 
 async def main() -> None:
     async with AsyncSessionLocal() as db:
-        # Obter IDs dos exercícios seed_v1
-        old_ids_result = await db.execute(
-            select(Exercise.id).where(Exercise.source_library == "seed_v1")
-        )
-        old_ids = list(old_ids_result.scalars().all())
-
-        if old_ids:
-            # Obter attempt IDs referenciando esses exercícios
-            att_result = await db.execute(
-                select(ExerciseAttempt.id).where(ExerciseAttempt.exercise_id.in_(old_ids))
-            )
-            att_ids = list(att_result.scalars().all())
-
-            # Deletar netos (pen_events, cognitive_vectors) antes dos attempts
-            if att_ids:
-                await db.execute(
-                    delete(PenEvent).where(PenEvent.attempt_id.in_(att_ids))
-                )
-                await db.execute(
-                    delete(CognitiveVector).where(CognitiveVector.attempt_id.in_(att_ids))
-                )
-
-            # Deletar filhos (attempts, folha_exercises) antes dos exercises
-            await db.execute(
-                delete(ExerciseAttempt).where(ExerciseAttempt.exercise_id.in_(old_ids))
-            )
-            await db.execute(
-                delete(FolhaExercise).where(FolhaExercise.exercise_id.in_(old_ids))
-            )
-            await db.execute(
-                delete(Exercise).where(Exercise.id.in_(old_ids))
-            )
-            await db.commit()
-            print(f"Seed v1: {len(old_ids)} exercícios e seus dados removidos.")
-
         statements = [item["statement"] for item in EXERCISES]
         existing = await db.execute(
             select(Exercise.statement).where(Exercise.statement.in_(statements))

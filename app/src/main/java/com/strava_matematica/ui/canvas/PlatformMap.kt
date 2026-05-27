@@ -59,7 +59,11 @@ private val PREREQ_TREE: Map<String, List<String>> = mapOf(
     "aplicacoes_integrais"        to listOf("integrais_definidas"),
 )
 
-private val MODES = listOf("Fixação", "Simulado", "Maratona")
+private val MODES = listOf(
+    "medium" to "Fixação",
+    "high" to "Simulado",
+    "low" to "Maratona",
+)
 
 // Skills unlocked by a given skill (reverse lookup)
 private fun unlockedBy(skill: String): List<String> =
@@ -147,7 +151,7 @@ fun PlatformMap(
                         val x = cx + (i - 1) * spacingXPx
                         val y = cy - spacingYPx * 2.2f
                         if ((tap - Offset(x, y)).getDistance() < nodeRadiusPx * 2f) {
-                            onModeSelect(mode.lowercase())
+                            onModeSelect(mode.first)
                             return@detectTapGestures
                         }
                     }
@@ -192,7 +196,7 @@ fun PlatformMap(
         MODES.forEachIndexed { i, mode ->
             val x = cx + (i - 1) * spacingXPx
             val y = cy - spacingYPx * 2.2f
-            drawMapLabel(measurer, mode, Offset(x, y), CanvasColors.TextSecondary, 13.sp)
+            drawMapLabel(measurer, mode.second, Offset(x, y), CanvasColors.TextSecondary, 13.sp)
         }
 
         // ── Draw review nodes ─────────────────────────────────────────────────
@@ -284,4 +288,3 @@ private fun DrawScope.drawMapLabel(
         topLeft = Offset(topCenter.x - result.size.width / 2f, topCenter.y),
     )
 }
-

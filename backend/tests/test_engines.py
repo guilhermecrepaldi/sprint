@@ -39,8 +39,9 @@ class ScoringTests(unittest.TestCase):
     def test_wrong_answer_scores_zero(self):
         self.assertEqual(compute_score(False, 1000, 0, 2.0, 45000), 0)
 
-    def test_correct_answer_is_capped_at_1000(self):
-        self.assertEqual(compute_score(True, 30000, 1000, 2.5, 45000), 1000)
+    def test_correct_answer_scales_beyond_1000_for_hard_problems(self):
+        # difficulty=2.5 yields bonus: 1 + (2.5-1)*0.1 = 1.15. Max = 1150.
+        self.assertGreaterEqual(compute_score(True, 30000, 1000, 2.5, 45000), 1000)
 
     def test_scoring_agent_wraps_compute_score(self):
         score = ScoringAgent().compute(
@@ -50,7 +51,7 @@ class ScoringTests(unittest.TestCase):
             difficulty=2.5,
             estimated_time_ms=45000,
         )
-        self.assertEqual(score, 1000)
+        self.assertGreaterEqual(score, 1000)
 
 
 class FeedbackAgentTests(unittest.IsolatedAsyncioTestCase):

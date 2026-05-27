@@ -71,10 +71,11 @@ data class SessionUiState(
     val sprintHistory: List<SprintHistoryItem> = emptyList(),
     // Histórico visual dos últimos 7 resultados (newest = último da lista)
     val recentResults: List<ResultMark> = emptyList(),
-    // Flow adaptativo — sem popups
-    val consecutiveFails: Int = 0,           // engine já baixa dificuldade no backend aos 3
-    val difficultyAdapted: Boolean = false,  // indicador sutil: dificuldade foi reduzida
-    val masteryDetected: Boolean = false,    // 5 corretos seguidos → sugerir próximo tema
+    // Flow adaptativo: engine sinaliza, usuario decide.
+    val consecutiveFails: Int = 0,
+    val scoreRiskVisible: Boolean = false,
+    val scoreRiskDismissedAt: Int? = null,
+    val masteryDetected: Boolean = false,    // 5 corretos seguidos -> sugerir próximo tema
     val suggestedNextSkill: String? = null,  // skill sugerida (linear na árvore)
 )
 
@@ -167,8 +168,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectDensity(level: String) {
+        val normalized = when (level) {
+            "simulado" -> "high"
+            "fixação", "fixacao" -> "medium"
+            "maratona" -> "low"
+            else -> level
+        }
         _uiState.update { it.copy(
-            densityLevel = level,
+            densityLevel = normalized,
             config = it.config.copy(exercisesPerPage = 1),
         ) }
     }
@@ -204,7 +211,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     fun applySprintScrollSelection(
         skillTag: String,
         density: String,
-        difficultyStart: Double?,   // null = engine decide (auto)
+        exactCurrent: Boolean,
+        difficultyStart: Double?,
         field: FolhaField?,
     ) {
         val chosenSkill = skillTag
@@ -212,8 +220,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             skillPin = null,
             templatePin = null,
             focusSourceExerciseId = null,
+            difficultyStart = SessionConfig().difficultyStart,
         )
-        val exactCurrent = false   // "exato" agora é opção de dificuldade no scroll
         val selectedConfig = if (exactCurrent && field?.templateId != null) {
             base.copy(
                 skillPin = chosenSkill,
@@ -228,7 +236,6 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             )
         } else {
             val densityConfig = densityToConfig(density, base)
-            // Aplica dificuldade manual se o usuário escolheu explicitamente (não "auto")
             if (difficultyStart != null) densityConfig.copy(difficultyStart = difficultyStart)
             else densityConfig
         }
@@ -240,6 +247,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 config = selectedConfig,
                 apiStatus = ApiStatus.CONNECTING,
                 errorMessage = null,
+                scoreRiskVisible = false,
+                scoreRiskDismissedAt = null,
                 masteryDetected = false,
                 suggestedNextSkill = null,
             )
@@ -295,6 +304,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         sessionCorrect = 0,
                         sessionTotal = 0,
                         recentResults = emptyList(),
+                        consecutiveFails = 0,
+                        scoreRiskVisible = false,
+                        scoreRiskDismissedAt = null,
+                        masteryDetected = false,
+                        suggestedNextSkill = null,
                     )
                 }
                 fetchHistory()
@@ -370,9 +384,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     val updatedRecent = (it.recentResults + mark).takeLast(7)
                     val fails = updatedRecent.reversed().takeWhile { m -> m == ResultMark.WRONG }.size
                     val corrects = updatedRecent.reversed().takeWhile { m -> m == ResultMark.CORRECT }.size
-                    // 5 corretos seguidos → mastery: sugere próximo tema, mas usuário decide
+                    // 5 corretos seguidos -> mastery: sugere próximo tema, mas usuário decide.
                     val mastery = corrects >= 5
                     val nextSkill = if (mastery && !it.masteryDetected) nextSkillInTree(it.selectedSkillTag) else it.suggestedNextSkill
+                    val dismissedAt = if (fails == 0) null else it.scoreRiskDismissedAt
+                    val showScoreRisk = fails >= 5 && dismissedAt != fails
                     it.copy(
                         lastResult = res,
                         status = if (finished) SessionStatus.FINISHED else SessionStatus.RESULT,
@@ -381,7 +397,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         sessionTotal = it.sessionTotal + folhaTotal,
                         recentResults = updatedRecent,
                         consecutiveFails = fails,
-                        difficultyAdapted = fails >= 3,   // backend já adapta; só mostramos ponto sutil
+                        scoreRiskVisible = showScoreRisk,
+                        scoreRiskDismissedAt = dismissedAt,
                         masteryDetected = mastery,
                         suggestedNextSkill = nextSkill,
                     )
@@ -412,6 +429,24 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun dismissMasterySuggestion() {
         _uiState.update { it.copy(masteryDetected = false, suggestedNextSkill = null) }
+    }
+
+    fun stayInCurrentSprintAfterScoreWarning() {
+        _uiState.update {
+            it.copy(
+                scoreRiskVisible = false,
+                scoreRiskDismissedAt = it.consecutiveFails,
+            )
+        }
+    }
+
+    fun adjustSprintAfterScoreWarning() {
+        _uiState.update {
+            it.copy(
+                scoreRiskVisible = false,
+                scoreRiskDismissedAt = it.consecutiveFails,
+            )
+        }
     }
 
     fun advanceToNextSkill() {

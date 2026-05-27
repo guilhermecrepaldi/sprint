@@ -13,6 +13,7 @@ Validar e estabilizar o fluxo central da Sprint:
 - app avanca sem bloquear;
 - proxima resposta vem limpa;
 - Painel/Perfil refletem exercicios realmente feitos.
+- engine sinaliza risco/sugestao sem decidir pelo usuario.
 
 Nao mexer agora na biblioteca ampla de exercicios, salvo se o usuario pedir explicitamente.
 
@@ -58,6 +59,13 @@ Backend:
    - Incorreto: texto reconhecido em vermelho.
    - Se nao leu: informar discretamente.
 
+6. Sugestao sem decisao automatica:
+   - 5 erros consecutivos mostram alerta de score.
+   - `permanecer` nao altera nada.
+   - `ajustar` abre scrolls secundarios.
+   - Backend nao deve reduzir dificuldade sozinho em recovery.
+   - 5 acertos seguidos podem sugerir proximo tema, mas nao trocar automaticamente.
+
 ## Contrato de UX da Sprint
 
 Na aba Sprint, manter apenas:
@@ -77,6 +85,7 @@ Gestos atuais:
 - enter toque: confirmar/avancar;
 - enter segurado: registro da sessao;
 - enter triplo toque: tela de scrolls secundarios;
+- scrolls secundarios: tema, densidade, zoom e dificuldade;
 - bolinha esquerda: ajustar altura do rascunho/resposta;
 - dois dedos: avancar, se configurado;
 - segurar na folha: borracha, se configurado.
@@ -127,6 +136,8 @@ Se aparecer `unauthorized`, desbloquear o tablet e aceitar a permissao. Se nao a
 - Backend/OCR pode interpretar errado mesmo quando o canvas funciona.
 - Historico depende do backend ativo e do banco/migrations estarem coerentes.
 - A arvore pode iniciar skill nova, mas o usuario precisa ver isso refletido no Sprint imediatamente.
+- Seeds e geracao Gemini devem ser aditivos; nunca apagar attempts, pen_events ou historico.
+- Se alterar biblioteca, preservar `template_id`, `difficulty_vector` e metadados de progressao.
 
 ## Proxima tarefa recomendada
 
@@ -138,3 +149,4 @@ Fazer QA funcional no emulador/tablet e corrigir o primeiro ponto real que falha
 4. feedback mostra interpretacao;
 5. Painel registra;
 6. Arvore troca Sprint.
+7. 5 erros seguidos mostram alerta de score sem alterar a dificuldade sozinho.

@@ -72,7 +72,7 @@ fun FolhaScreen(
     onAdvance: () -> Unit,
     selectedSkillTag: String = "soma_subtracao",
     densityLevel: String = "medium",
-    onApplySprintScrollSelection: (skillTag: String, density: String, difficultyStart: Double?, field: FolhaField?) -> Unit = { _, _, _, _ -> },
+    onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, field: FolhaField?) -> Unit = { _, _, _, _, _ -> },
     onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
@@ -90,9 +90,11 @@ fun FolhaScreen(
     skillAccuracy: Map<String, Float> = emptyMap(),
     masteryDetected: Boolean = false,
     suggestedNextSkill: String? = null,
-    difficultyAdapted: Boolean = false,
+    scoreRiskVisible: Boolean = false,
     onDismissMastery: () -> Unit = {},
     onAdvanceToNextSkill: () -> Unit = {},
+    onStayInSprintAfterScoreWarning: () -> Unit = {},
+    onAdjustSprintAfterScoreWarning: () -> Unit = {},
 ) {
     val field = folha.fields[currentExerciseIndex]
     // retrySignal muda quando o usuário erra + requireCorrectToAdvance=true — força recomposição do canvas.
@@ -127,9 +129,9 @@ fun FolhaScreen(
                     densityLevel = densityLevel,
                     skillAccuracy = skillAccuracy,
                     modifier = Modifier.fillMaxSize(),
-                    onApply = { skill, density, difficultyStart ->
+                    onApply = { skill, density, exactCurrent, difficultyStart ->
                         showSprintScrolls.value = false
-                        onApplySprintScrollSelection(skill, density, difficultyStart, field)
+                        onApplySprintScrollSelection(skill, density, exactCurrent, difficultyStart, field)
                     },
                 )
             } else {
@@ -205,18 +207,17 @@ fun FolhaScreen(
                         .padding(top = Spacing.sm),
                 )
             }
-            // Ponto sutil quando dificuldade foi reduzida automaticamente
-            if (!showSprintScrolls.value && difficultyAdapted) {
-                Canvas(
+            if (!showSprintScrolls.value && scoreRiskVisible) {
+                ScoreRiskChip(
+                    onStay = onStayInSprintAfterScoreWarning,
+                    onAdjust = {
+                        onAdjustSprintAfterScoreWarning()
+                        showSprintScrolls.value = true
+                    },
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = Spacing.md + 28.dp, end = Spacing.md),
-                ) {
-                    drawCircle(
-                        color = androidx.compose.ui.graphics.Color(0xFF888888).copy(alpha = 0.30f),
-                        radius = 3.dp.toPx(),
-                    )
-                }
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = Spacing.md + 42.dp),
+                )
             }
             // Histórico visual dos últimos 7 resultados — canto inferior esquerdo
             if (!showSprintScrolls.value && recentResults.isNotEmpty()) {
@@ -245,6 +246,67 @@ fun FolhaScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ScoreRiskChip(
+    onStay: () -> Unit,
+    onAdjust: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Column(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.94f),
+                shape = RoundedCornerShape(8.dp),
+            )
+            .border(1.dp, ink.copy(alpha = 0.10f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = "5 erros consecutivos podem afetar seu score",
+            fontSize = 11.sp,
+            letterSpacing = 0.sp,
+            color = ink.copy(alpha = 0.46f),
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = "permanecer nesta Sprint?",
+            fontSize = 10.sp,
+            letterSpacing = 0.sp,
+            color = ink.copy(alpha = 0.32f),
+            textAlign = TextAlign.Center,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(
+                text = "permanecer",
+                fontSize = 10.sp,
+                letterSpacing = 0.sp,
+                color = ink.copy(alpha = 0.46f),
+                modifier = Modifier.pointerInput(onStay) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        onStay()
+                    }
+                },
+            )
+            Text(
+                text = "ajustar",
+                fontSize = 10.sp,
+                letterSpacing = 0.sp,
+                color = ink.copy(alpha = 0.62f),
+                modifier = Modifier.pointerInput(onAdjust) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        onAdjust()
+                    }
+                },
+            )
         }
     }
 }
@@ -398,18 +460,24 @@ private val SPRINT_DENSITIES = listOf(
     "low" to "densa",
 )
 
+private val SPRINT_ZOOMS = listOf(
+    "theme" to "tema",
+    "exact" to "exato",
+)
+
 @Composable
 private fun SprintScrollConfigPage(
     selectedSkillTag: String,
     densityLevel: String,
     skillAccuracy: Map<String, Float>,
-    onApply: (skillTag: String, density: String, difficultyStart: Double?) -> Unit,
+    onApply: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val initialSkill = selectedSkillTag.takeIf { tag -> SPRINT_SKILLS.any { it.first == tag } }
         ?: SPRINT_SKILLS.first().first
     val selectedSkill = remember { mutableStateOf(initialSkill) }
     val selectedDensity = remember { mutableStateOf(densityLevel.takeIf { it in listOf("high", "medium", "low") } ?: "medium") }
+    val selectedZoom = remember { mutableStateOf(if (densityLevel == "exact") "exact" else "theme") }
     val selectedDifficulty = remember { mutableStateOf("auto") }
 
     val ink = MaterialTheme.colorScheme.onBackground
@@ -447,6 +515,12 @@ private fun SprintScrollConfigPage(
                 onSelected = { selectedDensity.value = it },
             )
             SprintScrollRow(
+                label = "zoom",
+                options = SPRINT_ZOOMS,
+                selectedKey = selectedZoom.value,
+                onSelected = { selectedZoom.value = it },
+            )
+            SprintScrollRow(
                 label = "dificuldade",
                 options = SPRINT_DIFFICULTIES,
                 selectedKey = selectedDifficulty.value,
@@ -456,11 +530,11 @@ private fun SprintScrollConfigPage(
         EnterSquare(
             onAdvance = {
                 val diff = selectedDifficulty.value.toDoubleOrNull()
-                onApply(selectedSkill.value, selectedDensity.value, diff)
+                onApply(selectedSkill.value, selectedDensity.value, selectedZoom.value == "exact", diff)
             },
             onTripleTap = {
                 val diff = selectedDifficulty.value.toDoubleOrNull()
-                onApply(selectedSkill.value, selectedDensity.value, diff)
+                onApply(selectedSkill.value, selectedDensity.value, selectedZoom.value == "exact", diff)
             },
             onRegisterVisibilityChange = {},
             modifier = Modifier

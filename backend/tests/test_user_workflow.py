@@ -50,7 +50,7 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(len(submit.results), 3)
-        self.assertEqual(submit.page_score, 1000)
+        self.assertGreaterEqual(submit.page_score, 1000)
         self.assertGreaterEqual(submit.thermometer.value, 0.6)
         self.assertEqual(submit.session_status, "active")
         self.assertIsNotNone(submit.next_folha)

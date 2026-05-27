@@ -101,26 +101,29 @@ fun ZoomableCanvas(
                 }
             },
     ) {
-        // ── Map layer — fades in as the user zooms out ────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha = mapAlpha
-                    translationX = offsetX
-                    translationY = offsetY
-                },
-        ) {
-            mapContent()
+        // Compose only the visible interactive layer; alpha alone still receives touch.
+        if (mapAlpha > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = mapAlpha
+                        translationX = offsetX
+                        translationY = offsetY
+                    },
+            ) {
+                mapContent()
+            }
         }
 
-        // ── Focus layer — fades in as the user zooms in ───────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = focusAlpha },
-        ) {
-            focusContent()
+        if (focusAlpha > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = focusAlpha },
+            ) {
+                focusContent()
+            }
         }
     }
 }

@@ -52,6 +52,7 @@ Triplo toque no enter abre uma tela temporaria minimalista com scrolls:
 - Tema.
 - Densidade.
 - Zoom: tema ou exato.
+- Dificuldade: auto, facil, medio, dificil, expert.
 
 Ao confirmar no enter, aplica a escolha e volta para a Sprint.
 
@@ -108,6 +109,27 @@ Depois de iniciar ou submeter sessao, o app deve atualizar historico e progresso
 O Historico deve mostrar tambem a densidade usada na sessao: leve, fixa, densa ou exata.
 
 Quando a densidade for exata e houver template registrado, o Painel pode mostrar apenas um marcador discreto de zoom. Nao exibir IDs longos de template na interface principal.
+
+## Alertas E Sugestoes
+
+A engine nao decide pelo aluno. Ela pode sinalizar risco e sugerir ajuste.
+
+Depois de 5 erros consecutivos na Sprint atual, mostrar aviso leve:
+
+`5 erros consecutivos podem afetar seu score`
+
+E a pergunta:
+
+`permanecer nesta Sprint?`
+
+Opcoes:
+
+- `permanecer`: fecha o aviso e nao altera nada.
+- `ajustar`: abre os scrolls secundarios; o usuario escolhe tema, densidade, zoom e dificuldade.
+
+Nao reduzir dificuldade, trocar tema ou sair do zoom automaticamente.
+
+Quando houver 5 acertos seguidos, a sugestao de proximo tema pode aparecer como chip discreto, mas so muda de tema se o usuario tocar em avancar.
 
 ## Feedback De Acerto
 

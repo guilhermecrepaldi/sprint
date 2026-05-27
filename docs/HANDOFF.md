@@ -4,7 +4,7 @@
 
 SPRINT e um app Android de treino continuo de matematica. A experiencia principal e a aba Sprint, com exercicio, rascunho, resposta, enter e scroll superior discreto.
 
-Ultima intervencao: bug de escrita na resposta. O canvas agora registra o traco desde o primeiro toque/caneta, sem depender de `detectDragGestures`, e os callbacks salvam traços com `folhaId` explicito para evitar mistura entre exercicios quando `fieldIndex` repete.
+Ultima intervencao: fluxo adaptativo corrigido para regra "engine sugere, usuario decide". 5 erros consecutivos mostram alerta de score com escolha do usuario; zoom exato voltou aos scrolls secundarios; backend nao reduz dificuldade automaticamente por recovery.
 
 ## Decisoes recentes
 
@@ -29,6 +29,12 @@ Ultima intervencao: bug de escrita na resposta. O canvas agora registra o traco 
 - `MainActivity` deve passar `folha.folhaId` para `syncScratch`, `syncAnswer` e `appendEvent`.
 - Submit deve usar o estado mais recente de `FolhaViewModel` e apenas se `folhaId` bater com a folha atual.
 - A chave visual do exercicio e `folhaId + exerciseId + fieldIndex`; nao usar apenas `fieldIndex`, porque no Sprint operacional ele tende a ser sempre 0.
+- Engine nao opta sozinha: nao trocar tema, densidade, zoom ou dificuldade sem escolha do usuario.
+- 5 erros consecutivos mostram aviso de score e permitem permanecer ou abrir ajustes.
+- Mastery/5 acertos seguidos e sugestao nao-bloqueante; so avanca se o usuario tocar.
+- Zoom exato voltou ao scroll secundario e usa `template_pin` + `focus_source_exercise_id`.
+- ZoomableCanvas compoe apenas a camada interativa visivel para o mapa nao ficar bloqueado pela folha invisivel.
+- `backend/seed/exercises.py` nao deve apagar attempts/historico; seeds precisam ser aditivos/idempotentes.
 
 ## Arquivos mais relevantes
 
@@ -40,6 +46,7 @@ Ultima intervencao: bug de escrita na resposta. O canvas agora registra o traco 
 - `backend/engine/adaptive.py`
 - `backend/engine/focus_expansion.py`
 - `backend/seed/generate_exercises.py`
+- `backend/seed/exercises.py`
 - `backend/api/submit.py`
 - `backend/api/activity.py`
 
@@ -62,6 +69,7 @@ Ultima intervencao: bug de escrita na resposta. O canvas agora registra o traco 
 - Enter circular fica sobre a lateral direita; se o usuario escrever muito perto dele, pode parecer que o toque foi roubado. Validar no tablet antes de redesenhar.
 - Gestos no pai (`sprintGestureInput`) usam `PointerEventPass.Initial`; 1 dedo deve passar para o canvas, mas multi-touch acidental pode avancar ou alternar borracha.
 - A area de resposta e a unica enviada para OCR/correcao hoje; rascunho deve ser preservado para historico futuro, mas nao valida resposta.
+- `HANDOFF_GEMINI_GENERATION.md` estava historico, mas foi atualizado com regras atuais para Gemini: gerar exercicios sem tocar no fluxo Sprint e sem seed destrutivo.
 
 ## Proxima acao recomendada
 
@@ -84,3 +92,5 @@ Ajustar sensibilidade de:
 - Arraste da bolinha divisoria.
 - Confirmacao dos scrolls secundarios.
 - Painel mostrando dados depois de submeter uma folha.
+- Aviso de 5 erros consecutivos: permanecer nao altera nada; ajustar abre scrolls.
+- Zoom exato: selecionar `zoom -> exato` deve iniciar nova Sprint com `fixation_density = exata`.

@@ -7,15 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from engine.mastery import apply_decay, update_mastery
 from engine.focus_expansion import ensure_exact_focus_pool
-from engine.unlock import PREREQUISITE_TREE, get_available_skills
+from engine.unlock import get_available_skills
 from models.exercise import Exercise
 from models.session import Folha, FolhaExercise, Session, SessionConfig
 from models.vector import StudentSkillMemory
 from schemas.session import FolhaField, FolhaOut
 
 # ── Thresholds do motor adaptativo ────────────────────────────────────────────
-RECOVERY_CONSECUTIVE_ERRORS = 3     # erros seguidos para ativar recovery
-RECOVERY_DIFFICULTY_FACTOR  = 0.65  # multiplicador de dificuldade no recovery
 REVIEW_INTERVAL_PAGES       = 3     # a cada N folhas, verificar revisão
 REVIEW_MIN_IDLE_DAYS        = 2     # dias sem praticar para entrar em revisão
 REVIEW_MIN_ATTEMPTS         = 5     # mínimo de tentativas para ser elegível a revisão
@@ -52,31 +50,6 @@ def vector_to_memory_status(accuracy: float) -> str:
     if accuracy >= 0.50:
         return "instavel"
     return "fraco"
-
-
-def _consecutive_errors(recent_scores: list[float]) -> int:
-    """Conta erros consecutivos a partir do final da lista de scores."""
-    count = 0
-    for s in reversed(recent_scores):
-        if s < 0.5:
-            count += 1
-        else:
-            break
-    return count
-
-
-def _recovery_skills(skill_memory: dict[str, StudentSkillMemory]) -> list[str]:
-    """
-    Para recovery mode: retorna pré-requisitos das skills praticadas pelo aluno.
-    Se a skill não tem pré-requisitos (raiz da árvore), usa ela mesma.
-    """
-    practiced = [skill for skill, mem in skill_memory.items() if mem.attempt_count > 0]
-    prereqs: set[str] = set()
-    for skill in practiced:
-        parents = PREREQUISITE_TREE.get(skill, [])
-        prereqs.update(parents)
-    # Fallback: se não há pré-requisitos (ex: soma_subtracao), usa as skills praticadas
-    return list(prereqs) if prereqs else practiced
 
 
 def _review_skills(skill_memory: dict[str, StudentSkillMemory], now: datetime) -> list[str]:
@@ -458,21 +431,17 @@ async def get_next_folha(
         )
         return folha, exercises, restart
 
-    # ── Recovery mode: erros consecutivos → pré-requisitos + dificuldade reduzida
-    consec_errors = _consecutive_errors(recent_scores)
-    if consec_errors >= RECOVERY_CONSECUTIVE_ERRORS:
-        adjusted_difficulty = max(1.0, adjusted_difficulty * RECOVERY_DIFFICULTY_FACTOR)
-        weak_skills = _recovery_skills(skill_memory)
-    else:
-        skill_memory_dict = {
-            skill: {"accuracy": mem.accuracy, "attempt_count": mem.attempt_count}
-            for skill, mem in skill_memory.items()
-        }
-        available_skills = get_available_skills(skill_memory_dict)
-        weak_skills = [
-            skill for skill, mem in skill_memory.items()
-            if mem.status in ("fraco", "instavel") and skill in available_skills
-        ]
+    # Erros consecutivos viram sinalizacao no cliente, nao mudanca automatica.
+    # A engine pode sugerir recuperacao, mas a escolha de permanecer/ajustar e do aluno.
+    skill_memory_dict = {
+        skill: {"accuracy": mem.accuracy, "attempt_count": mem.attempt_count}
+        for skill, mem in skill_memory.items()
+    }
+    available_skills = get_available_skills(skill_memory_dict)
+    weak_skills = [
+        skill for skill, mem in skill_memory.items()
+        if mem.status in ("fraco", "instavel") and skill in available_skills
+    ]
 
     # Revisão não é automática — o aluno escolhe via /review-suggestions.
     folha, exercises = await create_folha(

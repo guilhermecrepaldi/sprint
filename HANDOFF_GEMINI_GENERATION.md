@@ -1,12 +1,47 @@
-# HANDOFF — Geracao de Exercicios com Gemini
+# HANDOFF — Gemini
 
 Projeto: LOVE CLASS
 
 Workspace: `D:\LOVE CLASS`
 
-> STATUS: HISTORICO. Para biblioteca atual e zoom exato, leia `AGENTS.md`, `docs/README.md`, `docs/PROJECT_SPEC.md` e `docs/HANDOFF.md`.
+> STATUS: ATUALIZADO PARA ENTRADA DO GEMINI. Leia primeiro `AGENTS.md`, `docs/README.md`, `docs/PROJECT_SPEC.md`, `docs/UX_SPEC.md`, `docs/HANDOFF.md`, `docs/TRANSITION_SPEC.md` e `.sprint/session.md`.
 
-Objetivo: completar a biblioteca de exercicios gerados (`source_library = generated_v1`) usando Gemini, mantendo qualidade matematica e evitando duplicatas.
+Objetivo principal do Gemini agora: ampliar/qualificar biblioteca de exercicios e templates, mantendo qualidade matematica, parametrizacao, metadados e historico intacto. Nao alterar fluxo Sprint sem pedido explicito.
+
+---
+
+## Regras Inviolaveis Do Fluxo
+
+- Engine sugere, nao decide.
+- Nao trocar tema, densidade, zoom ou dificuldade automaticamente.
+- 5 erros consecutivos mostram alerta de score e perguntam se o aluno quer permanecer.
+- `permanecer` nao altera nada.
+- `ajustar` apenas abre os scrolls secundarios para o usuario escolher.
+- 5 acertos consecutivos podem sugerir proximo tema, mas so avanca se o usuario tocar.
+- Zoom exato e escolha explicita e deve continuar usando `template_pin` + `focus_source_exercise_id`.
+- Nao substituir zoom exato por dificuldade manual.
+- Sprint continua limpa: exercicio, rascunho, resposta, enter, scroll superior.
+
+---
+
+## Regras Inviolaveis De Dados
+
+- Nao apagar `ExerciseAttempt`, `PenEvent`, `CognitiveVector`, sessoes ou historico.
+- Seeds devem ser aditivos/idempotentes.
+- Se precisar depreciar exercicios antigos, marque origem/status; nao delete dados com tentativas.
+- Nao rodar script destrutivo em servidor.
+- Nao versionar `.env`, chaves Gemini/OpenAI/Anthropic ou credenciais.
+
+---
+
+## Estado Atual Do Codigo
+
+- Android compila com `.\gradlew.bat :app:assembleDebug`.
+- Backend passa `python -m unittest` com 93 testes.
+- Simulacao Android disponivel em `simular_android.ps1`.
+- Run Configuration Android Studio: `.run/Sprint Debug.run.xml`.
+- `backend/seed/exercises.py` foi corrigido para nao apagar historico.
+- `backend/engine/adaptive.py` nao aplica recovery automatico por erros consecutivos.
 
 ---
 

@@ -22,6 +22,7 @@ htmlcov/
 .vscode/
 *.log
 *.zip
+.sprint/*.png
 
 backend/postgres_data/
 

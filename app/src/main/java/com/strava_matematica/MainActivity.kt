@@ -259,9 +259,11 @@ fun SprintApp(
                                         skillAccuracy = state.skillAccuracy,
                                         masteryDetected = state.masteryDetected,
                                         suggestedNextSkill = state.suggestedNextSkill,
-                                        difficultyAdapted = state.difficultyAdapted,
+                                        scoreRiskVisible = state.scoreRiskVisible,
                                         onDismissMastery = sessionViewModel::dismissMasterySuggestion,
                                         onAdvanceToNextSkill = sessionViewModel::advanceToNextSkill,
+                                        onStayInSprintAfterScoreWarning = sessionViewModel::stayInCurrentSprintAfterScoreWarning,
+                                        onAdjustSprintAfterScoreWarning = sessionViewModel::adjustSprintAfterScoreWarning,
                                     )
                                 },
                             )

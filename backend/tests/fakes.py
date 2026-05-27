@@ -50,15 +50,16 @@ class FakeAsyncSession:
         self.commits = 0
         self.rollbacks = 0
 
-    def seed_exercises(self, count: int = 8) -> list[Exercise]:
+    def seed_exercises(self, count: int = 1000) -> list[Exercise]:
         exercises = []
+        import random
         for index in range(count):
             exercise = Exercise(
                 id=uuid.uuid4(),
                 statement=f"Resolva: x + {index} = {index + 5}",
                 expected_answer="x = 5",
                 skill_tags=["equacao_1_grau"],
-                difficulty=2.0 + min(index, 4) * 0.2,
+                difficulty=1.0 + (index % 90) * 0.1,  # Varia de 1.0 a 10.0 homogeneamente
                 estimated_time_ms=30000,
                 source_library="test",
                 subject="math",
