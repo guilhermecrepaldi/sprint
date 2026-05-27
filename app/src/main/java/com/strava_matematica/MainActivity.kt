@@ -96,12 +96,14 @@ fun SprintApp(
         when (state.status) {
             SessionStatus.RESULT -> {
                 val allCorrect = state.lastResult?.results?.all { it.isCorrect } ?: true
-                // B4: vibração
+                // B4: vibração imediata (antes do delay para chegar antes do avanço)
                 if (allCorrect) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 } else {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
+                // Pausa breve para o aluno ver o que foi reconhecido antes de avançar
+                kotlinx.coroutines.delay(450L)
                 if (state.config.requireCorrectToAdvance && !allCorrect) {
                     val fieldIndex = state.currentFolha?.fields
                         ?.getOrNull(folhaState.currentExerciseIndex)?.fieldIndex ?: 0

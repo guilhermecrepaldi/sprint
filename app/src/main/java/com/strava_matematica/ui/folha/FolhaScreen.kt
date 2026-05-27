@@ -312,7 +312,9 @@ private fun SprintScrollConfigPage(
         ?: SPRINT_SKILLS.first().first
     val selectedSkill = remember { mutableStateOf(initialSkill) }
     val selectedDensity = remember { mutableStateOf(densityLevel.takeIf { it in listOf("high", "medium", "low") } ?: "medium") }
-    val exactCurrent = remember { mutableStateOf(currentField.templateId != null) }
+    // Padrão "tema" — o usuário escolhe a skill no scroll e ela é aplicada.
+    // "exato" só faz sentido quando o aluno quer praticar EXATAMENTE o template atual.
+    val exactCurrent = remember { mutableStateOf(false) }
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(

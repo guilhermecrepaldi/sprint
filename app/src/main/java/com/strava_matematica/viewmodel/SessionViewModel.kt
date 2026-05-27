@@ -311,15 +311,20 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 // Recognize all fields concurrently (ML Kit is fast; Claude OCR is the fallback).
+                // Fallback: se o aluno escreveu só no rascunho, usa rascunho para OCR.
                 val recognizedTexts: List<String?> = folha.fields.map { field ->
                     async {
-                        val strokes = folhaState.fieldStrokes[field.fieldIndex].orEmpty()
+                        val answerStrokes = folhaState.fieldAnswerStrokes[field.fieldIndex].orEmpty()
+                        val scratchStrokes = folhaState.fieldScratchStrokes[field.fieldIndex].orEmpty()
+                        val strokes = answerStrokes.ifEmpty { scratchStrokes }
                         recognizer.recognize(strokes)
                     }
                 }.awaitAll()
 
                 val fields = folha.fields.mapIndexed { i, field ->
-                    val strokes = folhaState.fieldStrokes[field.fieldIndex].orEmpty()
+                    val answerStrokes = folhaState.fieldAnswerStrokes[field.fieldIndex].orEmpty()
+                    val scratchStrokes = folhaState.fieldScratchStrokes[field.fieldIndex].orEmpty()
+                    val strokes = answerStrokes.ifEmpty { scratchStrokes }
                     val imageBase64 = ImageUtils.exportBitmap(strokes)
                     FieldSubmit(
                         fieldIndex = field.fieldIndex,
