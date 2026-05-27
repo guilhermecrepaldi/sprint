@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -73,8 +74,11 @@ fun ExerciseField(
     val ink = if (isDark) FocusColors.DarkTextPrimary else FocusColors.WhiteTextPrimary
     val isFullPage = field.canvasMode == "full_page"
     val isLined = field.canvasMode == "lined"
+    val context = LocalContext.current
     val defaultScratchRatio = if (isLined) 0.80f else if (field.statement.length > 90) 0.66f else 0.75f
-    val scratchRatio = remember(field.fieldIndex) { mutableFloatStateOf(defaultScratchRatio) }
+    val scratchRatio = remember(field.fieldIndex) {
+        mutableFloatStateOf(SplitRatioPrefs.get(context, field.fieldIndex, defaultScratchRatio))
+    }
     // Map config.guideMode → InkCanvas guideMode values. "nenhuma" defers to field.canvasMode logic.
     val mappedGuideMode: String? = when (userGuideMode) {
         "horizontal", "grade" -> "lined"
@@ -134,7 +138,10 @@ fun ExerciseField(
             SplitHeightHandle(
                 ink = ink,
                 ratio = scratchRatio.floatValue,
-                onRatioChange = { scratchRatio.floatValue = it },
+                onRatioChange = {
+                    scratchRatio.floatValue = it
+                    SplitRatioPrefs.set(context, field.fieldIndex, it)
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
