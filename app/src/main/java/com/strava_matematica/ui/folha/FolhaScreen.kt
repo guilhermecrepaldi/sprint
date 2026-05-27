@@ -432,74 +432,41 @@ private fun SprintScrollRow(
 }
 
 /**
- * Intercepts multi-touch events (Initial pass) before InkCanvas sees them.
- * - 2-finger tap (quick, no movement) → onAdvance (if configured)
- * - 1-finger interactions fall through untouched to InkCanvas.
+ * Intercepts 1-finger long-press before InkCanvas sees it → toggles eraser.
+ * 2-finger advance migrado para ZoomableCanvas (pinch/tap unificado).
  */
 private fun Modifier.sprintGestureInput(
     gestureConfig: GestureConfig,
     onAdvance: () -> Unit,
     onToggleEraser: () -> Unit,
-): Modifier = pointerInput(gestureConfig, onAdvance, onToggleEraser) {
+): Modifier = pointerInput(gestureConfig, onToggleEraser) {
     val movePx = 20.dp.toPx()
-    val tapTimeoutMs = 280L
     val longPressMs = 520L
     awaitPointerEventScope {
         while (true) {
             val down = awaitPointerEvent(PointerEventPass.Initial)
             val pressed = down.changes.filter { it.pressed }
-            if (pressed.size == 1 &&
-                gestureConfig.gestureFor(GestureConfig.ACTION_TOGGLE_ERASER) ==
-                GestureConfig.GESTURE_LONG_PRESS
-            ) {
-                val first = pressed.first()
-                val startPosition = first.position
-                val startTime = System.currentTimeMillis()
-                var movedTooMuch = false
-                var toggled = false
+            if (pressed.size != 1) continue
+            if (gestureConfig.gestureFor(GestureConfig.ACTION_TOGGLE_ERASER) !=
+                GestureConfig.GESTURE_LONG_PRESS) continue
 
-                while (true) {
-                    val ev = awaitPointerEvent(PointerEventPass.Initial)
-                    val current = ev.changes.firstOrNull { it.id == first.id }
-                    if (current == null || !current.pressed) break
-                    if ((current.position - startPosition).getDistance() > movePx) {
-                        movedTooMuch = true
-                    }
-                    if (!movedTooMuch && !toggled && System.currentTimeMillis() - startTime >= longPressMs) {
-                        ev.changes.forEach { it.consume() }
-                        onToggleEraser()
-                        toggled = true
-                    }
-                }
-                continue
-            }
-
-            if (pressed.size < 2) continue   // 1-finger → InkCanvas handles it
-
-            // 2+ fingers detected — track until all lift
-            val startPositions = pressed.map { it.position }
+            val first = pressed.first()
+            val startPosition = first.position
             val startTime = System.currentTimeMillis()
             var movedTooMuch = false
+            var toggled = false
 
             while (true) {
                 val ev = awaitPointerEvent(PointerEventPass.Initial)
-                ev.changes.forEachIndexed { i, c ->
-                    if (i < startPositions.size &&
-                        (c.position - startPositions[i]).getDistance() > movePx) {
-                        movedTooMuch = true
-                    }
+                val current = ev.changes.firstOrNull { it.id == first.id }
+                if (current == null || !current.pressed) break
+                if ((current.position - startPosition).getDistance() > movePx) {
+                    movedTooMuch = true
                 }
-                if (ev.changes.none { it.pressed }) {
-                    val duration = System.currentTimeMillis() - startTime
-                    if (!movedTooMuch && duration < tapTimeoutMs) {
-                        // Confirmed 2-finger tap
-                        if (gestureConfig.gestureFor(GestureConfig.ACTION_ADVANCE) ==
-                            GestureConfig.GESTURE_TWO_FINGER_TAP) {
-                            ev.changes.forEach { it.consume() }
-                            onAdvance()
-                        }
-                    }
-                    break
+                if (!movedTooMuch && !toggled && System.currentTimeMillis() - startTime >= longPressMs) {
+                    ev.changes.forEach { it.consume() }
+                    onToggleEraser()
+                    toggled = true
                 }
             }
         }

@@ -49,6 +49,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.strava_matematica.design.StravaMathTheme
 import com.strava_matematica.model.ApiStatus
 import com.strava_matematica.model.SessionStatus
+import com.strava_matematica.ui.canvas.PlatformMap
+import com.strava_matematica.ui.canvas.ZoomableCanvas
 import com.strava_matematica.ui.folha.FolhaScreen
 import com.strava_matematica.ui.tabs.DashboardTab
 import com.strava_matematica.ui.tabs.GesturesTab
@@ -205,41 +207,58 @@ fun SprintApp(
                                     sessionViewModel.submitFolha(submitState)
                                 }
                             }
-                            FolhaScreen(
-                                folha = folha,
-                                config = state.config,
-                                currentExerciseIndex = effectiveFolhaState.currentExerciseIndex,
-                                fieldScratchStrokes = effectiveFolhaState.fieldScratchStrokes,
-                                fieldAnswerStrokes = effectiveFolhaState.fieldAnswerStrokes,
-                                fieldScratchRedoStacks = effectiveFolhaState.fieldScratchRedoStacks,
-                                fieldAnswerRedoStacks = effectiveFolhaState.fieldAnswerRedoStacks,
+                            ZoomableCanvas(
+                                isInSession = true,
                                 onAdvance = doAdvance,
-                                selectedSkillTag = state.selectedSkillTag,
-                                densityLevel = state.densityLevel,
-                                onApplySprintScrollSelection = sessionViewModel::applySprintScrollSelection,
-                                onSyncScratch = { fieldIndex, strokes, redoStack ->
-                                    folhaViewModel.syncScratch(folha.folhaId, fieldIndex, strokes, redoStack)
+                                onPause = sessionViewModel::pauseSession,
+                                onResume = sessionViewModel::resumeSession,
+                                mapContent = {
+                                    PlatformMap(
+                                        currentSkill = state.selectedSkillTag,
+                                        skillStatuses = state.skillStatuses,
+                                        reviewSkills = state.reviewSkills,
+                                        onSkillSelect = sessionViewModel::selectSkill,
+                                        onModeSelect = sessionViewModel::selectDensity,
+                                    )
                                 },
-                                onSyncAnswer = { fieldIndex, strokes, redoStack ->
-                                    folhaViewModel.syncAnswer(folha.folhaId, fieldIndex, strokes, redoStack)
+                                focusContent = {
+                                    FolhaScreen(
+                                        folha = folha,
+                                        config = state.config,
+                                        currentExerciseIndex = effectiveFolhaState.currentExerciseIndex,
+                                        fieldScratchStrokes = effectiveFolhaState.fieldScratchStrokes,
+                                        fieldAnswerStrokes = effectiveFolhaState.fieldAnswerStrokes,
+                                        fieldScratchRedoStacks = effectiveFolhaState.fieldScratchRedoStacks,
+                                        fieldAnswerRedoStacks = effectiveFolhaState.fieldAnswerRedoStacks,
+                                        onAdvance = doAdvance,
+                                        selectedSkillTag = state.selectedSkillTag,
+                                        densityLevel = state.densityLevel,
+                                        onApplySprintScrollSelection = sessionViewModel::applySprintScrollSelection,
+                                        onSyncScratch = { fieldIndex, strokes, redoStack ->
+                                            folhaViewModel.syncScratch(folha.folhaId, fieldIndex, strokes, redoStack)
+                                        },
+                                        onSyncAnswer = { fieldIndex, strokes, redoStack ->
+                                            folhaViewModel.syncAnswer(folha.folhaId, fieldIndex, strokes, redoStack)
+                                        },
+                                        onPenEvent = { fieldIndex, event ->
+                                            folhaViewModel.appendEvent(folha.folhaId, fieldIndex, event)
+                                        },
+                                        onConfigChange = sessionViewModel::updateConfig,
+                                        onEndSession = {
+                                            folhaViewModel.resetForNextFolha()
+                                            sessionViewModel.startSessionFromDashboard()
+                                        },
+                                        sessionCorrect = state.sessionCorrect,
+                                        sessionTotal = state.sessionTotal,
+                                        sessionStartedAtMs = sessionStartedAtMs,
+                                        sessionId = state.sessionId,
+                                        folhaIndex = state.currentFolha?.pageIndex ?: 0,
+                                        onAddNote = sessionViewModel::addNote,
+                                        gestureConfig = state.gestureConfig,
+                                        retrySignal = folhaState.retryCount,
+                                        recentResults = state.recentResults,
+                                    )
                                 },
-                                onPenEvent = { fieldIndex, event ->
-                                    folhaViewModel.appendEvent(folha.folhaId, fieldIndex, event)
-                                },
-                                onConfigChange = sessionViewModel::updateConfig,
-                                onEndSession = {
-                                    folhaViewModel.resetForNextFolha()
-                                    sessionViewModel.startSessionFromDashboard()
-                                },
-                                sessionCorrect = state.sessionCorrect,
-                                sessionTotal = state.sessionTotal,
-                                sessionStartedAtMs = sessionStartedAtMs,
-                                sessionId = state.sessionId,
-                                folhaIndex = state.currentFolha?.pageIndex ?: 0,
-                                onAddNote = sessionViewModel::addNote,
-                                gestureConfig = state.gestureConfig,
-                                retrySignal = folhaState.retryCount,
-                                recentResults = state.recentResults,
                             )
                         } else if (state.apiStatus == ApiStatus.ERROR) {
                             SprintErrorState(
