@@ -97,8 +97,8 @@ Pass rate: 100%
 
 ## 📋 Pendentes
 
-- [ ] [BACKEND] Exercise library: 25 skills com 1 template estrutural — sessão Gemini para gerar variações
 - [ ] [QA] Testar no emulador: ZoomableCanvas pinch revela mapa; 2-finger tap avança sem zoom
+- [ ] [INFRA] Rodar seed: `python backend/seed/exercises.py` no servidor para popular o banco com 147 exercícios
 
 ## Decisões tomadas
 
@@ -136,3 +136,4 @@ Pass rate: 100%
 - [03:00] Lote 4: 18/18 ✅ — 100% — build.gradle fix, A2 watermark, B2 lock toggle, D1 velocity graph, D2 node colors, D3 alert, requireCorrectToAdvance, ResultHistoryRow, haptic, instant advance; BUILD SUCCESSFUL 3s
 - [03:30] Lote 5: 5/5 ✅ — 100% — skill selection bug, OCR scratch fallback, feedback delay, MathTreeTab timeline redesign; BUILD SUCCESSFUL 2s
 - [04:15] Lote 6: 12/12 ✅ — 100% — split ratio persistence, QA (6 itens), ZoomableCanvas wired, FolhaScreen simplificado, CCR routine; BUILD SUCCESSFUL 4s
+- [04:45] Lote 7: 1/1 ✅ — 100% — exercise library: 147 exercícios, 34 skills, 16 skills zeradas cobertas; pushed a442741
