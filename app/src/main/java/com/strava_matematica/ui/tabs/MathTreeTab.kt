@@ -1,34 +1,35 @@
 package com.strava_matematica.ui.tabs
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Skill tree — visualização da árvore de matemática.
- * Toque num nó = seleciona skill para próxima sessão.
- * PlatformMap (canvas API) será integrado aqui em fase 2.
- * Por ora: grid de skills com status de domínio.
+ * Skill tree como timeline vertical scrollável.
+ * Linha tracejada à esquerda · nó preenchido = skill ativa · nó vazio = disponível.
+ * Cores: verde >85% accuracy · vermelho <60% · neutro entre os dois.
  */
 @Composable
 fun MathTreeTab(
@@ -40,125 +41,219 @@ fun MathTreeTab(
     onSkillSelect: (String) -> Unit,
     onGoToSprint: () -> Unit,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
+    val totalSkills = SkillTree.groups.sumOf { it.skills.size }
+    var skillCounter = 0
 
     SettingsTabScaffold(title = "ÁRVORE", onGoToSprint = onGoToSprint) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 48.dp),
         ) {
-            SkillTree.groups.forEach { group ->
-                Text(
-                    text = group.label,
-                    fontSize = 9.sp,
-                    letterSpacing = 1.5.sp,
-                    color = ink.copy(alpha = 0.28f),
-                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-                )
-                group.skills.chunked(3).forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        row.forEach { skill ->
-                            val status = skillStatuses[skill.tag] ?: "novo"
-                            val isActive = skill.tag == currentSkill
-                            SkillNode(
-                                label = skill.label,
-                                status = status,
-                                attempts = skillAttempts[skill.tag] ?: 0,
-                                available = skillAvailable[skill.tag] ?: 0,
-                                accuracy = skillAccuracy[skill.tag],
-                                isActive = isActive,
-                                onClick = {
-                                    onSkillSelect(skill.tag)
-                                    onGoToSprint()
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        repeat(3 - row.size) {
-                            Spacer(Modifier.weight(1f))
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
+            SkillTree.groups.forEachIndexed { groupIndex, group ->
+
+                // ── Marcador de grupo (como "ano" na timeline) ──────────────
+                item(key = "hdr_$groupIndex") {
+                    TimelineGroupHeader(
+                        label = group.label,
+                        topPad = if (groupIndex == 0) 20.dp else 28.dp,
+                    )
+                }
+
+                // ── Nós de skill ────────────────────────────────────────────
+                itemsIndexed(
+                    items = group.skills,
+                    key = { _, s -> s.tag },
+                ) { skillIndex, skill ->
+                    skillCounter++
+                    val isFirst = skillCounter == 1
+                    val isLast  = skillCounter == totalSkills
+                    SkillTimelineRow(
+                        skill      = skill,
+                        attempts   = skillAttempts[skill.tag] ?: 0,
+                        available  = skillAvailable[skill.tag] ?: 0,
+                        accuracy   = skillAccuracy[skill.tag],
+                        isActive   = skill.tag == currentSkill,
+                        isFirst    = isFirst,
+                        isLast     = isLast,
+                        onClick    = { onSkillSelect(skill.tag); onGoToSprint() },
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "● verde: >85%   ● neutro: 60–85%   ● vermelho: <60%",
-                fontSize = 9.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }
 
+// ── Timeline: marcador de grupo ────────────────────────────────────────────────
+
 @Composable
-private fun SkillNode(
+private fun TimelineGroupHeader(
     label: String,
-    status: String,
-    attempts: Int,
-    available: Int,
-    accuracy: Float?,
-    isActive: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    topPad: androidx.compose.ui.unit.Dp,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val fillAlpha = when (status) {
-        "automatizado"      -> 0.85f
-        "em_desenvolvimento" -> 0.45f
-        "instavel"          -> 0.22f
-        else                -> 0.08f
-    }
-    val circleColor = when {
-        isActive -> ink.copy(alpha = 0.70f)
-        accuracy != null && accuracy > 0.85f -> Color(0xFF388E3C)
-        accuracy != null && accuracy < 0.60f -> Color(0xFFD32F2F)
-        else -> ink.copy(alpha = fillAlpha)
-    }
-    Column(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    val ink  = MaterialTheme.colorScheme.onBackground
+    val lineX = 20.dp
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = topPad, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
+        // Segmento da linha tracejada no espaço do grupo-header
+        Canvas(
             modifier = Modifier
-                .size(10.dp)
-                .background(circleColor, CircleShape),
-        )
+                .width(40.dp)
+                .height(18.dp),
+        ) {
+            drawLine(
+                color = ink.copy(alpha = 0.12f),
+                start = Offset(lineX.toPx(), 0f),
+                end   = Offset(lineX.toPx(), size.height),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect  = PathEffect.dashPathEffect(floatArrayOf(2f, 5f), 0f),
+            )
+        }
         Text(
-            text = label,
-            fontSize = 9.sp,
-            color = if (isActive) ink.copy(alpha = 0.80f) else ink.copy(alpha = 0.45f),
-            textAlign = TextAlign.Center,
-            lineHeight = 11.sp,
-            fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
-        )
-        Text(
-            text = progressLabel(attempts, available, accuracy),
-            fontSize = 8.sp,
-            color = if (isActive) ink.copy(alpha = 0.52f) else ink.copy(alpha = 0.26f),
-            textAlign = TextAlign.Center,
-            lineHeight = 9.sp,
+            text          = label,
+            fontSize      = 9.sp,
+            letterSpacing = 1.5.sp,
+            color         = ink.copy(alpha = 0.28f),
+            modifier      = Modifier.padding(start = 4.dp),
         )
     }
 }
 
+// ── Timeline: linha de skill ───────────────────────────────────────────────────
+
+@Composable
+private fun SkillTimelineRow(
+    skill    : SkillEntry,
+    attempts : Int,
+    available: Int,
+    accuracy : Float?,
+    isActive : Boolean,
+    isFirst  : Boolean,
+    isLast   : Boolean,
+    onClick  : () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+
+    val nodeColor: Color = when {
+        isActive                                         -> ink.copy(alpha = 0.75f)
+        accuracy != null && attempts > 0 && accuracy > 0.85f -> Color(0xFF388E3C)
+        accuracy != null && attempts > 0 && accuracy < 0.60f -> Color(0xFFD32F2F)
+        else                                             -> ink.copy(alpha = 0.22f)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // ── Coluna da timeline (linha + nó) ──────────────────────────────────
+        val rowHeight = 52.dp
+        Canvas(
+            modifier = Modifier
+                .width(40.dp)
+                .height(rowHeight),
+        ) {
+            val lx   = 20.dp.toPx()
+            val cy   = size.height / 2f
+            val r    = if (isActive) 5.dp.toPx() else 3.5.dp.toPx()
+            val dash = PathEffect.dashPathEffect(floatArrayOf(2f, 5f), 0f)
+            val lc   = ink.copy(alpha = 0.14f)
+            val lw   = 1.dp.toPx()
+
+            // Linha acima do nó
+            if (!isFirst) {
+                drawLine(
+                    color       = lc,
+                    start       = Offset(lx, 0f),
+                    end         = Offset(lx, cy - r - 2f),
+                    strokeWidth = lw,
+                    pathEffect  = dash,
+                )
+            }
+            // Linha abaixo do nó
+            if (!isLast) {
+                drawLine(
+                    color       = lc,
+                    start       = Offset(lx, cy + r + 2f),
+                    end         = Offset(lx, size.height),
+                    strokeWidth = lw,
+                    pathEffect  = dash,
+                )
+            }
+            // Nó: preenchido se ativo, vazio se disponível
+            if (isActive) {
+                drawCircle(
+                    color  = nodeColor,
+                    radius = r,
+                    center = Offset(lx, cy),
+                )
+            } else {
+                drawCircle(
+                    color  = nodeColor,
+                    radius = r,
+                    center = Offset(lx, cy),
+                    style  = Stroke(width = 1.2.dp.toPx()),
+                )
+            }
+        }
+
+        // ── Conteúdo: nome + progresso ───────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text       = skill.label.replace("\n", " "),
+                fontSize   = if (isActive) 14.sp else 13.sp,
+                fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
+                color      = if (isActive) ink.copy(alpha = 0.80f) else ink.copy(alpha = 0.50f),
+                maxLines   = 1,
+            )
+            Text(
+                text     = progressLabel(attempts, available, accuracy),
+                fontSize = 10.sp,
+                color    = ink.copy(alpha = if (isActive) 0.42f else 0.22f),
+            )
+        }
+
+        // ── Ponto colorido de accuracy à direita (like year on right) ────────
+        if (accuracy != null && attempts > 0) {
+            val accColor = when {
+                accuracy > 0.85f -> Color(0xFF388E3C)
+                accuracy < 0.60f -> Color(0xFFD32F2F)
+                else             -> ink.copy(alpha = 0.20f)
+            }
+            Canvas(
+                modifier = Modifier
+                    .width(28.dp)
+                    .height(52.dp),
+            ) {
+                drawCircle(
+                    color  = accColor,
+                    radius = 3.dp.toPx(),
+                    center = Offset(size.width / 2f, size.height / 2f),
+                )
+            }
+        }
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 private fun progressLabel(attempts: Int, available: Int, accuracy: Float?): String {
-    val pool = if (available > 0) available.toString() else "0"
-    val acc = accuracy?.takeIf { attempts > 0 }?.let { " · ${(it * 100).toInt()}%" } ?: ""
+    val pool = if (available > 0) available.toString() else "—"
+    val acc  = accuracy?.takeIf { attempts > 0 }?.let { " · ${(it * 100).toInt()}%" } ?: ""
     return "$attempts/$pool$acc"
 }
 
-// ── Skill tree data ────────────────────────────────────────────────────────────
+// ── Dados da árvore ───────────────────────────────────────────────────────────
 
 private data class SkillEntry(val tag: String, val label: String)
 private data class SkillGroup(val label: String, val skills: List<SkillEntry>)
@@ -166,52 +261,52 @@ private data class SkillGroup(val label: String, val skills: List<SkillEntry>)
 private object SkillTree {
     val groups = listOf(
         SkillGroup("FUNDAMENTOS", listOf(
-            SkillEntry("soma_subtracao",       "Soma /\nSubtração"),
-            SkillEntry("multiplicacao_divisao", "Multi /\nDivisão"),
-            SkillEntry("fracoes_decimais",     "Frações /\nDecimais"),
-            SkillEntry("porcentagem_razao",    "% e\nRazão"),
-            SkillEntry("potenciacao_radiciacao","Potência /\nRaiz"),
+            SkillEntry("soma_subtracao",              "Soma / Subtração"),
+            SkillEntry("multiplicacao_divisao",       "Multiplicação / Divisão"),
+            SkillEntry("fracoes_decimais",            "Frações / Decimais"),
+            SkillEntry("porcentagem_razao",           "Porcentagem e Razão"),
+            SkillEntry("potenciacao_radiciacao",      "Potência / Raiz"),
         )),
         SkillGroup("ÁLGEBRA", listOf(
-            SkillEntry("equacoes_lineares",    "Eq.\nLinear"),
-            SkillEntry("sistemas_equacoes",    "Sistemas"),
-            SkillEntry("fatoracao_produtos_notaveis", "Fatoração /\nProdutos"),
-            SkillEntry("inequacoes",           "Inequação"),
-            SkillEntry("equacoes_quadraticas", "Eq.\nQuadrática"),
+            SkillEntry("equacoes_lineares",           "Equações Lineares"),
+            SkillEntry("sistemas_equacoes",           "Sistemas de Equações"),
+            SkillEntry("fatoracao_produtos_notaveis", "Fatoração / Produtos Notáveis"),
+            SkillEntry("inequacoes",                  "Inequações"),
+            SkillEntry("equacoes_quadraticas",        "Equações Quadráticas"),
         )),
         SkillGroup("FUNÇÕES", listOf(
-            SkillEntry("funcao_afim",          "Função\nAfim"),
-            SkillEntry("funcao_quadratica",    "Função\nQuadrática"),
-            SkillEntry("funcao_exponencial",   "Função\nExponencial"),
-            SkillEntry("funcao_logaritmica",   "Função\nLog"),
-            SkillEntry("funcao_modular",       "Função\nModular"),
+            SkillEntry("funcao_afim",                 "Função Afim"),
+            SkillEntry("funcao_quadratica",           "Função Quadrática"),
+            SkillEntry("funcao_exponencial",          "Função Exponencial"),
+            SkillEntry("funcao_logaritmica",          "Função Logarítmica"),
+            SkillEntry("funcao_modular",              "Função Modular"),
         )),
         SkillGroup("GEOMETRIA", listOf(
-            SkillEntry("geometria_plana",      "Geo.\nPlana"),
-            SkillEntry("geometria_espacial",   "Geo.\nEspacial"),
-            SkillEntry("geometria_analitica",  "Geo.\nAnalítica"),
+            SkillEntry("geometria_plana",             "Geometria Plana"),
+            SkillEntry("geometria_espacial",          "Geometria Espacial"),
+            SkillEntry("geometria_analitica",         "Geometria Analítica"),
         )),
         SkillGroup("COMBINATÓRIA", listOf(
-            SkillEntry("progressoes_pa_pg",    "PA /\nPG"),
-            SkillEntry("combinatoria",         "Combinatória"),
-            SkillEntry("probabilidade",        "Probabilidade"),
+            SkillEntry("progressoes_pa_pg",           "Progressões PA / PG"),
+            SkillEntry("combinatoria",                "Combinatória"),
+            SkillEntry("probabilidade",               "Probabilidade"),
         )),
         SkillGroup("TRIGONOMETRIA", listOf(
-            SkillEntry("trig_razoes",          "Razões\nTrig."),
-            SkillEntry("trig_seno_cosseno_tangente", "Seno /\nCosseno"),
-            SkillEntry("trig_identidades",     "Identidades"),
-            SkillEntry("trig_equacoes",        "Eq.\nTrig."),
+            SkillEntry("trig_razoes",                 "Razões Trigonométricas"),
+            SkillEntry("trig_seno_cosseno_tangente",  "Seno / Cosseno / Tg"),
+            SkillEntry("trig_identidades",            "Identidades Trigonométricas"),
+            SkillEntry("trig_equacoes",               "Equações Trigonométricas"),
         )),
         SkillGroup("CÁLCULO", listOf(
-            SkillEntry("nocao_de_limite",      "Noção de\nLimite"),
-            SkillEntry("continuidade",         "Continuidade"),
-            SkillEntry("derivadas_basicas",    "Derivadas\nBásicas"),
-            SkillEntry("derivadas_regra_cadeia", "Regra da\nCadeia"),
-            SkillEntry("derivadas_produto_quociente", "Produto /\nQuociente"),
-            SkillEntry("aplicacoes_derivadas", "Aplic.\nDerivadas"),
-            SkillEntry("integrais_indefinidas","Integrais\nIndef."),
-            SkillEntry("integrais_definidas",  "Integrais\nDef."),
-            SkillEntry("aplicacoes_integrais", "Aplic.\nIntegrais"),
+            SkillEntry("nocao_de_limite",             "Noção de Limite"),
+            SkillEntry("continuidade",                "Continuidade"),
+            SkillEntry("derivadas_basicas",           "Derivadas Básicas"),
+            SkillEntry("derivadas_regra_cadeia",      "Regra da Cadeia"),
+            SkillEntry("derivadas_produto_quociente", "Derivadas Produto / Quociente"),
+            SkillEntry("aplicacoes_derivadas",        "Aplicações de Derivadas"),
+            SkillEntry("integrais_indefinidas",       "Integrais Indefinidas"),
+            SkillEntry("integrais_definidas",         "Integrais Definidas"),
+            SkillEntry("aplicacoes_integrais",        "Aplicações de Integrais"),
         )),
     )
 }
