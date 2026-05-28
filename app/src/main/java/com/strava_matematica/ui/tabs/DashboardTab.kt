@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.strava_matematica.model.SprintHistoryItem
+import com.strava_matematica.model.HeatmapDay
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -89,6 +92,7 @@ fun DashboardTab(
     history: List<SprintHistoryItem> = emptyList(),
     skillAttempts: Map<String, Int> = emptyMap(),
     skillAccuracy: Map<String, Float> = emptyMap(),
+    activityDays: List<HeatmapDay> = emptyList(),
     onGoToSprint: () -> Unit,
     onStartSession: () -> Unit,
 ) {
@@ -109,6 +113,7 @@ fun DashboardTab(
                     history = history,
                     skillAttempts = skillAttempts,
                     skillAccuracy = skillAccuracy,
+                    activityDays = activityDays,
                     onBack = { section = null },
                 )
                 DashSection.HISTORICO -> HistoricoSection(
@@ -182,6 +187,7 @@ private fun PerfilSection(
     history: List<SprintHistoryItem>,
     skillAttempts: Map<String, Int>,
     skillAccuracy: Map<String, Float>,
+    activityDays: List<HeatmapDay>,
     onBack: () -> Unit,
 ) {
     val ink = MaterialTheme.colorScheme.onBackground
@@ -196,7 +202,11 @@ private fun PerfilSection(
     val velocityData = averageTimePerSession(history)
     val overallAvg = if (velocityData.isNotEmpty()) velocityData.map { it.second }.average().toFloat() else 0f
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
         TabPill(onTap = onBack)  // toque no pill = volta para lista
 
         Spacer(Modifier.height(32.dp))
@@ -215,6 +225,17 @@ private fun PerfilSection(
             StatRow("Tema mais praticado", displaySkill(mostPracticed))
             StatRow("Velocidade média", if (overallAvg > 0) "${overallAvg.roundToInt()} seg/ex" else "—")
 
+            if (activityDays.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Calendário",
+                    fontSize = 10.sp,
+                    color = ink.copy(alpha = 0.30f),
+                )
+                Spacer(Modifier.height(2.dp))
+                ActivityStrip(activityDays.takeLast(35), ink)
+            }
+
             // Velocity graph
             if (velocityData.size >= 2) {
                 Spacer(Modifier.height(12.dp))
@@ -226,6 +247,30 @@ private fun PerfilSection(
                 Spacer(Modifier.height(8.dp))
                 VelocityGraph(velocityData, ink)
             }
+            Spacer(Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun ActivityStrip(days: List<HeatmapDay>, ink: androidx.compose.ui.graphics.Color) {
+    val maxCount = days.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(24.dp),
+    ) {
+        if (days.isEmpty()) return@Canvas
+        val step = size.width / days.size.coerceAtLeast(1)
+        val radius = kotlin.math.min(3.4.dp.toPx(), step * 0.28f)
+        val cy = size.height / 2f
+        days.forEachIndexed { index, day ->
+            val intensity = if (day.count <= 0) 0.06f else (0.18f + (day.count.toFloat() / maxCount) * 0.50f).coerceIn(0.18f, 0.68f)
+            drawCircle(
+                color = ink.copy(alpha = intensity),
+                radius = radius,
+                center = androidx.compose.ui.geometry.Offset(step * index + step / 2f, cy),
+            )
         }
     }
 }

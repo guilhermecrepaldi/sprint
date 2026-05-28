@@ -69,12 +69,14 @@ fun FolhaScreen(
     fieldAnswerStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
     fieldScratchRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
     fieldAnswerRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    fieldTypedAnswers: Map<Int, String> = emptyMap(),
     onAdvance: () -> Unit,
     selectedSkillTag: String = "soma_subtracao",
     densityLevel: String = "medium",
     onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, field: FolhaField?) -> Unit = { _, _, _, _, _ -> },
     onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
+    onTypedAnswerChange: (fieldIndex: Int, answer: String) -> Unit = { _, _ -> },
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
     onConfigChange: (SessionConfig) -> Unit = {},
     onEndSession: () -> Unit = {},
@@ -149,6 +151,7 @@ fun FolhaScreen(
                         initialAnswerStrokes = fieldAnswerStrokes[field.fieldIndex].orEmpty(),
                         initialScratchRedoStack = fieldScratchRedoStacks[field.fieldIndex].orEmpty(),
                         initialAnswerRedoStack = fieldAnswerRedoStacks[field.fieldIndex].orEmpty(),
+                        typedAnswer = fieldTypedAnswers[field.fieldIndex].orEmpty(),
                         clearSignal = clearSignal.intValue,
                         undoSignal = undoSignal.intValue,
                         redoSignal = redoSignal.intValue,
@@ -159,6 +162,9 @@ fun FolhaScreen(
                         },
                         onSyncAnswer = { strokes, redoStack ->
                             onSyncAnswer(field.fieldIndex, strokes, redoStack)
+                        },
+                        onTypedAnswerChange = { answer ->
+                            onTypedAnswerChange(field.fieldIndex, answer)
                         },
                         onPenEvent = { event -> onPenEvent(field.fieldIndex, event) },
                         userGuideMode = config.guideMode,

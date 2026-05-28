@@ -13,7 +13,7 @@ enum class ApiStatus { CONNECTING, OK, OFFLINE, ERROR }
 data class SessionConfig(
     val subject: String = "math",
     @SerialName("show_thermometer") val showThermometer: Boolean = true,
-    val background: String = "white",
+    val background: String = "parchment",
     @SerialName("pen_color") val penColor: String = "#1a1a1a",
     @SerialName("duration_mode") val durationMode: String = "unlimited",
     @SerialName("duration_limit_ms") val durationLimitMs: Int? = null,

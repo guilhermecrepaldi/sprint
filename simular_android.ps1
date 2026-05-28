@@ -40,6 +40,15 @@ if (!(Test-Path $JavaHome)) {
 }
 $env:JAVA_HOME = $JavaHome
 
+if (!$NoBackend) {
+    Push-Location $Backend
+    try {
+        python -m alembic upgrade head
+    } finally {
+        Pop-Location
+    }
+}
+
 $devices = (& $Adb devices | Select-String -Pattern "`tdevice").Count
 if ($devices -eq 0) {
     if (!(Test-Path $Emulator)) {
@@ -84,7 +93,10 @@ if (!$NoScreenshot) {
     $shotDir = Join-Path $Root ".sprint"
     New-Item -ItemType Directory -Force -Path $shotDir | Out-Null
     $shot = Join-Path $shotDir "android_screenshot.png"
-    & $Adb exec-out screencap -p > $shot
+    $remoteShot = "/sdcard/sprint_screenshot.png"
+    & $Adb shell screencap -p $remoteShot | Out-Null
+    & $Adb pull $remoteShot $shot | Out-Null
+    & $Adb shell rm $remoteShot | Out-Null
     Write-Host "Screenshot: $shot"
 }
 

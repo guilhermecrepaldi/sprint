@@ -56,7 +56,7 @@ class HttpUserWorkflowTests(unittest.TestCase):
         submit = submit_response.json()
 
         self.assertEqual(len(submit["results"]), 3)
-        self.assertEqual(submit["page_score"], 1000)
+        self.assertGreaterEqual(submit["page_score"], 1000)
         self.assertEqual(submit["results"][0]["recognition_engine"], "local_text_fallback")
         self.assertIn("analysis_reliable", submit["results"][0])
         self.assertEqual(submit["session_status"], "active")

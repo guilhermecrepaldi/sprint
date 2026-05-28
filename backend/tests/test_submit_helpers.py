@@ -1,8 +1,11 @@
 import unittest
+import uuid
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-from api.submit import _should_finish_session
+from api.submit import _recent_scores, _should_finish_session
+from models.attempt import ExerciseAttempt
+from tests.fakes import FakeAsyncSession
 
 
 class SubmitHelperTests(unittest.TestCase):
@@ -20,6 +23,16 @@ class SubmitHelperTests(unittest.TestCase):
         session = SimpleNamespace(page_count=0, started_at=datetime.now(UTC) - timedelta(seconds=10))
         config = SimpleNamespace(duration_mode="timed", pages_limit=None, duration_limit_ms=1000)
         self.assertTrue(_should_finish_session(session, config))
+
+
+class RecentScoresTests(unittest.IsolatedAsyncioTestCase):
+    async def test_recent_scores_clamps_esports_score_to_adaptive_scale(self):
+        db = FakeAsyncSession()
+        session_id = uuid.uuid4()
+        db.add(ExerciseAttempt(session_id=session_id, score=1900))
+        db.add(ExerciseAttempt(session_id=session_id, score=850))
+
+        self.assertEqual(await _recent_scores(db, session_id, limit=10), [8.5, 10.0])
 
 
 if __name__ == "__main__":

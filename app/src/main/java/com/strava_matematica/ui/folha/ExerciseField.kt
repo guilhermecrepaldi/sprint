@@ -2,11 +2,14 @@ package com.strava_matematica.ui.folha
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,12 +58,14 @@ fun ExerciseField(
     initialAnswerStrokes: List<List<Offset>> = emptyList(),
     initialScratchRedoStack: List<List<Offset>> = emptyList(),
     initialAnswerRedoStack: List<List<Offset>> = emptyList(),
+    typedAnswer: String = "",
     clearSignal: Int = 0,
     undoSignal: Int = 0,
     redoSignal: Int = 0,
     onClick: () -> Unit = {},
     onSyncScratch: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onSyncAnswer: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
+    onTypedAnswerChange: (String) -> Unit = {},
     // Legacy alias: callers that still pass onSyncStrokes are wired to the answer canvas
     onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
@@ -88,6 +93,7 @@ fun ExerciseField(
 
     // Merge legacy onSyncStrokes into onSyncAnswer so old callers still work.
     val hasAnswerStroke = remember(initialAnswerStrokes) { mutableStateOf(initialAnswerStrokes.isNotEmpty()) }
+    val answerPadVisible = remember(field.fieldIndex) { mutableStateOf(false) }
     val answerSync: (List<List<Offset>>, List<List<Offset>>) -> Unit = { s, r ->
         if (s.isNotEmpty()) hasAnswerStroke.value = true
         onSyncAnswer(s, r)
@@ -130,7 +136,7 @@ fun ExerciseField(
                     redoSignal = redoSignal,
                     initialStrokes = initialScratchStrokes,
                     initialRedoStack = initialScratchRedoStack,
-                    guideMode = mappedGuideMode ?: if (isLined) "lined" else "dots",
+                    guideMode = mappedGuideMode ?: if (isLined) "lined" else "single",
                     onSyncStrokes = onSyncScratch,
                     onPenEvent = onPenEvent,
                 )
@@ -165,16 +171,83 @@ fun ExerciseField(
                 redoSignal = if (isFullPage) redoSignal else 0,
                 initialStrokes = initialAnswerStrokes,
                 initialRedoStack = initialAnswerRedoStack,
-                guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "dots",
+                guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "single",
                 onSyncStrokes = answerSync,
                 onPenEvent = onPenEvent,
             )
-            if (!isFullPage && !hasAnswerStroke.value) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .pointerInput(Unit) {
+                        androidx.compose.foundation.gestures.detectTapGestures {
+                            answerPadVisible.value = true
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (typedAnswer.isNotBlank()) {
+                    Text(
+                        text = typedAnswer,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Light,
+                        color = ink.copy(alpha = 0.72f),
+                    )
+                }
+            }
+            if (!isFullPage && !hasAnswerStroke.value && typedAnswer.isBlank()) {
                 Text(
                     text = "resposta",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Light,
                     color = ink.copy(alpha = 0.18f),
+                )
+            }
+            if (answerPadVisible.value) {
+                AnswerPad(
+                    ink = ink,
+                    onKey = { key ->
+                        when (key) {
+                            "ok" -> answerPadVisible.value = false
+                            "del" -> onTypedAnswerChange(typedAnswer.dropLast(1))
+                            "clr" -> onTypedAnswerChange("")
+                            else -> onTypedAnswerChange(typedAnswer + key)
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnswerPad(
+    ink: Color,
+    onKey: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val keys = listOf("7", "8", "9", "-", "4", "5", "6", ".", "1", "2", "3", "/", "0", "x", "=", "del", "clr", "ok")
+    Row(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        keys.forEach { key ->
+            Box(
+                modifier = Modifier
+                    .size(width = if (key.length > 1) 38.dp else 30.dp, height = 30.dp)
+                    .background(ink.copy(alpha = 0.045f), RoundedCornerShape(5.dp))
+                    .clickable { onKey(key) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = key,
+                    fontSize = 12.sp,
+                    color = ink.copy(alpha = if (key == "ok") 0.62f else 0.46f),
                 )
             }
         }
@@ -277,10 +350,21 @@ fun InkCanvas(
             if (!enabled) return@pointerInput
             val eraserRadiusPx = 24.dp.toPx()
             awaitEachGesture {
-                val down = awaitFirstDown(requireUnconsumed = false)
-                down.consume()
+                // Aguarda o primeiro toque na fase INITIAL (antes dos pais como ZoomableCanvas interceptarem)
+                val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                val down = event.changes.firstOrNull { it.pressed } ?: return@awaitEachGesture
+                
+                // Ignorar toques que não sejam Stylus, Eraser ou Mouse (emulador)
+                val type = down.type
+                val isPen = type == androidx.compose.ui.input.pointer.PointerType.Stylus || 
+                            type == androidx.compose.ui.input.pointer.PointerType.Eraser ||
+                            type == androidx.compose.ui.input.pointer.PointerType.Mouse
 
-                if (isErasing) {
+                if (!isPen) return@awaitEachGesture // Deixa o dedo passar para o Pan/Zoom
+
+                down.consume() // Consome o evento para garantir que ninguem mais use
+
+                if (isErasing || type == androidx.compose.ui.input.pointer.PointerType.Eraser) {
                     eraseNear(down.position, strokes, eraserRadiusPx)
                 } else {
                     strokeStartedAt = System.currentTimeMillis()
@@ -293,8 +377,8 @@ fun InkCanvas(
                 }
 
                 while (true) {
-                    val event = awaitPointerEvent()
-                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    val loopEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    val change = loopEvent.changes.firstOrNull { it.id == down.id } ?: break
 
                     if (isErasing) {
                         if (change.pressed) {

@@ -15,6 +15,17 @@ Regras para o futuro:
 - Ranking deve ser opcional e contextual.
 - Dados sensiveis de escrita e desempenho exigem privacidade forte.
 
+## Arena futura
+
+Arena deve ser a ponte para e-sports sem transformar a Sprint em jogo visual. A competicao deve medir performance cognitiva real:
+
+- pacote fixo por seed;
+- score auditavel;
+- replay de escrita;
+- ranking por tema, modo e janela de tempo;
+- anti-cheat por tempo, tracos, OCR, padrao humano e confianca;
+- separacao clara entre treino livre, atividade/XP e ranked.
+
 ## Historico eterno
 
 Perfil deve guardar:

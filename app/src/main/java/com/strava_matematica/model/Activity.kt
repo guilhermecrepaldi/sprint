@@ -4,6 +4,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class ActivityResponse(
+    val days: List<HeatmapDay>,
+)
+
+@Serializable
 data class ReviewSuggestion(
     val skill: String,
     val status: String,

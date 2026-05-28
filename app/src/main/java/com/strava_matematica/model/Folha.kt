@@ -15,6 +15,9 @@ data class FolhaField(
     @SerialName("template_id") val templateId: String? = null,
     @SerialName("node_id") val nodeId: String? = null,
     @SerialName("method_tags") val methodTags: List<String>? = null,
+    @SerialName("expected_answer") val expectedAnswer: String? = null,
+    @SerialName("validator_type") val validatorType: String? = null,
+    @SerialName("answer_type") val answerType: String? = null,
 )
 
 @Serializable

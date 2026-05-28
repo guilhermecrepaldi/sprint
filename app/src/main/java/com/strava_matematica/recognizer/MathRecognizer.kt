@@ -5,14 +5,14 @@ import androidx.compose.ui.geometry.Offset
 /**
  * Abstraction over on-device math handwriting recognition.
  *
- * At submit time, the ViewModel asks the active recognizer for a LaTeX
- * string from the answer-box strokes. If a string is returned, the backend
- * can validate it with sympy (instant, no Claude call). If null, the
- * backend falls back to Claude OCR on the bitmap.
+ * Legacy abstraction kept so older code still compiles.
+ *
+ * The deterministic offline Sprint does not use handwriting recognition.
+ * Pen strokes are stored as scratch/telemetry; correction reads a structured
+ * local answer string.
  *
  * Implementations:
- *   - [NoOpRecognizer]   — always returns null (Claude OCR path, default)
- *   - [IinkRecognizer]   — MyScript iink SDK (local, real-time, offline)
+ *   - [NoOpRecognizer] — always returns null.
  */
 interface MathRecognizer {
 

@@ -22,6 +22,16 @@
 - Validar aviso de score apos 5 erros consecutivos.
 - Validar que `permanecer` nao altera dificuldade/tema/zoom.
 - Validar que `ajustar` abre scrolls secundarios.
+- Manter score e-sports sem teto publico, mas com thresholds internos normalizados em 0..10.
+- Separar XP/atividade de Arena/ranked competitivo.
+
+## Arena e e-sports
+
+- Manter Sprint livre como treino infinito.
+- Criar Arena no Painel, sem poluir Sprint.
+- Usar `ranked_mode`, `rules_version`, `competitive_score` e `audit_flags`.
+- Ranking competitivo deve usar apenas tentativas auditaveis.
+- Proximos passos: seed fixo de pacote, replay, revisao de anti-cheat e ranking por tema/modo.
 
 ## Biblioteca de exercicios
 
@@ -55,6 +65,6 @@
 
 - Tutorial completo.
 - Rede social.
-- Ranking global pesado.
+- Ranking global pesado fora da Arena minima.
 - UI explicativa permanente na Sprint.
 - Gamificacao infantil.

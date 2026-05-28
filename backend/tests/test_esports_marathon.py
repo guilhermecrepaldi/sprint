@@ -35,7 +35,7 @@ async def test_endurance_marathon_simulated_flow():
     
     try:
         db = FakeAsyncSession()
-        db.seed_exercises()
+        db.seed_exercises(count=360)
         
         student_id = uuid.uuid4()
         start = await start_session(

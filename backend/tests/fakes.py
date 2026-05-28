@@ -50,16 +50,15 @@ class FakeAsyncSession:
         self.commits = 0
         self.rollbacks = 0
 
-    def seed_exercises(self, count: int = 1000) -> list[Exercise]:
+    def seed_exercises(self, count: int = 64) -> list[Exercise]:
         exercises = []
-        import random
         for index in range(count):
             exercise = Exercise(
                 id=uuid.uuid4(),
                 statement=f"Resolva: x + {index} = {index + 5}",
                 expected_answer="x = 5",
                 skill_tags=["equacao_1_grau"],
-                difficulty=1.0 + (index % 90) * 0.1,  # Varia de 1.0 a 10.0 homogeneamente
+                difficulty=1.0 + (index % 90) * 0.1,
                 estimated_time_ms=30000,
                 source_library="test",
                 subject="math",
@@ -199,10 +198,12 @@ class FakeAsyncSession:
                     if exercise.id in ids
                 ]
                 return FakeResult(items=items)
-            lower = params.get("difficulty_1", 1.0)
-            upper = params.get("difficulty_2", 10.0)
+            has_difficulty_range = "exercises.difficulty >=" in sql and "exercises.difficulty <=" in sql
+            lower = params.get("difficulty_1", 1.0) if has_difficulty_range else 1.0
+            upper = params.get("difficulty_2", 10.0) if has_difficulty_range else 10.0
             subject = params.get("subject_1")
             template_id = params.get("template_id_1")
+            skill_tags = params.get("skill_tags_1")
             limit = params.get("param_1")
             excluded = set()
             for key, value in params.items():
@@ -214,6 +215,7 @@ class FakeAsyncSession:
                 if lower <= exercise.difficulty <= upper and exercise.id not in excluded
                 and (subject is None or exercise.subject == subject)
                 and (template_id is None or exercise.template_id == template_id)
+                and (not skill_tags or set(exercise.skill_tags or []).intersection(skill_tags))
             ]
             items.sort(key=lambda exercise: (abs(exercise.difficulty - ((lower + upper) / 2)), str(exercise.id)))
             return FakeResult(items=items[:limit])
@@ -293,6 +295,9 @@ class FakeAsyncSession:
             obj.difficulty_block_size = obj.difficulty_block_size or 30
             obj.focus_target_count = obj.focus_target_count or 300
             obj.fixation_density = getattr(obj, "fixation_density", None) or "fixa"
+            obj.ranked_mode = getattr(obj, "ranked_mode", None) or False
+            obj.arena_seed = getattr(obj, "arena_seed", None)
+            obj.rules_version = getattr(obj, "rules_version", None) or ("arena_v1" if obj.ranked_mode else "free_v1")
 
         if isinstance(obj, Session):
             obj.started_at = obj.started_at or datetime.now(UTC)
@@ -300,6 +305,11 @@ class FakeAsyncSession:
             obj.exercise_count = obj.exercise_count or 0
             obj.restart_count = obj.restart_count or 0
             obj.status = obj.status or "active"
+            obj.competitive_score = getattr(obj, "competitive_score", None) or 0
+            obj.competitive_valid = getattr(obj, "competitive_valid", None)
+            if obj.competitive_valid is None:
+                obj.competitive_valid = True
+            obj.audit_flags = getattr(obj, "audit_flags", None)
 
         if isinstance(obj, ExerciseAttempt):
             obj.stroke_count = obj.stroke_count or 0
@@ -309,6 +319,11 @@ class FakeAsyncSession:
             obj.recognition_engine = obj.recognition_engine or "test"
             obj.analysis_reliable = obj.analysis_reliable if obj.analysis_reliable is not None else True
             obj.analysis_notes = obj.analysis_notes or "ok"
+            obj.competitive_score = getattr(obj, "competitive_score", None) or 0
+            obj.competitive_valid = getattr(obj, "competitive_valid", None)
+            if obj.competitive_valid is None:
+                obj.competitive_valid = True
+            obj.audit_flags = getattr(obj, "audit_flags", None)
             obj.created_at = obj.created_at or datetime.now(UTC)
 
         if isinstance(obj, Exercise):

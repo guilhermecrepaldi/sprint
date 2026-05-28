@@ -26,6 +26,9 @@ class SessionConfigIn(BaseModel):
     difficulty_block_size: int = Field(default=30, ge=1, le=300)
     focus_target_count: int = Field(default=300, ge=30, le=3000)
     fixation_density: Literal["leve", "fixa", "densa", "exata"] = "fixa"
+    ranked_mode: bool = False
+    arena_seed: str | None = Field(default=None, max_length=80)
+    rules_version: str = Field(default="free_v1", max_length=40)
 
     @model_validator(mode="after")
     def validate_duration_limits(self) -> "SessionConfigIn":
@@ -33,6 +36,8 @@ class SessionConfigIn(BaseModel):
             raise ValueError("duration_limit_ms is required when duration_mode is timed")
         if self.duration_mode == "pages" and self.pages_limit is None:
             raise ValueError("pages_limit is required when duration_mode is pages")
+        if self.ranked_mode and self.rules_version == "free_v1":
+            self.rules_version = "arena_v1"
         return self
 
 

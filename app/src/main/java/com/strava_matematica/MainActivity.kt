@@ -179,6 +179,7 @@ fun SprintApp(
                         history = state.sprintHistory,
                         skillAttempts = state.skillAttempts,
                         skillAccuracy = state.skillAccuracy,
+                        activityDays = state.activityDays,
                         onGoToSprint = goToSprint,
                         onStartSession = sessionViewModel::startSessionFromDashboard,
                     )
@@ -229,6 +230,7 @@ fun SprintApp(
                                         fieldAnswerStrokes = effectiveFolhaState.fieldAnswerStrokes,
                                         fieldScratchRedoStacks = effectiveFolhaState.fieldScratchRedoStacks,
                                         fieldAnswerRedoStacks = effectiveFolhaState.fieldAnswerRedoStacks,
+                                        fieldTypedAnswers = effectiveFolhaState.fieldTypedAnswers,
                                         onAdvance = doAdvance,
                                         selectedSkillTag = state.selectedSkillTag,
                                         densityLevel = state.densityLevel,
@@ -238,6 +240,9 @@ fun SprintApp(
                                         },
                                         onSyncAnswer = { fieldIndex, strokes, redoStack ->
                                             folhaViewModel.syncAnswer(folha.folhaId, fieldIndex, strokes, redoStack)
+                                        },
+                                        onTypedAnswerChange = { fieldIndex, answer ->
+                                            folhaViewModel.syncTypedAnswer(folha.folhaId, fieldIndex, answer)
                                         },
                                         onPenEvent = { fieldIndex, event ->
                                             folhaViewModel.appendEvent(folha.folhaId, fieldIndex, event)

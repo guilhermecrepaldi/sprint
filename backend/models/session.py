@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -35,6 +35,9 @@ class SessionConfig(Base):
     difficulty_block_size: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
     focus_target_count: Mapped[int] = mapped_column(Integer, default=300, server_default="300")
     fixation_density: Mapped[str] = mapped_column(String(20), default="fixa", server_default="fixa")
+    ranked_mode: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    arena_seed: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    rules_version: Mapped[str] = mapped_column(String(40), default="free_v1", server_default="free_v1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -54,6 +57,9 @@ class Session(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     session_accuracy: Mapped[float] = mapped_column(Float, default=0.0, server_default="0.0")
     xp: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    competitive_score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    competitive_valid: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    audit_flags: Mapped[list[str] | None] = mapped_column(ARRAY(String))
 
 
 class Folha(Base):

@@ -2,6 +2,7 @@ package com.strava_matematica.network
 
 import com.strava_matematica.model.CalibrationRequest
 import com.strava_matematica.model.CalibrationResponse
+import com.strava_matematica.model.ActivityResponse
 import com.strava_matematica.model.DrillBatch
 import com.strava_matematica.model.DrillFlushRequest
 import com.strava_matematica.model.DrillFlushResult
@@ -69,6 +70,12 @@ interface StravaMathApi {
 
     @GET("api/student/{studentId}/skill-progress")
     suspend fun getSkillProgress(@Path("studentId") studentId: String): List<SkillProgressItem>
+
+    @GET("api/student/{studentId}/activity")
+    suspend fun getActivity(
+        @Path("studentId") studentId: String,
+        @Query("days") days: Int = 35,
+    ): ActivityResponse
 
     @GET("api/student/{studentId}/sessions")
     suspend fun getSessionHistory(

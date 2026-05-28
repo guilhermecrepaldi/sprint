@@ -4,7 +4,7 @@
 
 SPRINT e um app Android de treino continuo de matematica. A experiencia principal e a aba Sprint, com exercicio, rascunho, resposta, enter e scroll superior discreto.
 
-Ultima intervencao: fluxo adaptativo corrigido para regra "engine sugere, usuario decide". 5 erros consecutivos mostram alerta de score com escolha do usuario; zoom exato voltou aos scrolls secundarios; backend nao reduz dificuldade automaticamente por recovery.
+Ultima intervencao: QA no emulador e correcao de ambiente. O HTTP 500 inicial vinha do Postgres local parado em `0011_add_skill_pin`; aplicado `python -m alembic upgrade head` ate `0014_focus_sprint_blocks` e o script `simular_android.ps1` agora roda migrations antes de abrir o app.
 
 ## Decisoes recentes
 
@@ -35,6 +35,21 @@ Ultima intervencao: fluxo adaptativo corrigido para regra "engine sugere, usuari
 - Zoom exato voltou ao scroll secundario e usa `template_pin` + `focus_source_exercise_id`.
 - ZoomableCanvas compoe apenas a camada interativa visivel para o mapa nao ficar bloqueado pela folha invisivel.
 - `backend/seed/exercises.py` nao deve apagar attempts/historico; seeds precisam ser aditivos/idempotentes.
+- Score bruto de tentativa/pagina pode passar de 1000; testes e UI nao devem assumir teto fixo.
+- `_recent_scores()` em `backend/api/submit.py` deve continuar limitando scores para escala adaptativa 0..10.
+- `simular_android.ps1` deve manter `python -m alembic upgrade head` antes da abertura do app para evitar backend 500 por schema atrasado.
+- No emulador, Sprint carregou exercicio, registrou tentativa via ML Kit, avancou com resposta limpa, mostrou aviso de 5 erros e abriu scrolls secundarios por triplo toque.
+- Registro do enter acumula a sessao de estudo viva no app; trocar tema pela Arvore/scroll nao zera `sessionCorrect/sessionTotal`.
+- `backend/scripts/simulate_user_flow.py` simula 4 temas (`soma_subtracao`, `equacoes_lineares`, `trig_razoes`, `funcao_logaritmica`) com 10 exercicios cada e valida historico, skill-progress, activity/timeline e perfil.
+- Android persiste `student_id_v1` em `SharedPreferences`; reiniciar o app nao deve criar outro aluno nem esconder historico/progresso.
+- Painel/Perfil consome `GET /api/student/{student_id}/activity?days=35` e mostra um calendario compacto; deve atualizar junto com historico/progresso depois de iniciar/submeter sessao.
+- Arvore: ao selecionar uma skill, `SessionViewModel.startSession()` limpa `currentFolha` antes do request para nao mostrar exercicio antigo durante o carregamento.
+- Seed `backend/seed/expand_modular_trig.py` adiciona exercicios parametrizados de funcao modular e trigonometria sem apagar dados.
+- Ultima insercao local: +1.798 exercicios `sprint_parametric_modular_trig_v1`; total local 16.576.
+- Cobertura local pos-seed: `funcao_modular` 698, `trig_razoes` 719, `trig_seno_cosseno_tangente` 790, `trig_identidades` 1026, `trig_equacoes` 648.
+- Arena minima criada no backend: `ranked_mode`, `competitive_score`, `competitive_valid`, `audit_flags` e `GET /api/ranking/arena/weekly`.
+- Ranking semanal antigo por XP e ranking Arena sao coisas diferentes: XP mede atividade; Arena mede score competitivo auditavel.
+- Tentativas ranqueadas com payload textual, tempo impossivel, pouca escrita ou OCR duvidoso recebem `competitive_score = 0`.
 
 ## Arquivos mais relevantes
 
@@ -46,9 +61,12 @@ Ultima intervencao: fluxo adaptativo corrigido para regra "engine sugere, usuari
 - `backend/engine/adaptive.py`
 - `backend/engine/focus_expansion.py`
 - `backend/seed/generate_exercises.py`
+- `backend/seed/expand_modular_trig.py`
 - `backend/seed/exercises.py`
 - `backend/api/submit.py`
 - `backend/api/activity.py`
+- `backend/api/ranking.py`
+- `app/src/main/java/com/strava_matematica/model/Activity.kt`
 
 ## Como continuar
 
@@ -64,7 +82,7 @@ Ultima intervencao: fluxo adaptativo corrigido para regra "engine sugere, usuari
 - Varios arquivos ja estao modificados; nao reverter trabalho alheio.
 - A UX precisa ser testada no tablet/emulador, nao apenas compilada.
 - Geradores de zoom exato ainda cobrem poucos tipos.
-- As migrations foram criadas, mas nem sempre aplicadas no banco local.
+- As migrations precisam estar em `0014_focus_sprint_blocks`; se aparecer HTTP 500 no start de sessao, conferir `alembic_version`.
 - `SUPER_SPEC.md` e handoffs antigos podem estar defasados; prefira `docs/` como fonte atual.
 - Enter circular fica sobre a lateral direita; se o usuario escrever muito perto dele, pode parecer que o toque foi roubado. Validar no tablet antes de redesenhar.
 - Gestos no pai (`sprintGestureInput`) usam `PointerEventPass.Initial`; 1 dedo deve passar para o canvas, mas multi-touch acidental pode avancar ou alternar borracha.
@@ -73,7 +91,20 @@ Ultima intervencao: fluxo adaptativo corrigido para regra "engine sugere, usuari
 
 ## Proxima acao recomendada
 
-Testar a Sprint no Android Studio/emulador e, se possivel, em tablet USB real. O ultimo teste local instalou no emulador `emulator-5554` e abriu sem crash fatal nos logs.
+Estado mais recente: a Sprint central foi migrada para offline-first deterministico.
+
+- `exercise_catalog.db` embarcado com 16.576 exercicios.
+- Room/KSP adicionado ao Android.
+- `LocalSprintRepository` substitui backend no fluxo central de start/submit/history/progress/activity.
+- ML Kit foi removido das dependencias; `MlKitRecognizer` virou stub sem IA.
+- Resposta corrigida agora e estruturada pelo teclado matematico local no campo de resposta.
+- Caneta continua registrando rascunho/telemetria, sem interpretacao automatica.
+- Emulador com `.\simular_android.ps1 -NoBackend` instalou e abriu o app sem crash.
+- Enter avancou e registrou tentativa no `sprint_runtime.db`.
+
+QA pendente: validar manualmente um acerto pelo teclado matematico local no tablet/emulador. O teste por ADB validou erro/registro/avanco, mas nao conseguiu clicar as teclas com precisao suficiente para confirmar um acerto.
+
+Testar a Sprint no Android Studio/emulador e, se possivel, em tablet USB real. O ultimo teste local instalou no emulador `emulator-5554` e abriu sem crash fatal nos logs. Os screenshots `.sprint/android_dashboard_calendar_4.png` e `.sprint/android_dashboard_calendar_scrolled.png` confirmaram o Painel/Perfil com Calendario renderizado e rolagem vertical.
 
 Checklist manual minimo:
 
@@ -94,3 +125,4 @@ Ajustar sensibilidade de:
 - Painel mostrando dados depois de submeter uma folha.
 - Aviso de 5 erros consecutivos: permanecer nao altera nada; ajustar abre scrolls.
 - Zoom exato: selecionar `zoom -> exato` deve iniciar nova Sprint com `fixation_density = exata`.
+- Scoring: manter `python -m unittest` e `python -m pytest` verdes; a suite pytest cobre o teste de maratona e-sports.

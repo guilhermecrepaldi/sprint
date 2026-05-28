@@ -5,28 +5,19 @@ import android.content.Context
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.strava_matematica.data.local.repository.LocalSprintRepository
 import com.strava_matematica.model.ApiStatus
 import com.strava_matematica.model.GestureConfig
-import com.strava_matematica.model.CalibrationRequest
 import com.strava_matematica.model.CalibrationSample
 import com.strava_matematica.model.DrillFlushResult
+import com.strava_matematica.model.HeatmapDay
 import com.strava_matematica.model.ReviewSuggestion
 import com.strava_matematica.model.SprintHistoryItem
 import com.strava_matematica.model.Folha
 import com.strava_matematica.model.FolhaField
-import com.strava_matematica.model.IdentifyTopicRequest
 import com.strava_matematica.model.SessionConfig
 import com.strava_matematica.model.SessionStatus
 import com.strava_matematica.model.SubmitResult
-import com.strava_matematica.model.SessionStartRequest
-import com.strava_matematica.model.SubmitRequest
-import com.strava_matematica.model.FieldSubmit
-import com.strava_matematica.network.ApiClient
-import com.strava_matematica.recognizer.MathRecognizer
-import com.strava_matematica.recognizer.MlKitRecognizer
-import com.strava_matematica.ui.folha.ImageUtils
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -69,6 +60,7 @@ data class SessionUiState(
     val gestureConfig: GestureConfig = GestureConfig(),
     // Sprint history — loaded from API
     val sprintHistory: List<SprintHistoryItem> = emptyList(),
+    val activityDays: List<HeatmapDay> = emptyList(),
     // Histórico visual dos últimos 7 resultados (newest = último da lista)
     val recentResults: List<ResultMark> = emptyList(),
     // Flow adaptativo: engine sinaliza, usuario decide.
@@ -80,13 +72,14 @@ data class SessionUiState(
 )
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
-    private val api = ApiClient.create()
+    private val localRepository = LocalSprintRepository.getInstance(application)
     private val prefs = application.getSharedPreferences("love_class_prefs", Context.MODE_PRIVATE)
+    private val stableStudentId = prefs.getString("student_id_v1", null)
+        ?: UUID.randomUUID().toString().also { generated ->
+            prefs.edit().putString("student_id_v1", generated).apply()
+        }
 
-    // Active recognizer: ML Kit (free, on-device, ~30 MB model download on first run).
-    // Swap → IinkRecognizer(application) after MyScript setup for full math notation support.
-    private val recognizer: MathRecognizer = MlKitRecognizer(application)
-    private val _uiState = MutableStateFlow(SessionUiState())
+    private val _uiState = MutableStateFlow(SessionUiState(studentId = stableStudentId))
     val uiState: StateFlow<SessionUiState> = _uiState
 
     init {
@@ -96,6 +89,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startSessionFromDashboard()
         fetchHistory()
         fetchSkillProgress()
+        fetchActivity()
         // Carregar notas persistidas
         val notesRaw = prefs.getString("sprint_notes_v1", "[]") ?: "[]"
         val savedNotes = runCatching {
@@ -127,24 +121,17 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun submitCalibration(samples: List<CalibrationSample>) {
-        _uiState.update { it.copy(apiStatus = ApiStatus.CONNECTING, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                currentFolha = null,
+                lastResult = null,
+                apiStatus = ApiStatus.CONNECTING,
+                errorMessage = null,
+            )
+        }
         viewModelScope.launch {
-            try {
-                api.calibrate(
-                    studentId = _uiState.value.studentId,
-                    body = CalibrationRequest(samples = samples),
-                )
-                markCalibrationDone()
-                _uiState.update { it.copy(status = SessionStatus.DASHBOARD, apiStatus = ApiStatus.OK) }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        status = SessionStatus.CALIBRATION,
-                        apiStatus = ApiStatus.ERROR,
-                        errorMessage = e.message,
-                    )
-                }
-            }
+            markCalibrationDone()
+            _uiState.update { it.copy(status = SessionStatus.DASHBOARD, apiStatus = ApiStatus.OK) }
         }
     }
 
@@ -259,22 +246,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     /** Chamado pelo DashboardScreen após o aluno parar de escrever (debounce). */
     fun identifyTopic(strokes: List<List<Offset>>) {
         if (strokes.isEmpty()) return
-        viewModelScope.launch {
-            try {
-                val base64 = ImageUtils.exportBitmap(strokes)
-                val res = api.identifyTopic(IdentifyTopicRequest(imageBase64 = base64))
-                if (res.confidence >= 0.5f) {
-                    _uiState.update {
-                        it.copy(
-                            identifiedSkillTag = res.skillTag,
-                            selectedSkillTag = res.skillTag,
-                        )
-                    }
-                }
-            } catch (_: Exception) {
-                // identificação silenciosa — nunca travar dashboard
-            }
-        }
+        // Offline deterministico: sem OCR/IA para identificar tema por escrita livre.
+        // A escolha de tema fica nos scrolls e na arvore.
     }
 
     // ── Session start (a partir do dashboard) ────────────────────────────────
@@ -289,11 +262,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(apiStatus = ApiStatus.CONNECTING, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val req = SessionStartRequest(
+                val res = localRepository.startSession(
                     studentId = _uiState.value.studentId,
+                    skillTag = skillTag,
+                    density = density,
                     config = densityConfig.copy(skillPin = skillTag),
                 )
-                val res = api.startSession(req)
                 _uiState.update {
                     it.copy(
                         sessionId = res.sessionId,
@@ -301,8 +275,6 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         selectedSkillTag = skillTag,
                         status = SessionStatus.ACTIVE,
                         apiStatus = ApiStatus.OK,
-                        sessionCorrect = 0,
-                        sessionTotal = 0,
                         recentResults = emptyList(),
                         consecutiveFails = 0,
                         scoreRiskVisible = false,
@@ -313,6 +285,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 }
                 fetchHistory()
                 fetchSkillProgress()
+                fetchActivity()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -336,40 +309,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
         viewModelScope.launch {
             try {
-                // Recognize all fields concurrently (ML Kit is fast; Claude OCR is the fallback).
-                // Fallback: se o aluno escreveu só no rascunho, usa rascunho para OCR.
-                val recognizedTexts: List<String?> = folha.fields.map { field ->
-                    async {
-                        val answerStrokes = folhaState.fieldAnswerStrokes[field.fieldIndex].orEmpty()
-                        val scratchStrokes = folhaState.fieldScratchStrokes[field.fieldIndex].orEmpty()
-                        val strokes = answerStrokes.ifEmpty { scratchStrokes }
-                        recognizer.recognize(strokes)
-                    }
-                }.awaitAll()
-
-                val fields = folha.fields.mapIndexed { i, field ->
-                    val answerStrokes = folhaState.fieldAnswerStrokes[field.fieldIndex].orEmpty()
-                    val scratchStrokes = folhaState.fieldScratchStrokes[field.fieldIndex].orEmpty()
-                    val strokes = answerStrokes.ifEmpty { scratchStrokes }
-                    val imageBase64 = ImageUtils.exportBitmap(strokes)
-                    FieldSubmit(
-                        fieldIndex = field.fieldIndex,
-                        exerciseId = field.exerciseId,
-                        imageBase64 = imageBase64,
-                        totalTimeMs = folhaState.fieldTiming[field.fieldIndex]?.totalTimeMs ?: 10000L,
-                        timeToFirstStrokeMs = folhaState.fieldTiming[field.fieldIndex]?.firstStrokeAtMs ?: 2000L,
-                        penEvents = folhaState.fieldEvents[field.fieldIndex].orEmpty(),
-                        recognizedText = recognizedTexts[i],
-                        recognitionEngine = if (recognizedTexts[i] != null) "mlkit_digital_ink" else null,
-                        recognitionConfidence = if (recognizedTexts[i] != null) 0.9f else null,
-                    )
-                }
-                val req = SubmitRequest(
-                    folhaId = folha.folhaId,
-                    submittedAtMs = System.currentTimeMillis(),
-                    fields = fields,
+                val res = localRepository.submitFolha(
+                    studentId = state.studentId,
+                    sessionId = sessionId,
+                    folha = folha,
+                    folhaState = folhaState,
+                    config = state.config,
                 )
-                val res = api.submitFolha(sessionId, req)
                 val finished = res.sessionStatus == "finished"
                 val folhaCorrect = res.results.count { it.isCorrect }
                 val folhaTotal = res.results.size
@@ -388,7 +334,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     val mastery = corrects >= 5
                     val nextSkill = if (mastery && !it.masteryDetected) nextSkillInTree(it.selectedSkillTag) else it.suggestedNextSkill
                     val dismissedAt = if (fails == 0) null else it.scoreRiskDismissedAt
-                    val showScoreRisk = fails >= 5 && dismissedAt != fails
+                    val showScoreRisk = fails >= 5 && dismissedAt == null
                     it.copy(
                         lastResult = res,
                         status = if (finished) SessionStatus.FINISHED else SessionStatus.RESULT,
@@ -405,6 +351,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 }
                 fetchSkillProgress()
                 fetchHistory()
+                fetchActivity()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(errorMessage = e.message, status = SessionStatus.ACTIVE, apiStatus = ApiStatus.ERROR)
@@ -505,7 +452,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val studentId = _uiState.value.studentId
         viewModelScope.launch {
             try {
-                val history = api.getSessionHistory(studentId)
+                val history = localRepository.history(studentId)
                 _uiState.update { it.copy(sprintHistory = history) }
             } catch (_: Exception) {
                 // History is best-effort — dashboard still renders with stale data
@@ -517,7 +464,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val studentId = _uiState.value.studentId
         viewModelScope.launch {
             try {
-                val progress = api.getSkillProgress(studentId)
+                val progress = localRepository.skillProgress(studentId)
                 _uiState.update {
                     it.copy(
                         skillStatuses = it.skillStatuses + progress.associate { item -> item.skill to item.status },
@@ -532,6 +479,18 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun fetchActivity() {
+        val studentId = _uiState.value.studentId
+        viewModelScope.launch {
+            try {
+                val activity = localRepository.activity(studentId, days = 35)
+                _uiState.update { it.copy(activityDays = activity) }
+            } catch (_: Exception) {
+                // Activity is best-effort; profile renders with the last known heatmap.
+            }
+        }
+    }
+
     fun updateGesture(action: String, gesture: String) {
         _uiState.update { it.copy(gestureConfig = it.gestureConfig.withMapping(action, gesture)) }
     }
@@ -540,7 +499,17 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val studentId = _uiState.value.studentId
         viewModelScope.launch {
             try {
-                val suggestions = api.getReviewSuggestions(studentId)
+                val suggestions = localRepository.skillProgress(studentId)
+                    .filter { it.attemptCount > 0 && it.accuracy < 0.70f }
+                    .map {
+                        ReviewSuggestion(
+                            skill = it.skill,
+                            status = it.status,
+                            accuracy = it.accuracy,
+                            daysIdle = 0,
+                            attemptCount = it.attemptCount,
+                        )
+                    }
                 val statuses = suggestions.associate { it.skill to it.status }
                 _uiState.update {
                     it.copy(
@@ -557,7 +526,6 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun onCleared() {
-        recognizer.release()
         super.onCleared()
     }
 

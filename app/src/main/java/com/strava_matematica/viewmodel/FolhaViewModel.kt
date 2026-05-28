@@ -23,6 +23,7 @@ data class FolhaUiState(
     val fieldAnswerStrokes: Map<Int, List<List<Offset>>> = emptyMap(),
     val fieldScratchRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
     val fieldAnswerRedoStacks: Map<Int, List<List<Offset>>> = emptyMap(),
+    val fieldTypedAnswers: Map<Int, String> = emptyMap(),
     val fieldTiming: Map<Int, FieldTiming> = emptyMap(),
     val isSubmitting: Boolean = false,
     val elapsedMs: Long = 0,
@@ -109,6 +110,13 @@ class FolhaViewModel : ViewModel() {
         syncAnswer(folhaId, fieldIndex, strokes, redoStack)
     }
 
+    fun syncTypedAnswer(folhaId: String, fieldIndex: Int, answer: String) {
+        _uiState.update { state ->
+            val scoped = state.scopedTo(folhaId)
+            scoped.copy(fieldTypedAnswers = scoped.fieldTypedAnswers + (fieldIndex to answer))
+        }
+    }
+
     /** Kept for call-sites that haven't migrated yet; routes to answer canvas. */
     fun syncStrokes(fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) =
         syncAnswer(fieldIndex, strokes, redoStack)
@@ -139,6 +147,7 @@ class FolhaViewModel : ViewModel() {
                 fieldAnswerStrokes = state.fieldAnswerStrokes - fieldIndex,
                 fieldScratchRedoStacks = state.fieldScratchRedoStacks - fieldIndex,
                 fieldAnswerRedoStacks = state.fieldAnswerRedoStacks - fieldIndex,
+                fieldTypedAnswers = state.fieldTypedAnswers - fieldIndex,
                 fieldTiming = state.fieldTiming - fieldIndex,
             )
         }
@@ -154,6 +163,7 @@ class FolhaViewModel : ViewModel() {
                 fieldAnswerStrokes = state.fieldAnswerStrokes - fieldIndex,
                 fieldScratchRedoStacks = state.fieldScratchRedoStacks - fieldIndex,
                 fieldAnswerRedoStacks = state.fieldAnswerRedoStacks - fieldIndex,
+                fieldTypedAnswers = state.fieldTypedAnswers - fieldIndex,
                 fieldTiming = state.fieldTiming - fieldIndex,
             )
         }

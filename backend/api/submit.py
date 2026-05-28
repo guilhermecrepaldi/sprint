@@ -110,6 +110,40 @@ def _writing_analysis(
     return reliable, ",".join(notes) if notes else "ok"
 
 
+def _competitive_audit_flags(
+    *,
+    field,
+    exercise: Exercise,
+    confidence: float,
+    analysis_reliable: bool,
+    stroke_count: int,
+    event_count: int,
+    recognition_engine: str | None,
+) -> list[str]:
+    flags: list[str] = []
+    estimated_ms = max(1, exercise.estimated_time_ms or 45_000)
+    min_plausible_ms = max(700, int(estimated_ms * 0.06))
+
+    if field.image_base64.startswith(("latex:", "text:")):
+        flags.append("text_payload")
+    if field.total_time_ms < min_plausible_ms:
+        flags.append("too_fast")
+    if field.time_to_first_stroke_ms > field.total_time_ms:
+        flags.append("first_stroke_after_finish")
+    if stroke_count <= 0:
+        flags.append("no_strokes")
+    if event_count < 2:
+        flags.append("too_few_pen_events")
+    if confidence < 0.72:
+        flags.append("low_recognition_confidence")
+    if not analysis_reliable:
+        flags.append("analysis_unreliable")
+    if recognition_engine in (None, "unknown"):
+        flags.append("unknown_recognition_engine")
+
+    return list(dict.fromkeys(flags))
+
+
 async def _recent_scores(db: AsyncSession, session_id: uuid.UUID, limit: int) -> list[float]:
     result = await db.execute(
         select(ExerciseAttempt.score)
@@ -118,7 +152,8 @@ async def _recent_scores(db: AsyncSession, session_id: uuid.UUID, limit: int) ->
         .limit(limit)
     )
     scores = list(reversed(result.scalars().all()))
-    return [(score or 0) / 100 for score in scores]
+    # Public score can exceed 1000 for e-sports, but adaptive thresholds are 0..10.
+    return [min(10.0, (score or 0) / 100) for score in scores]
 
 
 def _should_finish_session(session: Session, config: SessionConfig) -> bool:
@@ -290,6 +325,17 @@ async def submit_folha(
             "reliable": analysis_reliable,
             "notes": analysis_notes,
         }
+        audit_flags = _competitive_audit_flags(
+            field=field,
+            exercise=exercise,
+            confidence=confidence,
+            analysis_reliable=analysis_reliable,
+            stroke_count=stroke_count,
+            event_count=len(field.pen_events),
+            recognition_engine=recognition_engine,
+        )
+        competitive_valid = not audit_flags
+        competitive_score = score if competitive_valid else 0
         primary_skill = exercise.skill_tags[0] if exercise.skill_tags else None
         skill_memory = (
             await db.get(StudentSkillMemory, {"student_id": session.student_id, "skill": primary_skill})
@@ -314,6 +360,9 @@ async def submit_folha(
             expected_answer=exercise.expected_answer,
             is_correct=is_correct,
             score=score,
+            competitive_score=competitive_score,
+            competitive_valid=competitive_valid,
+            audit_flags=audit_flags,
             total_time_ms=field.total_time_ms,
             time_to_first_stroke_ms=field.time_to_first_stroke_ms,
             stroke_count=stroke_count,
@@ -382,6 +431,11 @@ async def submit_folha(
         # XP: acumula na sessão
         xp_earned = _compute_xp(is_correct, exercise.difficulty, field.total_time_ms, exercise.estimated_time_ms)
         session.xp = (session.xp or 0) + xp_earned
+        session.competitive_score = (session.competitive_score or 0) + competitive_score
+        if config.ranked_mode and audit_flags:
+            session.competitive_valid = False
+            merged_flags = list(dict.fromkeys((session.audit_flags or []) + audit_flags))
+            session.audit_flags = merged_flags
 
         # Calibração: só em modo contributor
         if config.contributor_mode and is_correct:
@@ -394,6 +448,9 @@ async def submit_folha(
                 expected_answer=exercise.expected_answer,
                 is_correct=is_correct,
                 score=score,
+                competitive_score=competitive_score,
+                competitive_valid=competitive_valid,
+                audit_flags=audit_flags,
                 error_type=error_type,
                 vector=vector,
                 feedback=intervention_signal or ("" if is_correct else "resposta diferente do esperado"),
@@ -462,5 +519,8 @@ async def submit_folha(
         session_status=session.status,
         xp_earned=xp_earned,
         xp_total=student_xp_total,
+        competitive_score=session.competitive_score or 0,
+        competitive_valid=bool(session.competitive_valid),
+        audit_flags=session.audit_flags or [],
         next_folha=next_folha,
     )

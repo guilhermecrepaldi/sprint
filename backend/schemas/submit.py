@@ -49,6 +49,9 @@ class FieldResult(BaseModel):
     expected_answer: str
     is_correct: bool
     score: int
+    competitive_score: int = 0
+    competitive_valid: bool = True
+    audit_flags: list[str] = Field(default_factory=list)
     error_type: str | None
     vector: dict[str, Any]
     feedback: str = ""
@@ -71,4 +74,7 @@ class SubmitOut(BaseModel):
     session_status: str
     xp_earned: int = 0        # XP desta folha
     xp_total: int = 0         # XP acumulado do student
+    competitive_score: int = 0
+    competitive_valid: bool = True
+    audit_flags: list[str] = Field(default_factory=list)
     next_folha: FolhaOut | None = None

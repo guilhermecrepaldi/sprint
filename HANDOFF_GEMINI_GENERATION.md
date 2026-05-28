@@ -1,6 +1,6 @@
 # HANDOFF — Gemini
 
-Projeto: LOVE CLASS
+Projeto: SPRINT
 
 Workspace: `D:\LOVE CLASS`
 
@@ -21,6 +21,7 @@ Objetivo principal do Gemini agora: ampliar/qualificar biblioteca de exercicios 
 - Zoom exato e escolha explicita e deve continuar usando `template_pin` + `focus_source_exercise_id`.
 - Nao substituir zoom exato por dificuldade manual.
 - Sprint continua limpa: exercicio, rascunho, resposta, enter, scroll superior.
+- Painel/Perfil pode mostrar calendario compacto e dados de progresso; nao levar esses dados para dentro da aba Sprint.
 
 ---
 
@@ -37,11 +38,15 @@ Objetivo principal do Gemini agora: ampliar/qualificar biblioteca de exercicios 
 ## Estado Atual Do Codigo
 
 - Android compila com `.\gradlew.bat :app:assembleDebug`.
-- Backend passa `python -m unittest` com 93 testes.
+- Backend passa `python -m pytest` com 99 testes.
 - Simulacao Android disponivel em `simular_android.ps1`.
 - Run Configuration Android Studio: `.run/Sprint Debug.run.xml`.
 - `backend/seed/exercises.py` foi corrigido para nao apagar historico.
+- `backend/seed/expand_modular_trig.py` adicionou pacote parametrico local para funcao modular e trigonometria.
 - `backend/engine/adaptive.py` nao aplica recovery automatico por erros consecutivos.
+- `SessionViewModel.startSession()` limpa a folha antiga ao trocar skill na Arvore, evitando mostrar tema anterior durante carregamento.
+- Arena minima existe no backend: `ranked_mode`, `competitive_score`, `competitive_valid`, `audit_flags` e `GET /api/ranking/arena/weekly`.
+- Score publico pode passar de 1000 para e-sports; adaptacao interna normaliza em 0..10.
 
 ---
 
@@ -53,12 +58,13 @@ Total atual por origem:
 
 | source_library | count |
 |---|---:|
-| generated_v1 | 2838 |
-| seed_v2 | 47 |
+| generated_v1 | 14730 |
+| seed_v2 | 48 |
+| sprint_parametric_modular_trig_v1 | 1798 |
 
-O criterio minimo antigo do handoff (`generated_v1 >= 2720`) ja foi atingido.
+Total local atual: 16.576 exercicios.
 
-Meta informal do usuario: chegar perto de 5000 exercicios gerados. Faltam aproximadamente 2162 novos exercicios.
+Meta informal antiga de 5000 exercicios ja foi superada localmente. Proxima meta e qualidade/cobertura por skill, nao apenas volume bruto.
 
 ---
 
@@ -79,6 +85,11 @@ Arquivos ja preparados:
   - Suporta `--provider ollama`
   - Insere com `source_library = generated_v1`
   - Deduplica por `statement`
+- `backend/seed/expand_modular_trig.py`
+  - Gerador local parametrico para `funcao_modular` e trigonometria
+  - Insere com `source_library = sprint_parametric_modular_trig_v1`
+  - Ja inseriu +1.798 exercicios localmente
+  - Use como exemplo de seed aditivo/idempotente, nao como substituto para geracao Gemini ampla
 - `backend/api/exercise_generation.py`
   - `POST /api/exercises/generate/openai`
   - `POST /api/exercises/generate/gemini`
@@ -98,7 +109,9 @@ $env:GEMINI_API_KEY = "<GEMINI_API_KEY>"
 
 ## Skills Que Ainda Precisam Ser Geradas
 
-Fotografia atual por skill (`generated_v1`):
+Atencao: a fotografia antiga abaixo era por `generated_v1`. Para prioridade real, rode nova contagem no banco antes de gerar. Modular e trigonometria ja receberam reforco local via `sprint_parametric_modular_trig_v1`, entao nao sao prioridade imediata de volume.
+
+Fotografia historica por skill (`generated_v1`):
 
 | skill | current | need_to_148 |
 |---|---:|---:|
@@ -112,12 +125,12 @@ Fotografia atual por skill (`generated_v1`):
 | integrais_indefinidas | 0 | 148 |
 | nocao_de_limite | 0 | 148 |
 | probabilidade | 0 | 148 |
-| trig_equacoes | 0 | 148 |
-| trig_identidades | 0 | 148 |
-| trig_razoes | 0 | 148 |
-| trig_seno_cosseno_tangente | 0 | 148 |
+| trig_equacoes | coberta por seed local | 0 |
+| trig_identidades | coberta por seed local | 0 |
+| trig_razoes | coberta por seed local | 0 |
+| trig_seno_cosseno_tangente | coberta por seed local | 0 |
 | combinatoria | 25 | 123 |
-| funcao_modular | 25 | 123 |
+| funcao_modular | coberta por seed local | 0 |
 
 `progressoes_pa_pg` ja esta acima de 148 (`246`). Nao gere mais para ela agora.
 
@@ -257,7 +270,12 @@ cd "D:\LOVE CLASS\backend"
 python -m py_compile scripts\generate_exercises.py api\exercise_generation.py db.py main.py
 ```
 
-`python -m unittest -v` ainda pode falhar em 9 testes por `api.submit.extract_answer` ausente. Essa falha e preexistente e nao e causada pela geracao Gemini.
+Tambem rode:
+
+```powershell
+python -m unittest
+python -m pytest
+```
 
 ---
 
@@ -269,3 +287,15 @@ python -m py_compile scripts\generate_exercises.py api\exercise_generation.py db
 - Se Gemini retornar erro de quota/rate limit, reduza `--batch-size` para 10 ou aguarde.
 - Preferir grupos pequenos para facilitar retomada se o usuario interromper.
 - Depois de qualquer alteracao de codigo/documentacao: rodar verificacao, commitar, push para `origin/main`, e adicionar APPEND no handoff relevante.
+# Atualizacao Codex - Offline deterministico
+
+O SPRINT central agora deve ser tratado como app offline-first, sem IA e sem backend em runtime.
+
+- Fonte embarcada: `app/src/main/assets/databases/exercise_catalog.db` com 16.576 exercicios.
+- Exportador: `backend/scripts/export_sqlite_catalog.py`.
+- Runtime local: Room em `sprint_runtime.db`.
+- Correcao: `DeterministicValidator.kt`, usando resposta estruturada do teclado matematico local.
+- Caneta: rascunho e telemetria, nao OCR.
+- Proibido reintroduzir ML Kit/MyScript/Claude/Gemini/OpenAI para validar resposta sem decisao explicita do usuario.
+
+Ao gerar exercicios, manter `expected_answer` adequado para validacao deterministica (`exact`, `options`, `regex`, `numeric`, `fraction`, `equation`) e preservar metadados de progressao.

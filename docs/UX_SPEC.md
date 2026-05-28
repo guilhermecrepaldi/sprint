@@ -39,7 +39,8 @@ Toque normal:
 
 Segurar:
 
-- Mostra registro leve da sessao: acertos, total, percentual, tempo e exercicio atual.
+- Mostra registro leve da sessao de estudo viva no app: acertos, total, percentual, tempo e exercicio atual.
+- Trocar tema pela Arvore/scroll nao deve zerar esse registro visual; ele acumula enquanto o app/estudo atual continua aberto.
 
 Triplo toque:
 
@@ -103,12 +104,25 @@ Fontes atuais:
 
 - `GET /api/student/{student_id}/sessions`
 - `GET /api/student/{student_id}/skill-progress`
+- `GET /api/student/{student_id}/activity?days=35`
 
 Depois de iniciar ou submeter sessao, o app deve atualizar historico e progresso.
+O calendario compacto do Perfil deve atualizar no mesmo ciclo, mostrando constancia recente sem virar tela social ou ranking.
 
 O Historico deve mostrar tambem a densidade usada na sessao: leve, fixa, densa ou exata.
 
 Quando a densidade for exata e houver template registrado, o Painel pode mostrar apenas um marcador discreto de zoom. Nao exibir IDs longos de template na interface principal.
+
+## Arvore Para Sprint
+
+Ao tocar em um no da Arvore:
+
+- o app deve trocar `selectedSkillTag`;
+- limpar imediatamente a folha antiga da Sprint;
+- mostrar carregamento leve enquanto a nova sessao chega;
+- ao voltar para Sprint, o primeiro exercicio visivel deve pertencer a skill tocada.
+
+Isso evita a sensacao de que "toquei em Funcao Modular e veio outro assunto", mesmo quando o backend ainda esta respondendo.
 
 ## Alertas E Sugestoes
 
@@ -128,6 +142,7 @@ Opcoes:
 - `ajustar`: abre os scrolls secundarios; o usuario escolhe tema, densidade, zoom e dificuldade.
 
 Nao reduzir dificuldade, trocar tema ou sair do zoom automaticamente.
+Depois de `permanecer`, nao repetir o mesmo aviso a cada novo erro dentro da mesma sequencia; o aluno ja confirmou que quer continuar.
 
 Quando houver 5 acertos seguidos, a sugestao de proximo tema pode aparecer como chip discreto, mas so muda de tema se o usuario tocar em avancar.
 

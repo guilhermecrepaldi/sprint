@@ -133,6 +133,70 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(field.subject, "physics")
         self.assertEqual(field.canvas_mode, "calculation")
 
+    async def test_skill_pin_remains_on_selected_skill_when_difficulty_range_is_sparse(self):
+        start = await start_session(
+            SessionStartIn(
+                student_id=uuid.uuid4(),
+                config=SessionConfigIn(
+                    subject="physics",
+                    duration_mode="pages",
+                    pages_limit=1,
+                    exercises_per_page=3,
+                    skill_pin="cinematica",
+                    difficulty_start=10.0,
+                ),
+            ),
+            db=self.db,
+        )
+
+        self.assertTrue(start.first_folha.fields)
+        self.assertTrue(
+            all("cinematica" in field.skill_tags for field in start.first_folha.fields),
+            start.first_folha.fields,
+        )
+
+    async def test_tree_selected_modular_and_trig_skills_reach_sprint(self):
+        target_skills = [
+            "funcao_modular",
+            "trig_razoes",
+            "trig_seno_cosseno_tangente",
+            "trig_identidades",
+            "trig_equacoes",
+        ]
+        for index, skill in enumerate(target_skills):
+            self.db.add(Exercise(
+                id=uuid.uuid4(),
+                statement=f"QA {skill} {index}",
+                expected_answer="1",
+                skill_tags=[skill],
+                difficulty=5.0,
+                estimated_time_ms=30000,
+                source_library="test",
+                source_license="test",
+                subject="math",
+                canvas_mode="calculation",
+                validator="sympy",
+                node_id=f"{skill}.qa",
+                template_id=f"{skill}.qa",
+            ))
+
+        for skill in target_skills:
+            start = await start_session(
+                SessionStartIn(
+                    student_id=uuid.uuid4(),
+                    config=SessionConfigIn(
+                        duration_mode="pages",
+                        pages_limit=1,
+                        exercises_per_page=1,
+                        skill_pin=skill,
+                        difficulty_start=1.0,
+                    ),
+                ),
+                db=self.db,
+            )
+
+            self.assertIn(skill, start.first_folha.fields[0].skill_tags)
+
     async def test_wrong_answer_returns_feedback(self):
         start = await start_session(
             SessionStartIn(
@@ -152,6 +216,65 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(submit.results[0].feedback)
         self.assertEqual(submit.results[0].recognition_engine, "local_text_fallback")
         self.assertIsNotNone(submit.results[0].analysis_reliable)
+
+    async def test_ranked_session_counts_only_auditable_attempts(self):
+        start = await start_session(
+            SessionStartIn(
+                student_id=uuid.uuid4(),
+                config=SessionConfigIn(
+                    ranked_mode=True,
+                    duration_mode="pages",
+                    pages_limit=1,
+                    exercises_per_page=1,
+                ),
+            ),
+            db=self.db,
+        )
+
+        submit = await submit_folha(
+            start.session_id,
+            self._submit_body_for_folha(
+                start.first_folha.folha_id,
+                start.first_folha.fields,
+                image_base64="device_png_payload",
+                recognized_text="x = 5",
+                recognition_engine="mlkit_digital_ink",
+                recognition_confidence=0.96,
+            ),
+            db=self.db,
+        )
+
+        self.assertTrue(submit.competitive_valid)
+        self.assertGreater(submit.competitive_score, 0)
+        self.assertEqual(submit.audit_flags, [])
+        self.assertTrue(submit.results[0].competitive_valid)
+        self.assertGreater(submit.results[0].competitive_score, 0)
+
+    async def test_ranked_session_rejects_text_payload_for_competitive_score(self):
+        start = await start_session(
+            SessionStartIn(
+                student_id=uuid.uuid4(),
+                config=SessionConfigIn(
+                    ranked_mode=True,
+                    duration_mode="pages",
+                    pages_limit=1,
+                    exercises_per_page=1,
+                ),
+            ),
+            db=self.db,
+        )
+
+        submit = await submit_folha(
+            start.session_id,
+            self._submit_body_for_folha(start.first_folha.folha_id, start.first_folha.fields),
+            db=self.db,
+        )
+
+        self.assertFalse(submit.competitive_valid)
+        self.assertEqual(submit.competitive_score, 0)
+        self.assertIn("text_payload", submit.audit_flags)
+        self.assertFalse(submit.results[0].competitive_valid)
+        self.assertEqual(submit.results[0].competitive_score, 0)
 
     async def test_exact_exercise_density_creates_similar_focus_pool(self):
         source = Exercise(
@@ -201,7 +324,16 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({field.template_id for field in start.first_folha.fields}, {source.template_id})
         self.assertTrue(all("fixacao_exata" in (exercise.affinity_tags or []) for exercise in focus_pool if exercise.id != source.id))
 
-    def _submit_body_for_folha(self, folha_id: uuid.UUID, fields: list, answer: str = "x = 5") -> SubmitIn:
+    def _submit_body_for_folha(
+        self,
+        folha_id: uuid.UUID,
+        fields: list,
+        answer: str = "x = 5",
+        image_base64: str | None = None,
+        recognized_text: str | None = None,
+        recognition_engine: str | None = None,
+        recognition_confidence: float | None = None,
+    ) -> SubmitIn:
         return SubmitIn(
             folha_id=folha_id,
             submitted_at_ms=123456,
@@ -209,7 +341,7 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 FieldSubmit(
                     field_index=field.field_index,
                     exercise_id=field.exercise_id,
-                    image_base64=f"latex:{answer}",
+                    image_base64=image_base64 or f"latex:{answer}",
                     total_time_ms=20000,
                     time_to_first_stroke_ms=500,
                     pen_events=[
@@ -232,6 +364,9 @@ class UserWorkflowTests(unittest.IsolatedAsyncioTestCase):
                             event_type="stroke_end",
                         ),
                     ],
+                    recognized_text=recognized_text,
+                    recognition_engine=recognition_engine,
+                    recognition_confidence=recognition_confidence,
                 )
                 for field in fields
             ],

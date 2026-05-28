@@ -151,6 +151,7 @@ async def _select_exercises(
     weak_skills: list[str] | None = None,
     exclude_ids: list | None = None,
     template_pin: str | None = None,
+    strict_skills: bool = False,
 ) -> list[Exercise]:
     excluded: list = list(exclude_ids) if exclude_ids else []
     exercises: list[Exercise] = []
@@ -205,6 +206,8 @@ async def _select_exercises(
             .order_by(func.abs(Exercise.difficulty - difficulty), func.random())
             .limit(limit - len(exercises))
         )
+        if strict_skills and weak_skills:
+            q = q.where(Exercise.skill_tags.overlap(weak_skills))
         if excluded:
             q = q.where(Exercise.id.not_in(excluded))
         result = await db.execute(q)
@@ -219,6 +222,8 @@ async def _select_exercises(
             .order_by(func.abs(Exercise.difficulty - difficulty), func.random())
             .limit(limit - len(exercises))
         )
+        if strict_skills and weak_skills:
+            q = q.where(Exercise.skill_tags.overlap(weak_skills))
         if excluded:
             q = q.where(Exercise.id.not_in(excluded))
         result = await db.execute(q)
@@ -327,7 +332,7 @@ async def create_folha(
     elif skill_pin:
         exercises = await _select_exercises(
             db, difficulty, exercises_per_page, subject, weak_skills=[skill_pin],
-            exclude_ids=exclude_ids,
+            exclude_ids=exclude_ids, strict_skills=True,
         )
     # Se há skills de revisão, reservar 1 slot para exercício de revisão
     elif review_skills:
