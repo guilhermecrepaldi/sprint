@@ -223,35 +223,38 @@ class LocalSprintRepository private constructor(context: Context) {
         val currentMemory = runtime.skillMemoryDao().get(studentId, skillTag)
         val mmr = currentMemory?.masterScore?.let { EloMatchmaker.masterScoreToMmr(it) } ?: 1000
         
-        // 1. Tentar buscar do catálogo SQLite offline real de 16k exercícios
-        val count = catalog.countBySkill(skillTag)
-        if (count > 0) {
-            val targetDifficulty = mmr.toDouble() / 100.0
-            val offset = kotlin.random.Random.nextInt(count)
-            val exerciseId = catalog.exerciseIdBySkillDifficultyOffset(skillTag, targetDifficulty, 0)
-                ?: catalog.exerciseIdBySkillOffset(skillTag, offset)
-                ?: catalog.exerciseIdBySkillOffset(skillTag, 0)
+        val useProcedural = skillTag == "soma_subtracao" || skillTag == "multiplicacao_divisao"
+        if (!useProcedural) {
+            // 1. Tentar buscar do catálogo SQLite offline real de 16k exercícios para skills avançadas
+            val count = catalog.countBySkill(skillTag)
+            if (count > 0) {
+                val targetDifficulty = mmr.toDouble() / 100.0
+                val offset = kotlin.random.Random.nextInt(count)
+                val exerciseId = catalog.exerciseIdBySkillDifficultyOffset(skillTag, targetDifficulty, 0)
+                    ?: catalog.exerciseIdBySkillOffset(skillTag, offset)
+                    ?: catalog.exerciseIdBySkillOffset(skillTag, 0)
 
-            if (exerciseId != null) {
-                val entity = catalog.getById(exerciseId)
-                if (entity != null) {
-                    return ProceduralExercise(
-                        id = entity.id,
-                        statement = entity.statement,
-                        expectedAnswer = entity.expectedAnswer,
-                        primarySkill = entity.primarySkill,
-                        difficulty = entity.difficulty,
-                        templateId = entity.templateId ?: "default",
-                        canvasMode = entity.canvasMode,
-                        validatorType = entity.validatorType,
-                        answerType = entity.answerType,
-                    )
+                if (exerciseId != null) {
+                    val entity = catalog.getById(exerciseId)
+                    if (entity != null) {
+                        return ProceduralExercise(
+                            id = entity.id,
+                            statement = entity.statement,
+                            expectedAnswer = entity.expectedAnswer,
+                            primarySkill = entity.primarySkill,
+                            difficulty = entity.difficulty,
+                            templateId = entity.templateId ?: "default",
+                            canvasMode = entity.canvasMode,
+                            validatorType = entity.validatorType,
+                            answerType = entity.answerType,
+                        )
+                    }
                 }
             }
         }
         
-        // Fallback síncrono para a engine procedural se o catálogo estiver vazio para esta skill
-        return ProceduralEngine.generate(skillTag, mmr)
+        // Fallback síncrono ou geração didática para a engine procedural
+        return ProceduralEngine.generate(skillTag, mmr, config)
     }
 
     private suspend fun ensureStudent(studentId: String) {

@@ -79,7 +79,19 @@ fun renderLatex(input: String): String {
     // Remove leftover braces
     text = text.replace("{", "").replace("}", "")
 
-    return text.trim()
+    var cleaned = text.trim()
+    if (cleaned.endsWith("=?")) {
+        cleaned = cleaned.dropLast(2).trim()
+    } else if (cleaned.endsWith("= ?")) {
+        cleaned = cleaned.dropLast(3).trim()
+    } else if (cleaned.endsWith("?")) {
+        cleaned = cleaned.dropLast(1).trim()
+    }
+    if (cleaned.endsWith("=")) {
+        cleaned = cleaned.dropLast(1).trim()
+    }
+
+    return cleaned
 }
 
 private fun superscript(c: Char): Char = when (c) {
