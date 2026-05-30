@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +59,7 @@ fun ExerciseField(
     penWidth: Float = 2.2f,
     modifier: Modifier = Modifier,
     isKPlus: Boolean = false,
+    isCompact: Boolean = false,
     // Split-canvas params
     initialScratchStrokes: List<List<Offset>> = emptyList(),
     initialAnswerStrokes: List<List<Offset>> = emptyList(),
@@ -120,38 +124,184 @@ fun ExerciseField(
         null
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(surfaceColor, RoundedCornerShape(8.dp))
-            .padding(Spacing.md),
-    ) {
-        // ── Statement ────────────────────────────────────────────────────────
-        if (verticalStackData != null) {
-            VerticalArithmeticStack(
-                term1 = verticalStackData.first,
-                op = verticalStackData.second,
-                term2 = verticalStackData.third,
-                ink = ink,
-                modifier = Modifier.padding(vertical = Spacing.xs)
-            )
-        } else {
-            Text(
-                text = renderLatex(field.statement),
-                fontSize = if (isActive) 24.sp else 22.sp,
-                lineHeight = if (isActive) 32.sp else 30.sp,
-                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                color = ink,
-                modifier = Modifier.fillMaxWidth(),
-            )
+    if (isCompact) {
+        val isCorrect = typedAnswer.trim() == field.expectedAnswer?.trim()
+        val hasAnswer = typedAnswer.isNotBlank()
+        val boxBgColor = when {
+            !hasAnswer -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f)
+            isCorrect -> Color(0xFFE8F5E9)  // verde claro pastel
+            else -> Color(0xFFFFEBEE)       // vermelho claro pastel
         }
-        Spacer(Modifier.height(Spacing.sm))
+        val boxBorderColor = when {
+            !hasAnswer -> ink.copy(alpha = 0.08f)
+            isCorrect -> Color(0xFF2E7D32)  // verde esmeralda
+            else -> Color(0xFFC62828)       // vermelho coral
+        }
 
-        if (!isFullPage) {
-            // ── Scratch area ─────────────────────────────────────────────
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(surfaceColor, RoundedCornerShape(12.dp))
+                .border(1.dp, ink.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Esquerda: Enunciado clássico Kumon (ex: "1.  4 + 2 =")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "${field.fieldIndex + 1}.",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ink.copy(alpha = 0.35f)
+                )
+
+                if (verticalStackData != null) {
+                    VerticalArithmeticStack(
+                        term1 = verticalStackData.first,
+                        op = verticalStackData.second,
+                        term2 = verticalStackData.third,
+                        ink = ink,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+                } else {
+                    Text(
+                        text = renderLatex(field.statement) + " =",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ink
+                    )
+                }
+            }
+
+            // Direita: Quadrado de resposta reativo
             Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .weight(scratchRatio.floatValue)
+                    .size(width = 120.dp, height = 74.dp)
+                    .background(boxBgColor, RoundedCornerShape(8.dp))
+                    .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
+                    .clickable { answerPadVisible.value = true }
+            ) {
+                InkCanvas(
+                    modifier = Modifier.matchParentSize().padding(4.dp),
+                    penColor = penColor,
+                    penWidth = penWidth,
+                    enabled = isActive,
+                    isErasing = isErasing,
+                    clearSignal = clearSignal,
+                    undoSignal = undoSignal,
+                    redoSignal = redoSignal,
+                    initialStrokes = initialAnswerStrokes,
+                    initialRedoStack = initialAnswerRedoStack,
+                    guideMode = "single",
+                    onSyncStrokes = answerSync,
+                    onPenEvent = onPenEvent
+                )
+                // Texto digitado ou reconhecido por caligrafia por cima
+                if (typedAnswer.isNotBlank()) {
+                    Text(
+                        text = typedAnswer,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            isCorrect -> Color(0xFF2E7D32)
+                            else -> Color(0xFFC62828)
+                        }
+                    )
+                }
+            }
+        }
+
+        if (answerPadVisible.value) {
+            Dialog(
+                onDismissRequest = { answerPadVisible.value = false }
+            ) {
+                AnswerPad(
+                    ink = ink,
+                    onKey = { key ->
+                        when (key) {
+                            "ok" -> answerPadVisible.value = false
+                            "del" -> onTypedAnswerChange(typedAnswer.dropLast(1))
+                            "clr" -> onTypedAnswerChange("")
+                            else -> onTypedAnswerChange(typedAnswer + key)
+                        }
+                    }
+                )
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(surfaceColor, RoundedCornerShape(8.dp))
+                .padding(Spacing.md),
+        ) {
+            // ── Statement ────────────────────────────────────────────────────────
+            if (verticalStackData != null) {
+                VerticalArithmeticStack(
+                    term1 = verticalStackData.first,
+                    op = verticalStackData.second,
+                    term2 = verticalStackData.third,
+                    ink = ink,
+                    modifier = Modifier.padding(vertical = Spacing.xs)
+                )
+            } else {
+                Text(
+                    text = renderLatex(field.statement),
+                    fontSize = if (isActive) 24.sp else 22.sp,
+                    lineHeight = if (isActive) 32.sp else 30.sp,
+                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                    color = ink,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Spacer(Modifier.height(Spacing.sm))
+
+            if (!isFullPage) {
+                // ── Scratch area ─────────────────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .weight(scratchRatio.floatValue)
+                        .fillMaxWidth()
+                        .background(fieldColor, RoundedCornerShape(4.dp)),
+                ) {
+                    InkCanvas(
+                        modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                        penColor = penColor,
+                        penWidth = penWidth,
+                        enabled = isActive,
+                        isErasing = isErasing,
+                        clearSignal = clearSignal,
+                        undoSignal = undoSignal,
+                        redoSignal = redoSignal,
+                        initialStrokes = initialScratchStrokes,
+                        initialRedoStack = initialScratchRedoStack,
+                        guideMode = mappedGuideMode ?: if (isLined) "lined" else "single",
+                        onSyncStrokes = onSyncScratch,
+                        onPenEvent = onPenEvent,
+                    )
+                }
+                SplitHeightHandle(
+                    ink = ink,
+                    ratio = scratchRatio.floatValue,
+                    onRatioChange = {
+                        scratchRatio.floatValue = it
+                        SplitRatioPrefs.set(context, field.fieldIndex, it)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            // ── Answer box ───────────────────────────────────────────────────
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(if (isFullPage) 1f else 1f - scratchRatio.floatValue)
                     .fillMaxWidth()
                     .background(fieldColor, RoundedCornerShape(4.dp)),
             ) {
@@ -162,88 +312,54 @@ fun ExerciseField(
                     enabled = isActive,
                     isErasing = isErasing,
                     clearSignal = clearSignal,
-                    undoSignal = undoSignal,
-                    redoSignal = redoSignal,
-                    initialStrokes = initialScratchStrokes,
-                    initialRedoStack = initialScratchRedoStack,
-                    guideMode = mappedGuideMode ?: if (isLined) "lined" else "single",
-                    onSyncStrokes = onSyncScratch,
+                    undoSignal = if (isFullPage) undoSignal else 0,
+                    redoSignal = if (isFullPage) redoSignal else 0,
+                    initialStrokes = initialAnswerStrokes,
+                    initialRedoStack = initialAnswerRedoStack,
+                    guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "single",
+                    onSyncStrokes = answerSync,
                     onPenEvent = onPenEvent,
+                    onTap = {
+                        answerPadVisible.value = true
+                    },
                 )
-            }
-            SplitHeightHandle(
-                ink = ink,
-                ratio = scratchRatio.floatValue,
-                onRatioChange = {
-                    scratchRatio.floatValue = it
-                    SplitRatioPrefs.set(context, field.fieldIndex, it)
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        // ── Answer box ───────────────────────────────────────────────────
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .weight(if (isFullPage) 1f else 1f - scratchRatio.floatValue)
-                .fillMaxWidth()
-                .background(fieldColor, RoundedCornerShape(4.dp)),
-        ) {
-            InkCanvas(
-                modifier = Modifier.matchParentSize().padding(Spacing.xs),
-                penColor = penColor,
-                penWidth = penWidth,
-                enabled = isActive,
-                isErasing = isErasing,
-                clearSignal = clearSignal,
-                undoSignal = if (isFullPage) undoSignal else 0,
-                redoSignal = if (isFullPage) redoSignal else 0,
-                initialStrokes = initialAnswerStrokes,
-                initialRedoStack = initialAnswerRedoStack,
-                guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "single",
-                onSyncStrokes = answerSync,
-                onPenEvent = onPenEvent,
-                onTap = {
-                    answerPadVisible.value = true
-                },
-            )
-            Box(
-                modifier = Modifier.matchParentSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (typedAnswer.isNotBlank()) {
+                Box(
+                    modifier = Modifier.matchParentSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (typedAnswer.isNotBlank()) {
+                        Text(
+                            text = typedAnswer,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Light,
+                            color = ink.copy(alpha = 0.72f),
+                        )
+                    }
+                }
+                if (!isFullPage && !hasAnswerStroke.value && typedAnswer.isBlank()) {
                     Text(
-                        text = typedAnswer,
-                        fontSize = 26.sp,
+                        text = "resposta",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Light,
-                        color = ink.copy(alpha = 0.72f),
+                        color = ink.copy(alpha = 0.18f),
                     )
                 }
-            }
-            if (!isFullPage && !hasAnswerStroke.value && typedAnswer.isBlank()) {
-                Text(
-                    text = "resposta",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Light,
-                    color = ink.copy(alpha = 0.18f),
-                )
-            }
-            if (answerPadVisible.value) {
-                AnswerPad(
-                    ink = ink,
-                    onKey = { key ->
-                        when (key) {
-                            "ok" -> answerPadVisible.value = false
-                            "del" -> onTypedAnswerChange(typedAnswer.dropLast(1))
-                            "clr" -> onTypedAnswerChange("")
-                            else -> onTypedAnswerChange(typedAnswer + key)
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp),
-                )
+                if (answerPadVisible.value) {
+                    AnswerPad(
+                        ink = ink,
+                        onKey = { key ->
+                            when (key) {
+                                "ok" -> answerPadVisible.value = false
+                                "del" -> onTypedAnswerChange(typedAnswer.dropLast(1))
+                                "clr" -> onTypedAnswerChange("")
+                                else -> onTypedAnswerChange(typedAnswer + key)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp),
+                    )
+                }
             }
         }
     }

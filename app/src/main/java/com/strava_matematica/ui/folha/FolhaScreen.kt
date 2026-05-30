@@ -218,16 +218,18 @@ fun FolhaScreen(
                 ),
         ) {
             // Workspace Centralizado (Canvas de Treino)
-            if (config.fixationDensity == "kplus") {
+            if (config.fixationDensity == "kplus" || config.exercisesPerPage > 1) {
                 androidx.compose.foundation.lazy.LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(Spacing.md),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(folha.fields.size) { index ->
                         val currentField = folha.fields[index]
                         val itemKey = "${folha.folhaId}:${currentField.exerciseId}:${currentField.fieldIndex}"
                         key(itemKey) {
+                            val isKPlusActive = config.fixationDensity == "kplus"
+                            val fieldHeight = if (isKPlusActive) 290.dp else 120.dp
                             ExerciseField(
                                 field = currentField,
                                 isActive = true,
@@ -236,8 +238,9 @@ fun FolhaScreen(
                                 penWidth = config.penWidth,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(290.dp),
-                                isKPlus = true,
+                                    .height(fieldHeight),
+                                isKPlus = isKPlusActive,
+                                isCompact = true,
                                 initialScratchStrokes = fieldScratchStrokes[currentField.fieldIndex].orEmpty(),
                                 initialAnswerStrokes = fieldAnswerStrokes[currentField.fieldIndex].orEmpty(),
                                 initialScratchRedoStack = fieldScratchRedoStacks[currentField.fieldIndex].orEmpty(),
@@ -426,6 +429,40 @@ fun FolhaScreen(
                         tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.30f),
                         modifier = Modifier.size(16.dp),
                     )
+                }
+
+                // Seletor circular de questões por folha (1 a 5)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = Spacing.sm, end = 142.dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.04f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    (1..5).forEach { num ->
+                        val isSelected = config.exercisesPerPage == num
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(26.dp)
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable {
+                                    onConfigChange(config.copy(exercisesPerPage = num))
+                                }
+                        ) {
+                            Text(
+                                text = num.toString(),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.60f)
+                            )
+                        }
+                    }
                 }
             }
 
