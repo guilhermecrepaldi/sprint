@@ -53,7 +53,6 @@ import com.strava_matematica.ui.canvas.ZoomableCanvas
 import com.strava_matematica.ui.folha.FolhaScreen
 import com.strava_matematica.ui.tabs.DashboardTab
 import com.strava_matematica.ui.tabs.GesturesTab
-import com.strava_matematica.ui.tabs.MathTreeTab
 import com.strava_matematica.ui.tabs.NotebookTab
 import com.strava_matematica.ui.tabs.NotesTab
 import com.strava_matematica.ui.tabs.PenTab
