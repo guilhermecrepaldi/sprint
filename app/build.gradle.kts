@@ -27,6 +27,9 @@ android {
         versionName = "0.1.0"
         val debugUrl = localProps.getProperty("API_BASE_URL_DEBUG", "http://10.0.2.2:8000/")
         buildConfigField("String", "API_BASE_URL", "\"$debugUrl\"")
+        ndk {
+            abiFilters.addAll(setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
     }
 
     buildFeatures {
@@ -55,13 +58,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.navigation:navigation-compose:2.8.3")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

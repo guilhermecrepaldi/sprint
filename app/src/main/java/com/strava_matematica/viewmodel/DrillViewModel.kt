@@ -6,7 +6,6 @@ import com.strava_matematica.model.DrillBatch
 import com.strava_matematica.model.DrillFlushRequest
 import com.strava_matematica.model.DrillFlushResult
 import com.strava_matematica.model.DrillItemResult
-import com.strava_matematica.network.ApiClient
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +37,6 @@ data class DrillState(
 
 class DrillViewModel : ViewModel() {
 
-    private val api = ApiClient.create()
     private val _state = MutableStateFlow(DrillState())
     val state: StateFlow<DrillState> = _state
 
@@ -48,7 +46,54 @@ class DrillViewModel : ViewModel() {
         viewModelScope.launch {
             _state.update { it.copy(phase = DrillPhase.LOADING, error = null, flushResult = null) }
             try {
-                val batch = api.getDrillBatch(count = count, level = level)
+                // Gerador offline local de DrillItems
+                val items = mutableListOf<com.strava_matematica.model.DrillItem>()
+                val random = java.util.Random()
+                for (i in 0 until count) {
+                    val op = if (level == "basic") {
+                        random.nextInt(2) // 0: +, 1: -
+                    } else {
+                        random.nextInt(3) // 0: +, 1: -, 2: *
+                    }
+                    val num1 = if (level == "basic") random.nextInt(9) + 1 else random.nextInt(19) + 2
+                    val num2 = if (level == "basic") random.nextInt(9) + 1 else random.nextInt(19) + 2
+                    
+                    val statement: String
+                    val expected: String
+                    val tag: String
+                    if (op == 0) {
+                        statement = "$num1 + $num2"
+                        expected = (num1 + num2).toString()
+                        tag = "soma"
+                    } else if (op == 1) {
+                        val n1 = maxOf(num1, num2)
+                        val n2 = minOf(num1, num2)
+                        statement = "$n1 - $n2"
+                        expected = (n1 - n2).toString()
+                        tag = "subtracao"
+                    } else {
+                        statement = "$num1 * $num2"
+                        expected = (num1 * num2).toString()
+                        tag = "multiplicacao"
+                    }
+                    items.add(
+                        com.strava_matematica.model.DrillItem(
+                            itemId = "local_${System.currentTimeMillis()}_$i",
+                            statement = statement,
+                            expectedAnswer = expected,
+                            skillTag = tag,
+                            difficulty = if (level == "basic") 0.1f else 0.5f,
+                            autoSubmitChars = expected.length
+                        )
+                    )
+                }
+                val batch = com.strava_matematica.model.DrillBatch(
+                    batchId = "local_batch_${System.currentTimeMillis()}",
+                    level = level,
+                    count = count,
+                    items = items,
+                    generatedAt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).format(java.util.Date())
+                )
                 val now = System.currentTimeMillis()
                 _state.update {
                     it.copy(
@@ -70,9 +115,7 @@ class DrillViewModel : ViewModel() {
         }
     }
 
-    /** Chamado pelo TextField a cada mudança de texto. */
     fun onInputChange(text: String) {
-        // Permite apenas dígitos e um '-' inicial para números negativos.
         val filtered = buildString {
             text.forEachIndexed { i, c ->
                 if (c.isDigit() || (c == '-' && i == 0)) append(c)
@@ -86,7 +129,6 @@ class DrillViewModel : ViewModel() {
         }
     }
 
-    /** Submit explícito (botão Enter / ação do teclado). */
     fun submitCurrent() {
         val input = _state.value.currentInput
         if (input.isNotEmpty() && input != "-") submitAnswer(input)
@@ -135,34 +177,20 @@ class DrillViewModel : ViewModel() {
         _state.update { it.copy(phase = DrillPhase.FLUSHING) }
 
         viewModelScope.launch {
-            try {
-                val res = api.flushDrill(
-                    DrillFlushRequest(
-                        studentId = studentId,
-                        batchId = batch.batchId,
-                        level = batch.level,
-                        startedAtMs = startedAtMs,
-                        results = results,
-                    )
+            val correct = results.count { it.isCorrect }
+            _state.update {
+                it.copy(
+                    phase = DrillPhase.DONE,
+                    flushResult = DrillFlushResult(
+                        sessionId = "local_session_${System.currentTimeMillis()}",
+                        total = results.size,
+                        correct = correct,
+                        accuracy = correct.toFloat() / results.size,
+                        totalTimeMs = results.sumOf { it.timeMs },
+                        avgTimeMs = results.sumOf { it.timeMs } / results.size,
+                        xpEarned = correct,
+                    ),
                 )
-                _state.update { it.copy(phase = DrillPhase.DONE, flushResult = res) }
-            } catch (e: Exception) {
-                // Flush failed — show result locally anyway (telemetria perdida, UX não quebra)
-                val correct = results.count { it.isCorrect }
-                _state.update {
-                    it.copy(
-                        phase = DrillPhase.DONE,
-                        flushResult = DrillFlushResult(
-                            sessionId = "",
-                            total = results.size,
-                            correct = correct,
-                            accuracy = correct.toFloat() / results.size,
-                            totalTimeMs = results.sumOf { it.timeMs },
-                            avgTimeMs = results.sumOf { it.timeMs } / results.size,
-                            xpEarned = correct,
-                        ),
-                    )
-                }
             }
         }
     }
@@ -188,7 +216,6 @@ class DrillViewModel : ViewModel() {
         super.onCleared()
     }
 
-    // Student ID vem do SessionViewModel — injetado antes de loadBatch().
     private var _studentId: String = ""
     private val DrillState.studentId get() = _studentId
 

@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOVE CLASS — Painel de Planejamento & Landing Page Visual</title>
+    
+    <!-- Meta Tags SEO -->
+    <meta name="description" content="Landing Page Premium e Index de Planejamento Didático do LOVE CLASS. Avaliação visual completa de todas as features do motor matemático zen offline.">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Modern Reset & Design System Tokens */
+        :root {
+            --bg-base: #0a0a0f;
+            --bg-surface: rgba(18, 18, 29, 0.7);
+            --bg-surface-hover: rgba(26, 26, 41, 0.9);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --border-glass-glow: rgba(255, 255, 255, 0.16);
+            
+            /* Curated HSL Palettes */
+            --primary: hsl(260, 85%, 65%);
+            --primary-glow: hsla(260, 85%, 65%, 0.3);
+            --secondary: hsl(180, 80%, 45%);
+            --secondary-glow: hsla(180, 80%, 45%, 0.3);
+            --gold: hsl(45, 90%, 55%);
+            --gold-glow: hsla(45, 90%, 55%, 0.3);
+            --danger: hsl(355, 80%, 55%);
+            --danger-glow: hsla(355, 80%, 55%, 0.3);
+            --success: hsl(145, 75%, 45%);
+            --success-glow: hsla(145, 75%, 45%, 0.3);
+            
+            --ink-main: #f3f4f6;
+            --ink-muted: #9ca3af;
+            --ink-dim: #6b7280;
+            
+            --transition-smooth: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background-color: var(--bg-base);
+            color: var(--ink-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 70%, rgba(6, 182, 212, 0.12) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        
+        /* Layout Utilities */
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Header / Navbar */
+        header {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border-glass);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: rgba(10, 10, 15, 0.6);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--ink-main) 30%, var(--ink-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .logo span {
+            color: var(--primary);
+            -webkit-text-fill-color: initial;
+        }
+        
+        .badge-status {
+            background: rgba(145, 75, 45, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            box-shadow: 0 0 12px var(--success-glow);
+            animation: pulse-glow 2s infinite alternate;
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 90px 0 60px 0;
+            text-align: center;
+            position: relative;
+        }
+        
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            font-size: 20px;
+            color: var(--ink-muted);
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+            font-weight: 300;
+        }
+        
+        .system-specs-bar {
+            display: inline-flex;
+            gap: 24px;
+            background: var(--bg-surface);
+            padding: 12px 32px;
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(8px);
+            margin-bottom: 40px;
+        }
+        
+        .spec-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--ink-muted);
+        }
+        
+        .spec-item strong {
+            color: var(--ink-main);
+        }
+        
+        .spec-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            box-shadow: 0 0 8px var(--secondary);
+        }
+        
+        /* Interactive Conceptual Screen Mockup */
+        .mockup-section {
+            margin-bottom: 80px;
+        }
+        
+        .tablet-mockup {
+            background: #181824;
+            border-radius: 36px;
+            padding: 24px;
+            border: 6px solid #2d2d3f;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .tablet-screen {
+            background: #0f0f15;
+            border-radius: 20px;
+            height: 520px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+        }
+        
+        /* Screen Sidebar */
+        .screen-sidebar {
+            width: 70px;
+            background: #07070b;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 24px;
+            gap: 20px;
+        }
+        
+        .sidebar-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-muted);
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .sidebar-icon.active {
+            background: var(--primary-glow);
+            border-color: var(--primary);
+            color: var(--ink-main);
+        }
+        
+        /* Main Screen Content */
+        .screen-main {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+        
+        /* Banner Autopilot indicator */
+        .sim-banner {
+            background: rgba(22, 163, 74, 0.15);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(22, 163, 74, 0.1);
+        }
+        
+        .sim-btn-stop {
+            background: var(--danger);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        /* Exercise Canvas Area */
+        .exercise-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .math-expression {
+            font-size: 54px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 24px;
+            color: var(--ink-main);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+        
+        .math-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .math-input-box {
+            width: 140px;
+            height: 70px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--secondary);
+            position: relative;
+        }
+        
+        .math-input-box::after {
+            content: 'escreva ou digite';
+            position: absolute;
+            bottom: -22px;
+            font-size: 10px;
+            color: var(--ink-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        
+        /* Floating "Lousa do Enter" Drawer (SprintScrollConfigPage) Mockup */
+        .floating-drawer {
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            left: 90px;
+            right: 20px;
+            background: rgba(13, 13, 23, 0.95);
+            border: 1px solid var(--border-glass-glow);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            padding: 24px;
+            display: flex;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            z-index: 5;
+            animation: fade-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .drawer-scrolls {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding-right: 120px; /* deixa espaço para o Enter lateral */
+            overflow-y: auto;
+            max-height: 100%;
+        }
+        
+        .drawer-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .row-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-muted);
+            font-weight: 600;
+        }
+        
+        .row-scroll-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: hidden;
+            padding-bottom: 4px;
+        }
+        
+        .scroll-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--ink-muted);
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        
+        .scroll-pill.active {
+            background: var(--primary-glow);
+            border-color: var(--primary);
+            color: var(--ink-main);
+            font-weight: 600;
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+        
+        .scroll-pill.accent-active {
+            background: var(--secondary-glow);
+            border-color: var(--secondary);
+            color: var(--ink-main);
+            font-weight: 600;
+            box-shadow: 0 0 8px var(--secondary-glow);
+        }
+        
+        /* Painel Cognitivo Premium inline */
+        .drawer-cognitive-panel {
+            background: rgba(211, 47, 47, 0.05);
+            border: 1px solid rgba(211, 47, 47, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        
+        .cognitive-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .cognitive-mmr {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--danger);
+        }
+        
+        .cognitive-stats {
+            font-size: 10px;
+            color: var(--ink-muted);
+        }
+        
+        .cognitive-alert {
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--danger);
+            text-align: center;
+        }
+        
+        /* Simulated EnterSquare */
+        .drawer-enter-square {
+            position: absolute;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 76px;
+            height: 76px;
+            border-radius: 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-glass-glow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transition: var(--transition-smooth);
+        }
+        
+        .drawer-enter-square:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 16px var(--primary-glow);
+            transform: translateY(-50%) scale(1.05);
+        }
+        
+        .enter-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-dim);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .enter-symbol {
+            font-size: 24px;
+            color: var(--ink-main);
+            font-weight: 300;
+        }
+        
+        /* Toggle interface controls */
+        .mockup-toggle-bar {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        
+        .toggle-btn {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-glass);
+            color: var(--ink-muted);
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition-smooth);
+        }
+        
+        .toggle-btn:hover {
+            border-color: var(--border-glass-glow);
+            color: var(--ink-main);
+        }
+        
+        .toggle-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 16px var(--primary-glow);
+        }
+        
+        /* Features Section */
+        .section-title-wrapper {
+            text-align: center;
+            margin-bottom: 48px;
+            position: relative;
+        }
+        
+        .section-tag {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .section-title {
+            font-size: 38px;
+            font-weight: 800;
+            color: var(--ink-main);
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 80px;
+        }
+        
+        .feature-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 32px;
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--border-glass-glow);
+            background-color: var(--bg-surface-hover);
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+            opacity: 0;
+            transition: var(--transition-smooth);
+        }
+        
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+        
+        .feature-card.accent::before {
+            background: var(--secondary);
+        }
+        
+        .feature-card.gold::before {
+            background: var(--gold);
+        }
+        
+        .feature-card.danger::before {
+            background: var(--danger);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 24px;
+            color: var(--primary);
+        }
+        
+        .feature-card.accent .feature-icon {
+            color: var(--secondary);
+        }
+        
+        .feature-card.gold .feature-icon {
+            color: var(--gold);
+        }
+        
+        .feature-card.danger .feature-icon {
+            color: var(--danger);
+        }
+        
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: var(--ink-main);
+        }
+        
+        .feature-card p {
+            font-size: 14px;
+            color: var(--ink-muted);
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+        
+        .visual-description-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        
+        .visual-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        
+        .feature-card.gold .visual-title {
+            color: var(--gold);
+        }
+        
+        .feature-card.danger .visual-title {
+            color: var(--danger);
+        }
+        
+        .visual-desc {
+            font-size: 12px;
+            color: var(--ink-muted);
+            font-style: italic;
+        }
+        
+        .feature-badge-offline {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--ink-muted);
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        
+        /* Architecture Walkthrough (Interactive Flow Chart) */
+        .flow-section {
+            background: rgba(13, 13, 23, 0.4);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 80px;
+            backdrop-filter: blur(12px);
+        }
+        
+        .architecture-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 20px;
+            position: relative;
+            margin-top: 40px;
+        }
+        
+        .flow-card {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: var(--transition-smooth);
+        }
+        
+        .flow-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        
+        .flow-step-num {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+        
+        .flow-card.accent .flow-step-num {
+            background: var(--secondary);
+            box-shadow: 0 0 8px var(--secondary-glow);
+        }
+        
+        .flow-card.gold .flow-step-num {
+            background: var(--gold);
+            box-shadow: 0 0 8px var(--gold-glow);
+        }
+        
+        .flow-card h4 {
+            font-size: 16px;
+            margin: 12px 0 8px 0;
+            color: var(--ink-main);
+        }
+        
+        .flow-card p {
+            font-size: 12px;
+            color: var(--ink-muted);
+            font-weight: 300;
+        }
+        
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-dim);
+            font-size: 24px;
+        }
+        
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-glass);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--ink-dim);
+            font-size: 13px;
+        }
+        
+        footer p {
+            margin-bottom: 8px;
+        }
+        
+        /* Animations */
+        @keyframes pulse-glow {
+            from {
+                box-shadow: 0 0 8px var(--success-glow);
+                border-color: rgba(22, 163, 74, 0.5);
+            }
+            to {
+                box-shadow: 0 0 18px var(--success);
+                border-color: var(--success);
+            }
+        }
+        
+        @keyframes fade-slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 900px) {
+            .hero h1 {
+                font-size: 40px;
+            }
+            .tablet-screen {
+                height: 400px;
+            }
+            .floating-drawer {
+                left: 80px;
+                padding: 16px;
+            }
+            .drawer-scrolls {
+                padding-right: 90px;
+            }
+            .drawer-enter-square {
+                width: 60px;
+                height: 60px;
+                right: 12px;
+            }
+            .architecture-flow {
+                flex-direction: column;
+                gap: 30px;
+            }
+            .flow-arrow {
+                transform: rotate(90deg);
+                margin: -10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                LOVE<span>CLASS</span>
+            </div>
+            <div class="badge-status">
+                Estado Atual: 100% Offline (Kumon Mode)
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero container">
+        <span class="section-tag">Index & Planejamento Visual</span>
+        <h1>O Estado da Arte do LOVE CLASS</h1>
+        <p>
+            Uma engenharia matemática zen e ultra-competitiva de alto rendimento. Sem distrações, sem rede obrigatória. Apenas deep work, telemetria cognitiva BKT local e maestria extrema.
+        </p>
+        
+        <div class="system-specs-bar">
+            <div class="spec-item">
+                <div class="spec-dot"></div>
+                Plataforma: <strong>Android (ARM64 Universal)</strong>
+            </div>
+            <div class="spec-item">
+                <div class="spec-dot"></div>
+                Persistência: <strong>Room SQLite (16.576 itens)</strong>
+            </div>
+            <div class="spec-item">
+                <div class="spec-dot"></div>
+                Didática: <strong>Bayesian Knowledge Tracing (BKT)</strong>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screen Mockup Section -->
+    <section class="container mockup-section">
+        <div class="section-title-wrapper">
+            <span class="section-tag">Simulador Visual Estático</span>
+            <h2 class="section-title">A Lousa de Exercícios e a Gaveta do "Enter"</h2>
+        </div>
+        
+        <div class="tablet-mockup">
+            <div class="tablet-screen">
+                <!-- Sidebar -->
+                <div class="screen-sidebar">
+                    <div class="sidebar-icon active">S</div>
+                    <div class="sidebar-icon">H</div>
+                    <div class="sidebar-icon">P</div>
+                    <div class="sidebar-icon">R</div>
+                </div>
+                
+                <!-- Main Screen -->
+                <div id="canvas-main-screen" class="screen-main">
+                    <!-- Top Info bar -->
+                    <div class="sim-banner">
+                        <span>🤖 PILOTO AUTOMÁTICO ATIVO (SIMULANDO USUÁRIO)</span>
+                        <button class="sim-btn-stop">PARAR</button>
+                    </div>
+                    
+                    <!-- Exercise Canvas Area -->
+                    <div class="exercise-area">
+                        <div id="math-expression-text" class="math-expression">12 + 52 - 98</div>
+                        <div class="math-input-wrapper">
+                            <div class="math-input-box">?</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Floating Configuration Drawer (Lousa do Enter) -->
+                    <div id="sprint-config-drawer" class="floating-drawer">
+                        <div class="drawer-scrolls">
+                            <!-- Categoria Row -->
+                            <div class="drawer-row">
+                                <span class="row-label">Categoria</span>
+                                <div class="row-label-desc" style="font-size: 10px; color: var(--ink-dim); margin-top:-4px;">Timeline Macro da Árvore de Matemática</div>
+                                <div class="row-scroll-container">
+                                    <div class="scroll-pill active">FUNDAMENTOS</div>
+                                    <div class="scroll-pill">ÁLGEBRA</div>
+                                    <div class="scroll-pill">GEOMETRIA</div>
+                                    <div class="scroll-pill">TRIGONOMETRIA</div>
+                                    <div class="scroll-pill">CÁLCULO</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tema Row -->
+                            <div class="drawer-row">
+                                <span class="row-label">Tema Específico</span>
+                                <div class="row-scroll-container">
+                                    <div class="scroll-pill accent-active">Soma & Subtração</div>
+                                    <div class="scroll-pill">Multiplicação & Divisão</div>
+                                    <div class="scroll-pill">Frações & Decimais</div>
+                                    <div class="scroll-pill">Potenciação & Radiciação</div>
+                                </div>
+                            </div>
+                            
+                            <!-- NOVO: Casas Decimais (digitsCount) -->
+                            <div class="drawer-row">
+                                <span class="row-label">Casas Decimais (Ordem de Grandeza)</span>
+                                <div class="row-scroll-container">
+                                    <div class="scroll-pill">Unidades (1-9)</div>
+                                    <div class="scroll-pill active">Dezenas (10-99)</div>
+                                    <div class="scroll-pill">Centenas (100-999)</div>
+                                    <div class="scroll-pill">Milhares (1000-9999)</div>
+                                </div>
+                            </div>
+                            
+                            <!-- NOVO: Termos da conta (valuesCount) -->
+                            <div class="drawer-row">
+                                <span class="row-label">Termos na Expressão (Quantidade)</span>
+                                <div class="row-scroll-container">
+                                    <div class="scroll-pill">2 valores</div>
+                                    <div class="scroll-pill active">3 valores</div>
+                                    <div class="scroll-pill">4 valores</div>
+                                    <div class="scroll-pill">5 valores</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Painel Cognitivo Premium inline -->
+                            <div class="drawer-cognitive-panel">
+                                <div class="cognitive-header">
+                                    <span class="cognitive-mmr">MMR local: 1258</span>
+                                    <span class="cognitive-stats">34 tentativas · 38% acerto</span>
+                                </div>
+                                <span class="cognitive-alert">⚠️ ALERTA: Ineficácia Crítica (Quarentena). Erros reduzem MMR exponencialmente!</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Simulated EnterSquare -->
+                        <div class="drawer-enter-square">
+                            <span class="enter-label">ENTER</span>
+                            <span class="enter-symbol">⤶</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls to toggle drawer visual in the mockup -->
+        <div class="mockup-toggle-bar">
+            <button id="toggle-drawer-btn" class="toggle-btn active" onclick="toggleMockupDrawer()">Lousa do Enter: Aberta</button>
+            <button id="toggle-autopilot-btn" class="toggle-btn active" onclick="toggleMockupAutopilot()">Simulador Autopilot: Ligado</button>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="container">
+        <div class="section-title-wrapper">
+            <span class="section-tag">Catálogo Detalhado</span>
+            <h2 class="section-title">Features e Arquitetura Visual de Experiência</h2>
+        </div>
+        
+        <div class="features-grid">
+            
+            <!-- Feature 1: Kumon Mode 100% Offline -->
+            <div class="feature-card">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">🛡️</div>
+                <h3>1. Kumon Mode 100% Offline</h3>
+                <p>
+                    O aplicativo foi inteiramente purgado de qualquer requisição externa ou dependência de rede (OkHttp/Retrofit removidos). Funciona de forma 100% independente no tablet Galaxy Tab S6 Lite do aluno, induzindo-o ao estado Zen de concentração absoluta.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Interface minimalista e limpa, livre de pop-ups de conexão. Banner verde ou cinza discreto no rodapé que atesta o status operacional offline síncrono.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 2: Bayesian Knowledge Tracing (BKT) -->
+            <div class="feature-card accent">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">📊</div>
+                <h3>2. BKT (Rede Cognitiva Local)</h3>
+                <p>
+                    Um motor bayesiano implementado localmente em Kotlin calcula a probabilidade latente de maestria do aluno por habilidade a cada acerto ou erro. O sistema diferencia a base aritmética de cálculos avançados para mapear o conhecimento com rigor científico.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">O Painel Cognitivo exibe a fluência cognitiva em porcentagem. Habilidades dominadas recebem uma borda de brilho esmeralda ou dourado no menu de seleção rápida.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 3: Elo Matchmaker e Risco-Recompensa -->
+            <div class="feature-card danger">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">⚔️</div>
+                <h3>3. Sandbox & Risco-Recompensa</h3>
+                <p>
+                    Todas as habilidades da árvore da matemática nascem destravadas e livres para o aluno explorar. No entanto, se o aluno insistir em um nó sob alerta de ineficácia (Quarentena), ele sofrerá perdas de MMR exponenciais por erros consecutivos, estimulando a autorregulação didática.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Cards de matérias críticas brilham inequivocamente em vermelho-alerta no painel do Enter. Nós dominados mostram um brasão dourado de maestria sob fundo verde sutil.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 4: Lousa do Enter e Double-Scroll horizontal -->
+            <div class="feature-card">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">🚪</div>
+                <h3>4. Lousa "Enter" de Seleção Encadeada</h3>
+                <p>
+                    A aba estática e isolada da Árvore foi inteiramente eliminada do topo da aplicação. Em seu lugar, toda a inteligência e progresso cognitivo foram fundidos na lousa flutuante de configurações rápidas acionada no "Enter", contendo scrolls horizontais reativos em cascata por categoria e tema.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Gaveta semitransparente em glassmorphism que desliza suavemente sobre a folha ativa. LazyRows horizontais reativas isoladas no Compose que previnem saltos ou re-renderizações abruptas no scroll.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 5: NOVO - Sub-scrolls de Granularidade Didática -->
+            <div class="feature-card gold">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">🎛️</div>
+                <h3>5. Sub-scrolls de Dígitos & Termos</h3>
+                <p>
+                    Adicionados dois sub-scrolls horizontais adicionais no menu do Enter, permitindo ao aluno calibrar finamente o número de casas decimais (unidades, dezenas, centenas, milhares) e a quantidade de operandos na expressão matemática (de 2 a 5 valores).
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Controles horizontais táteis rotulados como 'casas decimais' e 'termos da conta' com pílulas que brilham de acordo com a seleção atual, moldando na hora enunciados procedurais sob medida.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 6: Reconhecimento offline de Escrita real -->
+            <div class="feature-card accent">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">✍️</div>
+                <h3>6. Leitura Híbrida Stylus/Touch</h3>
+                <p>
+                    A lousa inteligente separa as ações da caneta Stylus (desenho vetorial de rascunho e preenchimento de escrita oficial) de toques do dedo (zooms e abertura de teclado virtual). A caligrafia é traduzida e preenchida de forma automática e instantânea pelo ML Kit Latin Digital Ink.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Os rabiscos pretos ou azuis sob a lousa de rascunho de giz contrastam elegantemente e, ao terminar a escrita, o número correspondente aparece de forma suave no campo delimitado.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 7: SQLite Catalog com 16.576 Exercícios -->
+            <div class="feature-card">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">📂</div>
+                <h3>7. Catálogo Local de 16k Questões</h3>
+                <p>
+                    Totalmente integrado o banco SQLite/Room contendo 16.576 exercícios ricos distribuídos entre 34 habilidades matemáticas estruturadas. Isso resolve o problema de estagnação de questões, garantindo que a transição de matérias mostre expressões reais correspondentes de imediato.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Transição ultra-veloz de questões (< 50ms) ao trocar de matéria, exibindo fórmulas formatadas e enunciados matemáticos ricos em notações algébricas de alta qualidade na tela do tablet.</div>
+                </div>
+            </div>
+            
+            <!-- Feature 8: Autopilot Simulator Mode (Live-Demo) -->
+            <div class="feature-card gold">
+                <span class="feature-badge-offline">Offline</span>
+                <div class="feature-icon">🤖</div>
+                <h3>8. Autopilot (Simulação de Usuário)</h3>
+                <p>
+                    Um loop assíncrono em corrotinas simula um aluno de forma live-demo: lê a resposta correta da questão atual no catálogo SQLite, digita de forma animada, avança o exercício, abre o menu do Enter, alterna sequencialmente a matéria e reinicia de forma autônoma até cobrir a taxonomia.
+                </p>
+                <div class="visual-description-box">
+                    <div class="visual-title">Aspecto Visual no Tablet</div>
+                    <div class="visual-desc">Banner verde flutuante no topo ("🤖 PILOTO AUTOMÁTICO ATIVO") com botão de interrupção imediata, permitindo a quem assiste avaliar visualmente a navegação e o debug das telas.</div>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+
+    <!-- Architecture Walkthrough Flow Chart -->
+    <section class="container flow-section">
+        <div class="section-title-wrapper" style="margin-bottom: 24px;">
+            <span class="section-tag">Fluxo Operacional</span>
+            <h2 class="section-title">Como o App Processa Cada Questão Offline</h2>
+        </div>
+        
+        <div class="architecture-flow">
+            <!-- Step 1 -->
+            <div class="flow-card">
+                <div class="flow-step-num">1</div>
+                <h4>Seleção na Lousa</h4>
+                <p>O aluno escolhe o tema, dígitos e operandos na lousa flutuante do "Enter".</p>
+            </div>
+            
+            <div class="flow-arrow">➔</div>
+            
+            <!-- Step 2 -->
+            <div class="flow-card accent">
+                <div class="flow-step-num">2</div>
+                <h4>Query SQLite</h4>
+                <p>O app busca no banco SQLite local de 16k questões a equação correta para o MMR.</p>
+            </div>
+            
+            <div class="flow-arrow">➔</div>
+            
+            <!-- Step 3 -->
+            <div class="flow-card gold">
+                <div class="flow-step-num">3</div>
+                <h4>Rascunho & Escrita</h4>
+                <p>A caligrafia desenhada com a Stylus é lida localmente pelo ML Kit Latino e preenchida.</p>
+            </div>
+            
+            <div class="flow-arrow">➔</div>
+            
+            <!-- Step 4 -->
+            <div class="flow-card">
+                <div class="flow-step-num">4</div>
+                <h4>BKT & ELO Local</h4>
+                <p>O app calcula a maestria no Room e a pontuação de MMR do ELO de forma instantânea offline.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>LOVE CLASS — O Motor de Treinamento Matemático Offline de Alto Desempenho</p>
+            <p style="font-size: 11px;">Construído e Planejado sob Rigor Tecnológico por Antigravity (Senior AI Architect & Technical Lead)</p>
+        </div>
+    </footer>
+
+    <!-- Interactive script to toggle state on the mockup screen -->
+    <script>
+        function toggleMockupDrawer() {
+            var drawer = document.getElementById('sprint-config-drawer');
+            var btn = document.getElementById('toggle-drawer-btn');
+            if (drawer.style.display === 'none') {
+                drawer.style.display = 'flex';
+                btn.classList.add('active');
+                btn.innerText = 'Lousa do Enter: Aberta';
+            } else {
+                drawer.style.display = 'none';
+                btn.classList.remove('active');
+                btn.innerText = 'Lousa do Enter: Fechada';
+            }
+        }
+        
+        function toggleMockupAutopilot() {
+            var banner = document.querySelector('.sim-banner');
+            var btn = document.getElementById('toggle-autopilot-btn');
+            var exprText = document.getElementById('math-expression-text');
+            var input = document.querySelector('.math-input-box');
+            
+            if (banner.style.display === 'none') {
+                banner.style.display = 'flex';
+                btn.classList.add('active');
+                btn.innerText = 'Simulador Autopilot: Ligado';
+                exprText.innerText = '12 + 52 - 98';
+                input.innerText = '?';
+            } else {
+                banner.style.display = 'none';
+                btn.classList.remove('active');
+                btn.innerText = 'Simulador Autopilot: Desligado';
+                exprText.innerText = '245 × 8';
+                input.innerText = '1960';
+            }
+        }
+    </script>
+</body>
+</html>

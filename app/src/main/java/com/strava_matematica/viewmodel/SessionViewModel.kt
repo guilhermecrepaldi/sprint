@@ -7,6 +7,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.strava_matematica.data.local.repository.LocalSprintRepository
 import com.strava_matematica.model.ApiStatus
+import com.strava_matematica.model.SessionStartRequest
+import com.strava_matematica.model.SubmitRequest
+import com.strava_matematica.model.FieldSubmit
+import com.strava_matematica.ui.folha.ImageUtils
 import com.strava_matematica.model.GestureConfig
 import com.strava_matematica.model.CalibrationSample
 import com.strava_matematica.model.DrillFlushResult
@@ -73,6 +77,7 @@ data class SessionUiState(
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
     private val localRepository = LocalSprintRepository.getInstance(application)
+    private val isRemoteMode = false
     private val prefs = application.getSharedPreferences("love_class_prefs", Context.MODE_PRIVATE)
     private val stableStudentId = prefs.getString("student_id_v1", null)
         ?: UUID.randomUUID().toString().also { generated ->
@@ -200,6 +205,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         density: String,
         exactCurrent: Boolean,
         difficultyStart: Double?,
+        digitsCount: Int,
+        valuesCount: Int,
         field: FolhaField?,
     ) {
         val chosenSkill = skillTag
@@ -220,9 +227,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 difficultyStep = 0.1,
                 exercisesPerPage = 1,
                 fixationDensity = "exata",
+                digitsCount = digitsCount,
+                valuesCount = valuesCount,
             )
         } else {
-            val densityConfig = densityToConfig(density, base)
+            val densityConfig = densityToConfig(density, base).copy(
+                digitsCount = digitsCount,
+                valuesCount = valuesCount,
+            )
             if (difficultyStart != null) densityConfig.copy(difficultyStart = difficultyStart)
             else densityConfig
         }
@@ -286,11 +298,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 fetchHistory()
                 fetchSkillProgress()
                 fetchActivity()
-            } catch (e: Exception) {
+            } catch (localEx: Exception) {
                 _uiState.update {
                     it.copy(
                         status = SessionStatus.DASHBOARD,
-                        errorMessage = e.message,
+                        errorMessage = localEx.message,
                         apiStatus = ApiStatus.ERROR,
                     )
                 }
@@ -319,7 +331,6 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 val finished = res.sessionStatus == "finished"
                 val folhaCorrect = res.results.count { it.isCorrect }
                 val folhaTotal = res.results.size
-                // Histórico visual: determina marca da tentativa
                 val mark = when {
                     res.results.isEmpty() -> ResultMark.EMPTY
                     res.results.first().recognizedAnswer.isNullOrBlank() -> ResultMark.EMPTY
@@ -330,7 +341,6 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     val updatedRecent = (it.recentResults + mark).takeLast(7)
                     val fails = updatedRecent.reversed().takeWhile { m -> m == ResultMark.WRONG }.size
                     val corrects = updatedRecent.reversed().takeWhile { m -> m == ResultMark.CORRECT }.size
-                    // 5 corretos seguidos -> mastery: sugere próximo tema, mas usuário decide.
                     val mastery = corrects >= 5
                     val nextSkill = if (mastery && !it.masteryDetected) nextSkillInTree(it.selectedSkillTag) else it.suggestedNextSkill
                     val dismissedAt = if (fails == 0) null else it.scoreRiskDismissedAt
@@ -454,9 +464,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val history = localRepository.history(studentId)
                 _uiState.update { it.copy(sprintHistory = history) }
-            } catch (_: Exception) {
-                // History is best-effort — dashboard still renders with stale data
-            }
+            } catch (_: Exception) {}
         }
     }
 
@@ -473,9 +481,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                         skillAccuracy = progress.associate { item -> item.skill to item.accuracy },
                     )
                 }
-            } catch (_: Exception) {
-                // Progress is best-effort; Sprint flow must keep running.
-            }
+            } catch (_: Exception) {}
         }
     }
 
@@ -485,9 +491,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val activity = localRepository.activity(studentId, days = 35)
                 _uiState.update { it.copy(activityDays = activity) }
-            } catch (_: Exception) {
-                // Activity is best-effort; profile renders with the last known heatmap.
-            }
+            } catch (_: Exception) {}
         }
     }
 
@@ -540,6 +544,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     // medium/Fixacao: padrao 30/300.
     // low/Atencao: mais fixacao, sobe devagar.
     private fun densityToConfig(density: String, base: SessionConfig): SessionConfig = when (density) {
+        "kplus" -> base.copy(difficultyStep = 0.5, focusMode = true, difficultyBlockSize = 20, focusTargetCount = 200, exercisesPerPage = 20, fixationDensity = "kplus")
         "exact" -> base.copy(focusMode = true, difficultyBlockSize = 200, focusTargetCount = 200, exercisesPerPage = 1, fixationDensity = "exata")
         "high" -> base.copy(difficultyStep = 0.8, focusMode = true, difficultyBlockSize = 15, focusTargetCount = 150, exercisesPerPage = 1, fixationDensity = "leve")
         "low"  -> base.copy(difficultyStep = 0.25, focusMode = true, difficultyBlockSize = 60, focusTargetCount = 600, exercisesPerPage = 1, fixationDensity = "densa")

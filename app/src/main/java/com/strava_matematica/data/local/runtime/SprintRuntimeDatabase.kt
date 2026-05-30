@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         PenEventEntity::class,
         StudentSkillMemoryEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class SprintRuntimeDatabase : RoomDatabase() {
@@ -21,6 +21,7 @@ abstract class SprintRuntimeDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun attemptDao(): AttemptDao
     abstract fun skillMemoryDao(): SkillMemoryDao
+    abstract fun syncDao(): SyncDao
 
     companion object {
         @Volatile private var instance: SprintRuntimeDatabase? = null
@@ -32,6 +33,7 @@ abstract class SprintRuntimeDatabase : RoomDatabase() {
                     SprintRuntimeDatabase::class.java,
                     "sprint_runtime.db",
                 )
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }
             }

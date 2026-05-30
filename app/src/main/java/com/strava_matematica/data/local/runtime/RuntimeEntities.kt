@@ -34,6 +34,7 @@ data class SessionEntity(
     val density: String,
     @ColumnInfo(name = "template_pin") val templatePin: String?,
     @ColumnInfo(name = "config_json") val configJson: String,
+    @ColumnInfo(name = "is_synced") val isSynced: Boolean = false,
 )
 
 @Entity(
@@ -60,6 +61,7 @@ data class ExerciseAttemptEntity(
     @ColumnInfo(name = "validator_type") val validatorType: String,
     @ColumnInfo(name = "attempt_timestamp") val attemptTimestamp: Long,
     @ColumnInfo(name = "duration_seconds") val durationSeconds: Int,
+    @ColumnInfo(name = "is_synced") val isSynced: Boolean = false,
 )
 
 @Entity(

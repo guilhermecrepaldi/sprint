@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -174,15 +175,12 @@ fun ExerciseField(
                 guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "single",
                 onSyncStrokes = answerSync,
                 onPenEvent = onPenEvent,
+                onTap = {
+                    answerPadVisible.value = true
+                },
             )
             Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .pointerInput(Unit) {
-                        androidx.compose.foundation.gestures.detectTapGestures {
-                            answerPadVisible.value = true
-                        }
-                    },
+                modifier = Modifier.matchParentSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 if (typedAnswer.isNotBlank()) {
@@ -311,6 +309,7 @@ fun InkCanvas(
     guideMode: String = "single",
     onSyncStrokes: (List<List<Offset>>, List<List<Offset>>) -> Unit = { _, _ -> },
     onPenEvent: (PenEvent) -> Unit = {},
+    onTap: (() -> Unit)? = null,
 ) {
     val strokes = remember(initialStrokes) { mutableStateListOf(*initialStrokes.toTypedArray()) }
     val redoStack = remember(initialRedoStack) { mutableStateListOf(*initialRedoStack.toTypedArray()) }
@@ -354,17 +353,34 @@ fun InkCanvas(
                 val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                 val down = event.changes.firstOrNull { it.pressed } ?: return@awaitEachGesture
                 
-                // Ignorar toques que não sejam Stylus, Eraser ou Mouse (emulador)
+                // Temporariamente permitindo TODOS os toques (dedo, mouse) para testar o MVP
                 val type = down.type
                 val isPen = type == androidx.compose.ui.input.pointer.PointerType.Stylus || 
                             type == androidx.compose.ui.input.pointer.PointerType.Eraser ||
-                            type == androidx.compose.ui.input.pointer.PointerType.Mouse
+                            type == androidx.compose.ui.input.pointer.PointerType.Mouse ||
+                            type == androidx.compose.ui.input.pointer.PointerType.Touch
 
                 if (!isPen) return@awaitEachGesture // Deixa o dedo passar para o Pan/Zoom
 
                 down.consume() // Consome o evento para garantir que ninguem mais use
 
-                if (isErasing || type == androidx.compose.ui.input.pointer.PointerType.Eraser) {
+                val motionEvent = try {
+                    val field = event.javaClass.getDeclaredField("motionEvent")
+                    field.isAccessible = true
+                    field.get(event) as? android.view.MotionEvent
+                } catch (e: Exception) {
+                    null
+                }
+                val isStylusButton = motionEvent?.let {
+                    (it.buttonState and android.view.MotionEvent.BUTTON_STYLUS_PRIMARY != 0) ||
+                    (it.buttonState and android.view.MotionEvent.BUTTON_SECONDARY != 0)
+                } ?: false
+
+                val activeErasing = isErasing || 
+                                    type == androidx.compose.ui.input.pointer.PointerType.Eraser ||
+                                    isStylusButton
+
+                if (activeErasing) {
                     eraseNear(down.position, strokes, eraserRadiusPx)
                 } else {
                     strokeStartedAt = System.currentTimeMillis()
@@ -380,7 +396,23 @@ fun InkCanvas(
                     val loopEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                     val change = loopEvent.changes.firstOrNull { it.id == down.id } ?: break
 
-                    if (isErasing) {
+                    val motionEventLoop = try {
+                        val field = loopEvent.javaClass.getDeclaredField("motionEvent")
+                        field.isAccessible = true
+                        field.get(loopEvent) as? android.view.MotionEvent
+                    } catch (e: Exception) {
+                        null
+                    }
+                    val isStylusButtonLoop = motionEventLoop?.let {
+                        (it.buttonState and android.view.MotionEvent.BUTTON_STYLUS_PRIMARY != 0) ||
+                        (it.buttonState and android.view.MotionEvent.BUTTON_SECONDARY != 0)
+                    } ?: false
+
+                    val activeErasingLoop = isErasing || 
+                                            type == androidx.compose.ui.input.pointer.PointerType.Eraser ||
+                                            isStylusButtonLoop
+
+                    if (activeErasingLoop) {
                         if (change.pressed) {
                             eraseNear(change.position, strokes, eraserRadiusPx)
                             change.consume()
@@ -408,9 +440,24 @@ fun InkCanvas(
                     change.consume()
 
                     if (!change.pressed) {
-                        onSyncStrokes(strokes.toList(), redoStack.toList())
                         if (currentStroke.isNotEmpty()) {
                             onPenEvent(currentStroke.last().toPenEvent(strokeStartedAt, 0f, "stroke_end"))
+                        }
+                        val duration = System.currentTimeMillis() - strokeStartedAt
+                        val dist = if (currentStroke.isNotEmpty()) {
+                            hypot(currentStroke.last().x - currentStroke.first().x, currentStroke.last().y - currentStroke.first().y)
+                        } else {
+                            0f
+                        }
+                        val isTap = duration < 320L && dist < 12.dp.toPx()
+                        if (isTap && onTap != null) {
+                            if (strokes.isNotEmpty()) {
+                                strokes.removeAt(strokes.lastIndex)
+                            }
+                            onSyncStrokes(strokes.toList(), redoStack.toList())
+                            onTap()
+                        } else {
+                            onSyncStrokes(strokes.toList(), redoStack.toList())
                         }
                         break
                     }

@@ -28,6 +28,9 @@ class FakeResult:
     def scalar_one(self) -> Any:
         return self._scalar
 
+    def scalar_one_or_none(self) -> Any:
+        return self._scalar
+
     def all(self) -> list[Any]:
         return self._items
 

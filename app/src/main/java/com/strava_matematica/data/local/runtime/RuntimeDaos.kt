@@ -66,6 +66,9 @@ interface AttemptDao {
         """,
     )
     suspend fun activity(studentId: String, fromMs: Long): List<ActivityProjection>
+
+    @Query("SELECT * FROM exercise_attempts WHERE student_id = :studentId AND skill = :skill ORDER BY attempt_timestamp DESC LIMIT :limit")
+    suspend fun getRecentAttemptsForSkill(studentId: String, skill: String, limit: Int): List<ExerciseAttemptEntity>
 }
 
 @Dao

@@ -62,6 +62,10 @@ import com.strava_matematica.viewmodel.FolhaViewModel
 import com.strava_matematica.viewmodel.ResultMark
 import com.strava_matematica.viewmodel.SessionViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import com.strava_matematica.recognizer.MlKitRecognizer
+import kotlinx.coroutines.launch
 
 // ── Top rail tabs ──────────────────────────────────────────────────────────────
 private enum class SprintTab(val label: String) {
@@ -70,7 +74,6 @@ private enum class SprintTab(val label: String) {
     GESTURES("Gestos"),
     DASHBOARD("Painel"),
     SPRINT("Sprint"),
-    MATHTREE("Árvore"),
     NOTES("Notas"),
 }
 
@@ -91,6 +94,9 @@ fun SprintApp(
     val state      by sessionViewModel.uiState.collectAsState()
     val folhaState by folhaViewModel.uiState.collectAsState()
     val haptic     = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val handwritingRecognizer = remember { MlKitRecognizer(context) }
 
     // Auto-advance through result / finished — instantâneo (sem delay)
     LaunchedEffect(state.status) {
@@ -240,6 +246,14 @@ fun SprintApp(
                                         },
                                         onSyncAnswer = { fieldIndex, strokes, redoStack ->
                                             folhaViewModel.syncAnswer(folha.folhaId, fieldIndex, strokes, redoStack)
+                                            if (strokes.isNotEmpty()) {
+                                                coroutineScope.launch {
+                                                    val text = handwritingRecognizer.recognize(strokes)
+                                                    if (text != null) {
+                                                        folhaViewModel.syncTypedAnswer(folha.folhaId, fieldIndex, text)
+                                                    }
+                                                }
+                                            }
                                         },
                                         onTypedAnswerChange = { fieldIndex, answer ->
                                             folhaViewModel.syncTypedAnswer(folha.folhaId, fieldIndex, answer)
@@ -262,6 +276,8 @@ fun SprintApp(
                                         retrySignal = folhaState.retryCount,
                                         recentResults = state.recentResults,
                                         skillAccuracy = state.skillAccuracy,
+                                        skillAttempts = state.skillAttempts,
+                                        skillFluency = state.skillAccuracy,
                                         masteryDetected = state.masteryDetected,
                                         suggestedNextSkill = state.suggestedNextSkill,
                                         scoreRiskVisible = state.scoreRiskVisible,
@@ -283,16 +299,6 @@ fun SprintApp(
                         // else: papel em branco (sessão lançada, aguardando folha)
 
                     }
-
-                    SprintTab.MATHTREE -> MathTreeTab(
-                        currentSkill = state.selectedSkillTag,
-                        skillStatuses = state.skillStatuses,
-                        skillAttempts = state.skillAttempts,
-                        skillAvailable = state.skillAvailable,
-                        skillAccuracy = state.skillAccuracy,
-                        onSkillSelect = sessionViewModel::selectSkill,
-                        onGoToSprint = goToSprint,
-                    )
 
                     SprintTab.NOTES -> NotesTab(
                         notes = state.notes,

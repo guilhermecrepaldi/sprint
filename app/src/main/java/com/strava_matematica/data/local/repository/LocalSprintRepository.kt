@@ -12,6 +12,10 @@ import com.strava_matematica.data.local.runtime.StudentSkillMemoryEntity
 import com.strava_matematica.model.FieldResult
 import com.strava_matematica.model.Folha
 import com.strava_matematica.model.FolhaField
+import com.strava_matematica.domain.procedural.ProceduralEngine
+import com.strava_matematica.domain.procedural.ProceduralExercise
+import com.strava_matematica.domain.procedural.EloMatchmaker
+import com.strava_matematica.domain.procedural.MathBktEngine
 import com.strava_matematica.model.HeatmapDay
 import com.strava_matematica.model.PenEvent
 import com.strava_matematica.model.SessionConfig
@@ -96,7 +100,7 @@ class LocalSprintRepository private constructor(context: Context) {
                 ),
             )
             persistPenEvents(attemptId, folhaState.fieldEvents[field.fieldIndex].orEmpty(), now)
-            updateSkillMemory(studentId, field.skillTags.firstOrNull() ?: skill, correct, folha.difficulty)
+            updateSkillMemory(studentId, field.skillTags.firstOrNull() ?: skill, correct, durationMs)
 
             FieldResult(
                 fieldIndex = field.fieldIndex,
@@ -203,22 +207,39 @@ class LocalSprintRepository private constructor(context: Context) {
         studentId: String,
         skillTag: String,
         config: SessionConfig,
-    ): ExerciseEntity {
-        val attempts = runtime.skillMemoryDao().get(studentId, skillTag)?.totalAttempts ?: 0
-        val template = config.templatePin
-        val id = if (template != null) {
-            val count = catalog.countByTemplate(template)
-            catalog.exerciseIdByTemplateOffset(template, attempts % count.coerceAtLeast(1))
-        } else {
-            val difficultyFloor = config.difficultyStart +
-                (attempts / config.difficultyBlockSize.coerceAtLeast(1)) * config.difficultyStep
-            val count = catalog.countBySkill(skillTag).coerceAtLeast(1)
-            catalog.exerciseIdBySkillDifficultyOffset(skillTag, difficultyFloor.coerceIn(1.0, 10.0), attempts % count)
-                ?: catalog.exerciseIdBySkillOffset(skillTag, attempts % count)
+    ): ProceduralExercise {
+        val currentMemory = runtime.skillMemoryDao().get(studentId, skillTag)
+        val mmr = currentMemory?.masterScore?.let { EloMatchmaker.masterScoreToMmr(it) } ?: 1000
+        
+        // 1. Tentar buscar do catálogo SQLite offline real de 16k exercícios
+        val count = catalog.countBySkill(skillTag)
+        if (count > 0) {
+            val targetDifficulty = mmr.toDouble() / 100.0
+            val offset = kotlin.random.Random.nextInt(count)
+            val exerciseId = catalog.exerciseIdBySkillDifficultyOffset(skillTag, targetDifficulty, 0)
+                ?: catalog.exerciseIdBySkillOffset(skillTag, offset)
+                ?: catalog.exerciseIdBySkillOffset(skillTag, 0)
+
+            if (exerciseId != null) {
+                val entity = catalog.getById(exerciseId)
+                if (entity != null) {
+                    return ProceduralExercise(
+                        id = entity.id,
+                        statement = entity.statement,
+                        expectedAnswer = entity.expectedAnswer,
+                        primarySkill = entity.primarySkill,
+                        difficulty = entity.difficulty,
+                        templateId = entity.templateId ?: "default",
+                        canvasMode = entity.canvasMode,
+                        validatorType = entity.validatorType,
+                        answerType = entity.answerType,
+                    )
+                }
+            }
         }
-        return catalog.getById(id ?: "")
-            ?: catalog.getById(catalog.exerciseIdBySkillOffset("soma_subtracao", 0).orEmpty())
-            ?: error("Catalogo local vazio ou corrompido")
+        
+        // Fallback síncrono para a engine procedural se o catálogo estiver vazio para esta skill
+        return ProceduralEngine.generate(skillTag, mmr)
     }
 
     private suspend fun ensureStudent(studentId: String) {
@@ -247,37 +268,76 @@ class LocalSprintRepository private constructor(context: Context) {
         )
     }
 
-    private suspend fun updateSkillMemory(studentId: String, skill: String, correct: Boolean, difficulty: Double) {
+    private suspend fun updateSkillMemory(studentId: String, skill: String, correct: Boolean, durationMs: Long) {
         val current = runtime.skillMemoryDao().get(studentId, skill)
-        val score = ((current?.masterScore ?: 0.0) + adaptiveDelta(correct, difficulty)).coerceIn(0.0, 1.0)
+        
+        // 1. Obter anterior mastery do DB (se nulo, MathBktEngine.getInitialMastery)
+        val prevMastery = current?.masterScore ?: MathBktEngine.getInitialMastery(skill)
+        
+        // 2. Calcular se skill está sob ineficácia/quarentena pedagógica
+        val newTotalAttempts = (current?.totalAttempts ?: 0) + 1
+        val newCorrectAttempts = (current?.correctAttempts ?: 0) + if (correct) 1 else 0
+        val totalAccuracy = if (newTotalAttempts > 0) newCorrectAttempts.toDouble() / newTotalAttempts else 0.0
+        val isUnderInefficacy = (newTotalAttempts >= 5 && totalAccuracy < 0.4) || (prevMastery < 0.15)
+        
+        // 3. Calcular consecutiveFails
+        val consecutiveFails = if (!correct) {
+            val recentAttempts = runtime.attemptDao().getRecentAttemptsForSkill(studentId, skill, 10)
+            val previousAttempts = if (recentAttempts.isNotEmpty()) recentAttempts.drop(1) else emptyList()
+            var prevFails = 0
+            for (attempt in previousAttempts) {
+                if (!attempt.isCorrect) {
+                    prevFails++
+                } else {
+                    break
+                }
+            }
+            prevFails + 1
+        } else {
+            0
+        }
+        
+        // 4. Atualizar bktMastery via MathBktEngine.updateMastery
+        val bktMastery = MathBktEngine.updateMastery(skill, prevMastery, correct)
+        
+        // 5. Calcular newMmr chamando EloMatchmaker.calculateNewMmr
+        val currentMmr = current?.masterScore?.let { EloMatchmaker.masterScoreToMmr(it) } ?: 1000
+        val newMmr = EloMatchmaker.calculateNewMmr(
+            currentMmr = currentMmr,
+            isCorrect = correct,
+            timeSpentMs = durationMs,
+            isUnderInefficacy = isUnderInefficacy,
+            consecutiveFailsInInefficacy = consecutiveFails
+        )
+        
+        // 6. Converter newMmr de volta para double
+        val newScore = EloMatchmaker.mmrToMasterScore(newMmr)
+        
+        // 7. Persistir StudentSkillMemoryEntity atualizando masterScore = newScore
         runtime.skillMemoryDao().upsert(
             StudentSkillMemoryEntity(
                 studentId = studentId,
                 skill = skill,
-                masterScore = score,
-                totalAttempts = (current?.totalAttempts ?: 0) + 1,
-                correctAttempts = (current?.correctAttempts ?: 0) + if (correct) 1 else 0,
+                masterScore = newScore,
+                totalAttempts = newTotalAttempts,
+                correctAttempts = newCorrectAttempts,
                 lastUpdated = System.currentTimeMillis(),
             ),
         )
     }
 
-    private fun adaptiveDelta(correct: Boolean, difficulty: Double): Double {
-        return if (correct) 0.018 + (difficulty / 10.0) * 0.018 else -(0.014 + (difficulty / 10.0) * 0.030)
-    }
-
-    private fun ExerciseEntity.toFolhaField(): FolhaField {
+    private fun ProceduralExercise.toFolhaField(): FolhaField {
         return FolhaField(
             fieldIndex = 0,
             exerciseId = id,
-            subject = subject,
+            subject = "matematica",
             canvasMode = canvasMode,
             statement = statement,
             skillTags = listOf(primarySkill),
-            estimatedTimeMs = estimatedTimeMs,
+            estimatedTimeMs = 15000,
             templateId = templateId,
-            nodeId = nodeId,
-            methodTags = parseStringList(methodTagsJson),
+            nodeId = null,
+            methodTags = null,
             expectedAnswer = expectedAnswer,
             validatorType = validatorType,
             answerType = answerType,

@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.sp
 import com.strava_matematica.design.Spacing
 import com.strava_matematica.model.RankingEntry
 import com.strava_matematica.model.WeeklyRanking
-import com.strava_matematica.network.ApiClient
 import kotlinx.coroutines.launch
 
 private val Gold   = Color(0xFFFFD700)
@@ -56,7 +55,17 @@ fun RankingScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                ranking = ApiClient.create().getWeeklyRanking()
+                // Simula ranking local de alta fidelidade para o Kumon Mode offline
+                ranking = WeeklyRanking(
+                    weekStart = "2026-05-25",
+                    entries = listOf(
+                        RankingEntry(rank = 1, studentName = "Arthur Pendragon", slug = "arthur", xpWeek = 450, xpTotal = 3200),
+                        RankingEntry(rank = 2, studentName = "Beatriz Silva", slug = "beatriz", xpWeek = 380, xpTotal = 1950),
+                        RankingEntry(rank = 3, studentName = "Carlos Oliveira", slug = "carlos", xpWeek = 310, xpTotal = 1500),
+                        RankingEntry(rank = 4, studentName = "Você (Offline)", slug = "voce", xpWeek = 280, xpTotal = 1250),
+                        RankingEntry(rank = 5, studentName = "Diana Prince", slug = "diana", xpWeek = 150, xpTotal = 800)
+                    )
+                )
             } catch (e: Exception) {
                 error = e.message
             } finally {

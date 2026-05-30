@@ -41,6 +41,8 @@ data class SessionConfig(
     @SerialName("show_eraser_button") val showEraserButton: Boolean = false,
     // Quando true, o aluno só avança para a próxima questão se acertar.
     @SerialName("require_correct_to_advance") val requireCorrectToAdvance: Boolean = false,
+    @SerialName("digits_count") val digitsCount: Int = 2,
+    @SerialName("values_count") val valuesCount: Int = 2,
 ) {
     val backgroundMode: BackgroundMode
         get() = when (background) {

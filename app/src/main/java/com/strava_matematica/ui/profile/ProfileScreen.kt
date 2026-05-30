@@ -37,7 +37,7 @@ import com.strava_matematica.design.Spacing
 import com.strava_matematica.model.HeatmapDay
 import com.strava_matematica.model.PublicProfile
 import com.strava_matematica.model.TrackProgress
-import com.strava_matematica.network.ApiClient
+import com.strava_matematica.model.ProfileStats
 import kotlinx.coroutines.launch
 
 @Composable
@@ -53,7 +53,24 @@ fun ProfileScreen(
     LaunchedEffect(slug) {
         scope.launch {
             try {
-                profile = ApiClient.create().getProfile(slug)
+                // Simula um perfil de alta fidelidade offline para o Kumon Mode
+                profile = PublicProfile(
+                    studentName = "Estudante Zen",
+                    slug = slug,
+                    xpTotal = 1250,
+                    memberSince = "Maio 2026",
+                    stats = ProfileStats(
+                        totalExercises = 84,
+                        streakDays = 7,
+                        xpTotal = 1250
+                    ),
+                    heatmap = emptyList(),
+                    tracks = listOf(
+                        TrackProgress(slug = "fundamentos", name = "Fundamentos", totalSkills = 5, attemptedSkills = 4, progress = 0.9f),
+                        TrackProgress(slug = "algebra", name = "Álgebra", totalSkills = 5, attemptedSkills = 2, progress = 0.4f),
+                        TrackProgress(slug = "calculo", name = "Cálculo", totalSkills = 9, attemptedSkills = 0, progress = 0.0f)
+                    )
+                )
             } catch (e: Exception) {
                 error = e.message
             } finally {

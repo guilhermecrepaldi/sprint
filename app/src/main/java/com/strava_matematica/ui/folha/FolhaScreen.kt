@@ -3,6 +3,7 @@ package com.strava_matematica.ui.folha
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -12,12 +13,21 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -73,7 +83,7 @@ fun FolhaScreen(
     onAdvance: () -> Unit,
     selectedSkillTag: String = "soma_subtracao",
     densityLevel: String = "medium",
-    onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, field: FolhaField?) -> Unit = { _, _, _, _, _ -> },
+    onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, digitsCount: Int, valuesCount: Int, field: FolhaField?) -> Unit = { _, _, _, _, _, _, _ -> },
     onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onTypedAnswerChange: (fieldIndex: Int, answer: String) -> Unit = { _, _ -> },
@@ -90,6 +100,8 @@ fun FolhaScreen(
     retrySignal: Int = 0,
     recentResults: List<ResultMark> = emptyList(),
     skillAccuracy: Map<String, Float> = emptyMap(),
+    skillAttempts: Map<String, Int> = emptyMap(),
+    skillFluency: Map<String, Float> = emptyMap(),
     masteryDetected: Boolean = false,
     suggestedNextSkill: String? = null,
     scoreRiskVisible: Boolean = false,
@@ -109,11 +121,85 @@ fun FolhaScreen(
     val showSessionRegister = remember { mutableStateOf(false) }
     val showSprintScrolls = remember { mutableStateOf(false) }
 
+    // --- ENGINE DE PILOTO AUTOMÁTICO (SIMULAÇÃO) ---
+    val isSimulationActive = remember { mutableStateOf(false) }
+
+    LaunchedEffect(isSimulationActive.value, selectedSkillTag, currentExerciseIndex) {
+        if (!isSimulationActive.value) return@LaunchedEffect
+
+        // 1. Obter a resposta correta da questão
+        val expected = field.expectedAnswer.orEmpty()
+        if (expected.isEmpty()) return@LaunchedEffect
+
+        // 2. Aguarda delay para quem está assistindo ler o enunciado
+        kotlinx.coroutines.delay(1800L)
+
+        // 3. Simular a digitação da resposta correta na caixa
+        onTypedAnswerChange(field.fieldIndex, expected)
+
+        // 4. Aguarda delay pós-escrita
+        kotlinx.coroutines.delay(1200L)
+
+        // 5. Simular o clique/avanço no EnterSquare (chama o onAdvance)
+        onAdvance()
+
+        // 6. Após avançar o exercício, calcular a próxima skill na taxonomia flat das 34 skills do catálogo!
+        val allSkills = SPRINT_SKILLS_BY_GROUP.values.flatten().map { it.first }
+        val currentIdx = allSkills.indexOf(selectedSkillTag).coerceAtLeast(0)
+        val nextIdx = currentIdx + 1
+
+        if (nextIdx < allSkills.size) {
+            val nextSkill = allSkills[nextIdx]
+            kotlinx.coroutines.delay(1500L) // Aguarda a renderização do novo estado da folha
+            
+            // Simular a troca de matéria sequencial via onApplySprintScrollSelection!
+            onApplySprintScrollSelection(
+                nextSkill,
+                densityLevel,
+                false, // exactCurrent = false
+                null,  // difficultyStart = null
+                config.digitsCount,
+                config.valuesCount,
+                field
+            )
+        } else {
+            // Esgotou todas as 34 matérias! Desativa a simulação e exibe sucesso
+            isSimulationActive.value = false
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
+        if (isSimulationActive.value) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(androidx.compose.ui.graphics.Color(0xFF388E3C).copy(alpha = 0.95f))
+                    .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "🤖 PILOTO AUTOMÁTICO ATIVO · Simulando usuário navegando pelas matérias...",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "PARAR",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier
+                        .clickable { isSimulationActive.value = false }
+                        .padding(4.dp)
+                )
+            }
+        }
+
         // ── Full-screen exercise ─────────────────────────────────────────────
         Box(
             modifier = Modifier
@@ -125,17 +211,44 @@ fun FolhaScreen(
                     onToggleEraser = { isErasing.value = !isErasing.value },
                 ),
         ) {
-            if (showSprintScrolls.value) {
-                SprintScrollConfigPage(
-                    selectedSkillTag = selectedSkillTag,
-                    densityLevel = densityLevel,
-                    skillAccuracy = skillAccuracy,
+            // Workspace Centralizado (Canvas de Treino)
+            if (config.fixationDensity == "kplus") {
+                androidx.compose.foundation.lazy.LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    onApply = { skill, density, exactCurrent, difficultyStart ->
-                        showSprintScrolls.value = false
-                        onApplySprintScrollSelection(skill, density, exactCurrent, difficultyStart, field)
-                    },
-                )
+                    contentPadding = PaddingValues(Spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    items(folha.fields.size) { index ->
+                        val currentField = folha.fields[index]
+                        val itemKey = "${folha.folhaId}:${currentField.exerciseId}:${currentField.fieldIndex}"
+                        key(itemKey) {
+                            ExerciseField(
+                                field = currentField,
+                                isActive = true,
+                                backgroundMode = config.backgroundMode,
+                                penColor = config.penColor,
+                                penWidth = config.penWidth,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(290.dp),
+                                initialScratchStrokes = fieldScratchStrokes[currentField.fieldIndex].orEmpty(),
+                                initialAnswerStrokes = fieldAnswerStrokes[currentField.fieldIndex].orEmpty(),
+                                initialScratchRedoStack = fieldScratchRedoStacks[currentField.fieldIndex].orEmpty(),
+                                initialAnswerRedoStack = fieldAnswerRedoStacks[currentField.fieldIndex].orEmpty(),
+                                typedAnswer = fieldTypedAnswers[currentField.fieldIndex].orEmpty(),
+                                clearSignal = clearSignal.intValue,
+                                undoSignal = undoSignal.intValue,
+                                redoSignal = redoSignal.intValue,
+                                isErasing = isErasing.value,
+                                onSyncScratch = { strokes, redo -> onSyncScratch(currentField.fieldIndex, strokes, redo) },
+                                onSyncAnswer = { strokes, redo -> onSyncAnswer(currentField.fieldIndex, strokes, redo) },
+                                onTypedAnswerChange = { answer -> onTypedAnswerChange(currentField.fieldIndex, answer) },
+                                onPenEvent = { event -> onPenEvent(currentField.fieldIndex, event) },
+                                userGuideMode = config.guideMode,
+                            )
+                        }
+                    }
+                }
             } else {
                 // key() forces full recomposition (new InkCanvas + fresh pointerInput) on exercise change.
                 // Without it, pointerInput holds a stale strokes reference from the previous exercise.
@@ -170,6 +283,46 @@ fun FolhaScreen(
                         userGuideMode = config.guideMode,
                     )
                 }
+            }
+
+            // Google AI Studio settings overlay lateral direito
+            if (showSprintScrolls.value) {
+                // Scrim sutil de escurecimento de fundo
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f))
+                        .clickable { showSprintScrolls.value = false }
+                )
+                
+                SprintScrollConfigPage(
+                    config = config,
+                    selectedSkillTag = selectedSkillTag,
+                    densityLevel = densityLevel,
+                    skillAccuracy = skillAccuracy,
+                    skillAttempts = skillAttempts,
+                    skillFluency = skillFluency,
+                    isSimulationActive = isSimulationActive,
+                    showSprintScrolls = showSprintScrolls,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(360.dp)
+                        .align(Alignment.CenterEnd)
+                        .background(
+                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
+                            shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                        ),
+                    onApply = { skill, density, layoutMode, difficultyStart, digits, values ->
+                        showSprintScrolls.value = false
+                        val effectiveDensity = if (layoutMode == "kplus") "kplus" else density
+                        onApplySprintScrollSelection(skill, effectiveDensity, layoutMode == "exact", difficultyStart, digits, values, field)
+                    },
+                )
             }
             if (!showSprintScrolls.value && config.showEraserButton) {
                 EraserToggle(
@@ -442,22 +595,65 @@ private val SPRINT_DIFFICULTIES = listOf(
     "8.0"   to "expert",
 )
 
-private val SPRINT_SKILLS = listOf(
-    "soma_subtracao" to "soma",
-    "multiplicacao_divisao" to "mult",
-    "fracoes_decimais" to "frac",
-    "porcentagem_razao" to "%",
-    "potenciacao_radiciacao" to "pot",
-    "equacoes_lineares" to "eq1",
-    "sistemas_equacoes" to "sist",
-    "fatoracao_produtos_notaveis" to "fat",
-    "inequacoes" to "ineq",
-    "equacoes_quadraticas" to "eq2",
-    "funcao_afim" to "afim",
-    "funcao_quadratica" to "quad",
-    "trig_razoes" to "trig",
-    "derivadas_basicas" to "deriv",
-    "integrais_indefinidas" to "int",
+private val SPRINT_GROUPS = listOf(
+    "FUNDAMENTOS" to "fundamentos",
+    "ALGEBRA" to "álgebra",
+    "FUNCOES" to "funções",
+    "GEOMETRIA" to "geometria",
+    "COMBINATORIA" to "combinatória",
+    "TRIGONOMETRIA" to "trigo",
+    "CALCULO" to "cálculo",
+)
+
+private val SPRINT_SKILLS_BY_GROUP = mapOf(
+    "FUNDAMENTOS" to listOf(
+        "soma_subtracao" to "soma",
+        "multiplicacao_divisao" to "mult",
+        "fracoes_decimais" to "frac",
+        "porcentagem_razao" to "%",
+        "potenciacao_radiciacao" to "pot",
+    ),
+    "ALGEBRA" to listOf(
+        "equacoes_lineares" to "eq1",
+        "sistemas_equacoes" to "sist",
+        "fatoracao_produtos_notaveis" to "fat",
+        "inequacoes" to "ineq",
+        "equacoes_quadraticas" to "eq2",
+    ),
+    "FUNCOES" to listOf(
+        "funcao_afim" to "afim",
+        "funcao_quadratica" to "quad",
+        "funcao_exponencial" to "exp",
+        "funcao_logaritmica" to "log",
+        "funcao_modular" to "mod",
+    ),
+    "GEOMETRIA" to listOf(
+        "geometria_plana" to "plana",
+        "geometria_espacial" to "espa",
+        "geometria_analitica" to "anali",
+    ),
+    "COMBINATORIA" to listOf(
+        "progressoes_pa_pg" to "pa/pg",
+        "combinatoria" to "comb",
+        "probabilidade" to "prob",
+    ),
+    "TRIGONOMETRIA" to listOf(
+        "trig_razoes" to "trig",
+        "trig_seno_cosseno_tangente" to "sen/cos",
+        "trig_identidades" to "iden",
+        "trig_equacoes" to "eq trig",
+    ),
+    "CALCULO" to listOf(
+        "nocao_de_limite" to "limite",
+        "continuidade" to "cont",
+        "derivadas_basicas" to "deriv",
+        "derivadas_regra_cadeia" to "cadeia",
+        "derivadas_produto_quociente" to "prod/quoc",
+        "aplicacoes_derivadas" to "ap deriv",
+        "integrais_indefinidas" to "int ind",
+        "integrais_definidas" to "int def",
+        "aplicacoes_integrais" to "ap int",
+    ),
 )
 
 private val SPRINT_DENSITIES = listOf(
@@ -469,49 +665,184 @@ private val SPRINT_DENSITIES = listOf(
 private val SPRINT_ZOOMS = listOf(
     "theme" to "tema",
     "exact" to "exato",
+    "kplus" to "k+",
+)
+
+private val SPRINT_DIGITS = listOf(
+    "1" to "unidades",
+    "2" to "dezenas",
+    "3" to "centenas",
+    "4" to "milhares",
+)
+
+private val SPRINT_VALUES = listOf(
+    "2" to "2 valores",
+    "3" to "3 valores",
+    "4" to "4 valores",
+    "5" to "5 valores",
 )
 
 @Composable
 private fun SprintScrollConfigPage(
+    config: SessionConfig,
     selectedSkillTag: String,
     densityLevel: String,
     skillAccuracy: Map<String, Float>,
-    onApply: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?) -> Unit,
+    skillAttempts: Map<String, Int>,
+    skillFluency: Map<String, Float>,
+    isSimulationActive: androidx.compose.runtime.MutableState<Boolean>,
+    showSprintScrolls: androidx.compose.runtime.MutableState<Boolean>,
+    onApply: (skillTag: String, density: String, layoutMode: String, difficultyStart: Double?, digitsCount: Int, valuesCount: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val initialSkill = selectedSkillTag.takeIf { tag -> SPRINT_SKILLS.any { it.first == tag } }
-        ?: SPRINT_SKILLS.first().first
+    val initialGroup = SPRINT_SKILLS_BY_GROUP.entries.firstOrNull { it.value.any { s -> s.first == selectedSkillTag } }?.key ?: "FUNDAMENTOS"
+    val selectedGroup = remember { mutableStateOf(initialGroup) }
+
+    val initialSkill = selectedSkillTag.takeIf { tag -> SPRINT_SKILLS_BY_GROUP.values.flatten().any { it.first == tag } }
+        ?: SPRINT_SKILLS_BY_GROUP.values.first().first().first
     val selectedSkill = remember { mutableStateOf(initialSkill) }
     val selectedDensity = remember { mutableStateOf(densityLevel.takeIf { it in listOf("high", "medium", "low") } ?: "medium") }
-    val selectedZoom = remember { mutableStateOf(if (densityLevel == "exact") "exact" else "theme") }
+    val selectedZoom = remember { mutableStateOf(if (densityLevel == "exact") "exact" else if (densityLevel == "kplus") "kplus" else "theme") }
     val selectedDifficulty = remember { mutableStateOf("auto") }
+    val selectedDigits = remember { mutableStateOf(config.digitsCount.toString()) }
+    val selectedValues = remember { mutableStateOf(config.valuesCount.toString()) }
 
     val ink = MaterialTheme.colorScheme.onBackground
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(28.dp),
+                .fillMaxWidth()
+                .padding(top = Spacing.md, bottom = Spacing.md, end = 100.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             SprintScrollRow(
-                label = "tema",
-                options = SPRINT_SKILLS,
-                selectedKey = selectedSkill.value,
-                onSelected = { selectedSkill.value = it },
+                label = "categoria",
+                options = SPRINT_GROUPS,
+                selectedKey = selectedGroup.value,
+                onSelected = { group ->
+                    selectedGroup.value = group
+                    val firstSkillOfGroup = SPRINT_SKILLS_BY_GROUP[group]?.firstOrNull()?.first ?: "soma_subtracao"
+                    selectedSkill.value = firstSkillOfGroup
+                },
             )
-            // Accuracy do tema selecionado — exibida discretamente abaixo do scroll
+
+            androidx.compose.runtime.key(selectedGroup.value) {
+                SprintScrollRow(
+                    label = "tema específico",
+                    options = SPRINT_SKILLS_BY_GROUP[selectedGroup.value] ?: emptyList(),
+                    selectedKey = selectedSkill.value,
+                    onSelected = { selectedSkill.value = it },
+                )
+            }
+
+            SprintScrollRow(
+                label = "casas decimais",
+                options = SPRINT_DIGITS,
+                selectedKey = selectedDigits.value,
+                onSelected = { selectedDigits.value = it },
+            )
+
+            SprintScrollRow(
+                label = "termos da conta",
+                options = SPRINT_VALUES,
+                selectedKey = selectedValues.value,
+                onSelected = { selectedValues.value = it },
+            )
+            // Painel Cognitivo Premium
             val acc = skillAccuracy[selectedSkill.value]
-            if (acc != null) {
-                val pct = (acc * 100).toInt()
-                Text(
-                    text = "$pct% acerto",
-                    fontSize = 9.sp,
-                    letterSpacing = 0.sp,
-                    color = ink.copy(alpha = 0.22f),
-                    textAlign = TextAlign.Center,
+            val att = skillAttempts[selectedSkill.value] ?: 0
+            val fluency = skillFluency[selectedSkill.value] ?: 0f
+            val mmr = com.strava_matematica.domain.procedural.EloMatchmaker.masterScoreToMmr(fluency.toDouble())
+            val isUnderInefficacy = (att >= 5 && (acc ?: 0f) < 0.40f) || (att > 0 && fluency < 0.15f)
+            val isMastery = fluency >= 0.85f
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.md)
+                    .background(
+                        color = when {
+                            isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F).copy(alpha = 0.08f)
+                            isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C).copy(alpha = 0.08f)
+                            else -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.03f)
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = when {
+                            isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F).copy(alpha = 0.24f)
+                            isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C).copy(alpha = 0.24f)
+                            else -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(Spacing.md),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "MMR: $mmr",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F)
+                            isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C)
+                            else -> ink.copy(alpha = 0.64f)
+                        }
+                    )
+                    Text(
+                        text = "$att tentativas" + (acc?.let { " · ${(it * 100).toInt()}% acerto" } ?: ""),
+                        fontSize = 11.sp,
+                        color = ink.copy(alpha = 0.45f)
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = when {
+                        isUnderInefficacy -> "⚠️ ALERTA: Ineficácia Crítica (Quarentena). Erros reduzem MMR de forma exponencial!"
+                        isMastery -> "🏆 DOMÍNIO COGNITIVO: Mastery sólido alcançado."
+                        else -> "📈 FIXAÇÃO: Pratique com consistência para atingir o Mastery."
+                    },
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = when {
+                        isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F)
+                        isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C)
+                        else -> ink.copy(alpha = 0.35f)
+                    },
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+            androidx.compose.material3.Button(
+                onClick = {
+                    isSimulationActive.value = !isSimulationActive.value
+                    if (isSimulationActive.value) {
+                        showSprintScrolls.value = false
+                    }
+                },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = if (isSimulationActive.value) androidx.compose.ui.graphics.Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.md),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = if (isSimulationActive.value) "⏹️ PARAR SIMULAÇÃO DE USUÁRIO" else "🤖 ATIVAR AUTOPILOT (SIMULAR USUÁRIO)",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
             SprintScrollRow(
@@ -536,11 +867,25 @@ private fun SprintScrollConfigPage(
         EnterSquare(
             onAdvance = {
                 val diff = selectedDifficulty.value.toDoubleOrNull()
-                onApply(selectedSkill.value, selectedDensity.value, selectedZoom.value == "exact", diff)
+                onApply(
+                    selectedSkill.value,
+                    selectedDensity.value,
+                    selectedZoom.value,
+                    diff,
+                    selectedDigits.value.toIntOrNull() ?: 2,
+                    selectedValues.value.toIntOrNull() ?: 2
+                )
             },
             onTripleTap = {
                 val diff = selectedDifficulty.value.toDoubleOrNull()
-                onApply(selectedSkill.value, selectedDensity.value, selectedZoom.value == "exact", diff)
+                onApply(
+                    selectedSkill.value,
+                    selectedDensity.value,
+                    selectedZoom.value,
+                    diff,
+                    selectedDigits.value.toIntOrNull() ?: 2,
+                    selectedValues.value.toIntOrNull() ?: 2
+                )
             },
             onRegisterVisibilityChange = {},
             modifier = Modifier
@@ -560,7 +905,7 @@ private fun SprintScrollRow(
 ) {
     val selectedIndex = options.indexOfFirst { it.first == selectedKey }.coerceAtLeast(0)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
-    val itemWidth = 82.dp
+    val itemWidth = 140.dp
 
     LaunchedEffect(listState, options) {
         snapshotFlow {
@@ -584,7 +929,7 @@ private fun SprintScrollRow(
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = label,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 letterSpacing = 0.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.22f),
                 modifier = Modifier.fillMaxWidth(),
@@ -596,28 +941,49 @@ private fun SprintScrollRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                itemsIndexed(options) { _, option ->
+                itemsIndexed(options) { index, option ->
                     val selected = option.first == selectedKey
+                    val ink = MaterialTheme.colorScheme.onBackground
                     Box(
                         modifier = Modifier
-                            .size(width = itemWidth, height = 38.dp)
+                            .size(width = itemWidth, height = 50.dp)
+                            .graphicsLayer {
+                                val visibleItems = listState.layoutInfo.visibleItemsInfo
+                                val itemInfo = visibleItems.firstOrNull { it.index == index }
+                                if (itemInfo != null) {
+                                    val center = listState.layoutInfo.viewportStartOffset +
+                                        (listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset) / 2f
+                                    val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                                    val distance = kotlin.math.abs(center - itemCenter)
+                                    val maxDistance = itemInfo.size * 2.0f // Fades out completely when 2 items away
+                                    val fraction = 1f - (distance / maxDistance).coerceIn(0f, 1f)
+                                    
+                                    val scale = 0.5f + (0.5f * fraction)
+                                    scaleX = scale
+                                    scaleY = scale
+                                    alpha = java.lang.Math.pow(fraction.toDouble(), 1.5).toFloat()
+                                } else {
+                                    alpha = 0f
+                                }
+                            }
                             .drawBehind {
-                                val ink = androidx.compose.ui.graphics.Color.Black
-                                val alpha = if (selected) 0.24f else 0.07f
-                                drawLine(
-                                    color = ink.copy(alpha = alpha),
-                                    start = androidx.compose.ui.geometry.Offset(size.width * 0.24f, size.height - 6.dp.toPx()),
-                                    end = androidx.compose.ui.geometry.Offset(size.width * 0.76f, size.height - 6.dp.toPx()),
-                                    strokeWidth = if (selected) 1.4.dp.toPx() else 0.8.dp.toPx(),
-                                )
+                                if (selected) {
+                                    drawLine(
+                                        color = ink.copy(alpha = 0.64f),
+                                        start = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height - 4.dp.toPx()),
+                                        end = androidx.compose.ui.geometry.Offset(size.width * 0.75f, size.height - 4.dp.toPx()),
+                                        strokeWidth = 2.dp.toPx(),
+                                    )
+                                }
                             },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = option.second,
-                            fontSize = if (selected) 18.sp else 12.sp,
+                            fontSize = 22.sp,
                             letterSpacing = 0.sp,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (selected) 0.50f else 0.18f),
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Light,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (selected) 0.95f else 0.32f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
                         )
