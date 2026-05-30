@@ -90,7 +90,7 @@ fun FolhaScreen(
     onAdvance: () -> Unit,
     selectedSkillTag: String = "soma_subtracao",
     densityLevel: String = "medium",
-    onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, digitsCount: Int, valuesCount: Int, field: FolhaField?) -> Unit = { _, _, _, _, _, _, _ -> },
+    onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, digitsCount: Int, valuesCount: Int, numberSet: String, field: FolhaField?) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onTypedAnswerChange: (fieldIndex: Int, answer: String) -> Unit = { _, _ -> },
@@ -169,6 +169,7 @@ fun FolhaScreen(
                 null,  // difficultyStart = null
                 config.digitsCount,
                 config.valuesCount,
+                config.numberSet,
                 field
             )
         } else {
@@ -344,10 +345,10 @@ fun FolhaScreen(
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                         ),
-                    onApply = { skill, density, layoutMode, difficultyStart, digits, values ->
+                    onApply = { skill, density, layoutMode, difficultyStart, digits, values, numberSet ->
                         showSprintScrolls.value = false
                         val effectiveDensity = if (layoutMode == "kplus") "kplus" else density
-                        onApplySprintScrollSelection(skill, effectiveDensity, layoutMode == "exact", difficultyStart, digits, values, field)
+                        onApplySprintScrollSelection(skill, effectiveDensity, layoutMode == "exact", difficultyStart, digits, values, numberSet, field)
                     },
                 )
             }
@@ -844,6 +845,13 @@ private val SPRINT_VALUES = listOf(
     "5" to "5 valores",
 )
 
+private val SPRINT_NUMBER_SETS = listOf(
+    "naturais" to "naturais",
+    "inteiros" to "inteiros",
+    "decimais" to "decimais",
+    "mix" to "mix",
+)
+
 @Composable
 private fun SprintScrollConfigPage(
     config: SessionConfig,
@@ -854,7 +862,7 @@ private fun SprintScrollConfigPage(
     skillFluency: Map<String, Float>,
     isSimulationActive: androidx.compose.runtime.MutableState<Boolean>,
     showSprintScrolls: androidx.compose.runtime.MutableState<Boolean>,
-    onApply: (skillTag: String, density: String, layoutMode: String, difficultyStart: Double?, digitsCount: Int, valuesCount: Int) -> Unit,
+    onApply: (skillTag: String, density: String, layoutMode: String, difficultyStart: Double?, digitsCount: Int, valuesCount: Int, numberSet: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val initialGroup = SPRINT_SKILLS_BY_GROUP.entries.firstOrNull { it.value.any { s -> s.first == selectedSkillTag } }?.key ?: "FUNDAMENTOS"
@@ -868,6 +876,7 @@ private fun SprintScrollConfigPage(
     val selectedDifficulty = remember { mutableStateOf("auto") }
     val selectedDigits = remember { mutableStateOf(config.digitsCount.toString()) }
     val selectedValues = remember { mutableStateOf(config.valuesCount.toString()) }
+    val selectedNumberSet = remember { mutableStateOf(config.numberSet) }
 
     val ink = MaterialTheme.colorScheme.onBackground
 
@@ -913,6 +922,13 @@ private fun SprintScrollConfigPage(
                 options = SPRINT_VALUES,
                 selectedKey = selectedValues.value,
                 onSelected = { selectedValues.value = it },
+            )
+
+            SprintScrollRow(
+                label = "conjunto numérico",
+                options = SPRINT_NUMBER_SETS,
+                selectedKey = selectedNumberSet.value,
+                onSelected = { selectedNumberSet.value = it },
             )
             // Painel Cognitivo Premium
             val acc = skillAccuracy[selectedSkill.value]
@@ -1035,7 +1051,8 @@ private fun SprintScrollConfigPage(
                     selectedZoom.value,
                     diff,
                     selectedDigits.value.toIntOrNull() ?: 2,
-                    selectedValues.value.toIntOrNull() ?: 2
+                    selectedValues.value.toIntOrNull() ?: 2,
+                    selectedNumberSet.value
                 )
             },
             onTripleTap = {
@@ -1046,7 +1063,8 @@ private fun SprintScrollConfigPage(
                     selectedZoom.value,
                     diff,
                     selectedDigits.value.toIntOrNull() ?: 2,
-                    selectedValues.value.toIntOrNull() ?: 2
+                    selectedValues.value.toIntOrNull() ?: 2,
+                    selectedNumberSet.value
                 )
             },
             onRegisterVisibilityChange = {},
