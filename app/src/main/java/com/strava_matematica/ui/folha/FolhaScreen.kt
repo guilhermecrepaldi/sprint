@@ -231,6 +231,7 @@ fun FolhaScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(290.dp),
+                                isKPlus = true,
                                 initialScratchStrokes = fieldScratchStrokes[currentField.fieldIndex].orEmpty(),
                                 initialAnswerStrokes = fieldAnswerStrokes[currentField.fieldIndex].orEmpty(),
                                 initialScratchRedoStack = fieldScratchRedoStacks[currentField.fieldIndex].orEmpty(),

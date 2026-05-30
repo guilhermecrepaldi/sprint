@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +55,7 @@ fun ExerciseField(
     penColor: String,
     penWidth: Float = 2.2f,
     modifier: Modifier = Modifier,
+    isKPlus: Boolean = false,
     // Split-canvas params
     initialScratchStrokes: List<List<Offset>> = emptyList(),
     initialAnswerStrokes: List<List<Offset>> = emptyList(),
@@ -101,6 +103,23 @@ fun ExerciseField(
         onSyncStrokes(s, r)
     }
 
+    val isKPlusMode = isKPlus && (field.statement.contains("+") || field.statement.contains("-") || field.statement.contains("times") || field.statement.contains("x") || field.statement.contains("*"))
+    val regex = Regex("""^(\d+)\s*([\+\-\*x]|\\times)\s*(\d+)$""")
+    val match = regex.find(field.statement.trim().replace("$", ""))
+    
+    val verticalStackData = if (isKPlusMode && match != null) {
+        val term1 = match.groupValues[1]
+        val rawOp = match.groupValues[2]
+        val term2 = match.groupValues[3]
+        val op = when (rawOp) {
+            "\\times", "*", "x" -> "×"
+            else -> rawOp
+        }
+        Triple(term1, op, term2)
+    } else {
+        null
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -108,14 +127,24 @@ fun ExerciseField(
             .padding(Spacing.md),
     ) {
         // ── Statement ────────────────────────────────────────────────────────
-        Text(
-            text = renderLatex(field.statement),
-            fontSize = if (isActive) 24.sp else 22.sp,
-            lineHeight = if (isActive) 32.sp else 30.sp,
-            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-            color = ink,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (verticalStackData != null) {
+            VerticalArithmeticStack(
+                term1 = verticalStackData.first,
+                op = verticalStackData.second,
+                term2 = verticalStackData.third,
+                ink = ink,
+                modifier = Modifier.padding(vertical = Spacing.xs)
+            )
+        } else {
+            Text(
+                text = renderLatex(field.statement),
+                fontSize = if (isActive) 24.sp else 22.sp,
+                lineHeight = if (isActive) 32.sp else 30.sp,
+                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                color = ink,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Spacer(Modifier.height(Spacing.sm))
 
         if (!isFullPage) {
@@ -554,4 +583,60 @@ private fun eraseNear(point: Offset, strokes: MutableList<List<Offset>>, radiusP
 private fun parseHexColor(hex: String): Color {
     return runCatching { Color(android.graphics.Color.parseColor(hex)) }
         .getOrDefault(Color(0xFF1A1A1A))
+}
+
+@Composable
+fun VerticalArithmeticStack(
+    term1: String,
+    op: String,
+    term2: String,
+    ink: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.width(140.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            // Termo 1 (alinhado à direita)
+            Text(
+                text = term1,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = ink,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+            )
+            // Operador e Termo 2
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = op,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ink
+                )
+                Text(
+                    text = term2,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ink,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            // Barra de conta cinza
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(ink.copy(alpha = 0.40f))
+            )
+        }
+    }
 }
