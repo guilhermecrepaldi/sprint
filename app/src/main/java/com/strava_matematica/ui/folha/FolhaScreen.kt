@@ -26,6 +26,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -219,17 +222,30 @@ fun FolhaScreen(
         ) {
             // Workspace Centralizado (Canvas de Treino)
             if (config.fixationDensity == "kplus" || config.exercisesPerPage > 1) {
-                androidx.compose.foundation.lazy.LazyColumn(
+                val minSizeCell = when {
+                    config.exercisesPerPage <= 4 -> 250.dp
+                    config.exercisesPerPage <= 12 -> 190.dp
+                    config.exercisesPerPage <= 24 -> 140.dp
+                    else -> 110.dp
+                }
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = minSizeCell),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(Spacing.md),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(folha.fields.size) { index ->
-                        val currentField = folha.fields[index]
+                    gridItemsIndexed(folha.fields) { index, currentField ->
                         val itemKey = "${folha.folhaId}:${currentField.exerciseId}:${currentField.fieldIndex}"
-                        key(itemKey) {
+                        androidx.compose.runtime.key(itemKey) {
                             val isKPlusActive = config.fixationDensity == "kplus"
-                            val fieldHeight = if (isKPlusActive) 290.dp else 120.dp
+                            val fieldHeight = when {
+                                isKPlusActive -> 290.dp
+                                config.exercisesPerPage <= 4 -> 110.dp
+                                config.exercisesPerPage <= 12 -> 80.dp
+                                config.exercisesPerPage <= 24 -> 60.dp
+                                else -> 48.dp
+                            }
                             ExerciseField(
                                 field = currentField,
                                 isActive = true,
@@ -241,6 +257,7 @@ fun FolhaScreen(
                                     .height(fieldHeight),
                                 isKPlus = isKPlusActive,
                                 isCompact = true,
+                                exercisesPerPage = config.exercisesPerPage,
                                 initialScratchStrokes = fieldScratchStrokes[currentField.fieldIndex].orEmpty(),
                                 initialAnswerStrokes = fieldAnswerStrokes[currentField.fieldIndex].orEmpty(),
                                 initialScratchRedoStack = fieldScratchRedoStacks[currentField.fieldIndex].orEmpty(),
@@ -431,22 +448,25 @@ fun FolhaScreen(
                     )
                 }
 
-                // Seletor circular de questões por folha (1 a 5)
-                Row(
+                // Seletor circular de questões por folha (LazyRow de 1 a 40)
+                LazyRow(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(top = Spacing.sm, end = 142.dp)
                         .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.04f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .width(220.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    (1..5).forEach { num ->
+                    val modularPages = listOf(1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 20, 24, 30, 35, 40)
+                    items(modularPages.size) { index ->
+                        val num = modularPages[index]
                         val isSelected = config.exercisesPerPage == num
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(26.dp)
+                                .size(28.dp)
                                 .background(
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
                                     shape = CircleShape

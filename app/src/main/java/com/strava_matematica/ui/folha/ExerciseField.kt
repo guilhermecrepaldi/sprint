@@ -60,6 +60,7 @@ fun ExerciseField(
     modifier: Modifier = Modifier,
     isKPlus: Boolean = false,
     isCompact: Boolean = false,
+    exercisesPerPage: Int = 1,
     // Split-canvas params
     initialScratchStrokes: List<List<Offset>> = emptyList(),
     initialAnswerStrokes: List<List<Offset>> = emptyList(),
@@ -138,24 +139,62 @@ fun ExerciseField(
             else -> Color(0xFFC62828)       // vermelho coral
         }
 
+        // Tabela de escala proporcional e reativa com base na quantidade de exercícios por página
+        val count = exercisesPerPage
+        val fontSizeStatement = when {
+            count <= 1 -> 24.sp
+            count <= 4 -> 21.sp
+            count <= 12 -> 16.sp
+            count <= 24 -> 13.sp
+            else -> 11.sp
+        }
+        val fontSizeNumber = when {
+            count <= 1 -> 20.sp
+            count <= 4 -> 18.sp
+            count <= 12 -> 14.sp
+            count <= 24 -> 11.sp
+            else -> 9.sp
+        }
+        val fontSizeAnswer = when {
+            count <= 1 -> 26.sp
+            count <= 4 -> 23.sp
+            count <= 12 -> 19.sp
+            count <= 24 -> 15.sp
+            else -> 12.sp
+        }
+        val boxWidth = when {
+            count <= 1 -> 120.dp
+            count <= 4 -> 110.dp
+            count <= 12 -> 86.dp
+            count <= 24 -> 72.dp
+            else -> 60.dp
+        }
+        val boxHeight = when {
+            count <= 1 -> 74.dp
+            count <= 4 -> 64.dp
+            count <= 12 -> 50.dp
+            count <= 24 -> 40.dp
+            else -> 32.dp
+        }
+
         Row(
             modifier = modifier
                 .fillMaxWidth()
                 .background(surfaceColor, RoundedCornerShape(12.dp))
                 .border(1.dp, ink.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = if (count > 12) 8.dp else 16.dp, vertical = if (count > 12) 4.dp else 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Esquerda: Enunciado clássico Kumon (ex: "1.  4 + 2 =")
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (count > 12) 6.dp else 12.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = "${field.fieldIndex + 1}.",
-                    fontSize = 20.sp,
+                    fontSize = fontSizeNumber,
                     fontWeight = FontWeight.Bold,
                     color = ink.copy(alpha = 0.35f)
                 )
@@ -171,7 +210,7 @@ fun ExerciseField(
                 } else {
                     Text(
                         text = renderLatex(field.statement) + " =",
-                        fontSize = 22.sp,
+                        fontSize = fontSizeStatement,
                         fontWeight = FontWeight.SemiBold,
                         color = ink
                     )
@@ -182,7 +221,7 @@ fun ExerciseField(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(width = 120.dp, height = 74.dp)
+                    .size(width = boxWidth, height = boxHeight)
                     .background(boxBgColor, RoundedCornerShape(8.dp))
                     .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
                     .clickable { answerPadVisible.value = true }
@@ -206,7 +245,7 @@ fun ExerciseField(
                 if (typedAnswer.isNotBlank()) {
                     Text(
                         text = typedAnswer,
-                        fontSize = 24.sp,
+                        fontSize = fontSizeAnswer,
                         fontWeight = FontWeight.Bold,
                         color = when {
                             isCorrect -> Color(0xFF2E7D32)
