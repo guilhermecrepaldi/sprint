@@ -11,7 +11,8 @@ data class SprintNote(
     val exerciseIndex: Int,
     val exerciseStatement: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val strokes: List<List<Offset>>,
+    val strokes: List<List<Offset>> = emptyList(),
+    val noteText: String? = null,
 )
 
 // Versão serializável para persistência — converte Offset em [x, y]
@@ -23,7 +24,8 @@ internal data class SprintNoteJson(
     val exerciseIndex: Int,
     val exerciseStatement: String,
     val timestamp: Long,
-    val strokes: List<List<List<Float>>>,  // [[[x,y],[x,y]], [[x,y],...]]
+    val strokes: List<List<List<Float>>> = emptyList(),
+    val noteText: String? = null,
 )
 
 internal fun SprintNote.toJson(): SprintNoteJson = SprintNoteJson(
@@ -34,6 +36,7 @@ internal fun SprintNote.toJson(): SprintNoteJson = SprintNoteJson(
     exerciseStatement = exerciseStatement,
     timestamp = timestamp,
     strokes = strokes.map { stroke -> stroke.map { listOf(it.x, it.y) } },
+    noteText = noteText,
 )
 
 internal fun SprintNoteJson.toSprintNote(): SprintNote = SprintNote(
@@ -44,6 +47,7 @@ internal fun SprintNoteJson.toSprintNote(): SprintNote = SprintNote(
     exerciseStatement = exerciseStatement,
     timestamp = timestamp,
     strokes = strokes.map { stroke -> stroke.map { Offset(it[0], it[1]) } },
+    noteText = noteText,
 )
 
 internal val NotesJson = Json { ignoreUnknownKeys = true; explicitNulls = false }

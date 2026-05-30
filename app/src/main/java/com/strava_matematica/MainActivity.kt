@@ -186,6 +186,7 @@ fun SprintApp(
                         skillAttempts = state.skillAttempts,
                         skillAccuracy = state.skillAccuracy,
                         activityDays = state.activityDays,
+                        notes = state.notes,
                         onGoToSprint = goToSprint,
                         onStartSession = sessionViewModel::startSessionFromDashboard,
                     )

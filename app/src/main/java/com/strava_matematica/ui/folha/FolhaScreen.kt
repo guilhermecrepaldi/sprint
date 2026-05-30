@@ -34,6 +34,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
@@ -120,6 +124,8 @@ fun FolhaScreen(
     val isErasing = remember { mutableStateOf(false) }
     val showSessionRegister = remember { mutableStateOf(false) }
     val showSprintScrolls = remember { mutableStateOf(false) }
+    val showNotePad = remember { mutableStateOf(false) }
+    val noteInput = remember { mutableStateOf("") }
 
     // --- ENGINE DE PILOTO AUTOMÁTICO (SIMULAÇÃO) ---
     val isSimulationActive = remember { mutableStateOf(false) }
@@ -404,6 +410,104 @@ fun FolhaScreen(
                         tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.30f),
                         modifier = Modifier.size(16.dp),
                     )
+                }
+
+                // Botão de bloco de notas rápido durante o Sprint
+                IconButton(
+                    onClick = { showNotePad.value = true },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = Spacing.sm, end = 92.dp)
+                        .size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Anotar insight do exercício",
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.30f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+
+            if (showNotePad.value) {
+                // Scrim de fundo translúcido
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.40f))
+                        .clickable { showNotePad.value = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .width(420.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.background,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clickable(enabled = false) {} // Impede cliques de passarem para o fundo
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Anotar insight do exercício",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        
+                        Text(
+                            text = "Exercício: ${renderLatex(field.statement)}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.60f)
+                        )
+                        
+                        OutlinedTextField(
+                            value = noteInput.value,
+                            onValueChange = { noteInput.value = it },
+                            placeholder = { Text("O que você observou neste exercício? Ex: Lembrete de sinais, regra de potência...", fontSize = 13.sp) },
+                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = { showNotePad.value = false }) {
+                                Text("Cancelar", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Button(
+                                onClick = {
+                                    if (noteInput.value.isNotBlank()) {
+                                        onAddNote(
+                                            com.strava_matematica.viewmodel.SprintNote(
+                                                sessionId = sessionId,
+                                                folhaIndex = folhaIndex,
+                                                exerciseIndex = currentExerciseIndex,
+                                                exerciseStatement = field.statement,
+                                                noteText = noteInput.value
+                                            )
+                                        )
+                                        noteInput.value = ""
+                                        showNotePad.value = false
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Confirmar")
+                            }
+                        }
+                    }
                 }
             }
         }

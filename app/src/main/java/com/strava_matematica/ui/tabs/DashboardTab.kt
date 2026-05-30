@@ -4,6 +4,9 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.strava_matematica.model.SprintHistoryItem
 import com.strava_matematica.model.HeatmapDay
+import com.strava_matematica.viewmodel.SprintNote
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -93,6 +97,7 @@ fun DashboardTab(
     skillAttempts: Map<String, Int> = emptyMap(),
     skillAccuracy: Map<String, Float> = emptyMap(),
     activityDays: List<HeatmapDay> = emptyList(),
+    notes: List<SprintNote> = emptyList(),
     onGoToSprint: () -> Unit,
     onStartSession: () -> Unit,
 ) {
@@ -114,6 +119,7 @@ fun DashboardTab(
                     skillAttempts = skillAttempts,
                     skillAccuracy = skillAccuracy,
                     activityDays = activityDays,
+                    notes = notes,
                     onBack = { section = null },
                 )
                 DashSection.HISTORICO -> HistoricoSection(
@@ -188,6 +194,7 @@ private fun PerfilSection(
     skillAttempts: Map<String, Int>,
     skillAccuracy: Map<String, Float>,
     activityDays: List<HeatmapDay>,
+    notes: List<SprintNote>,
     onBack: () -> Unit,
 ) {
     val ink = MaterialTheme.colorScheme.onBackground
@@ -247,6 +254,71 @@ private fun PerfilSection(
                 Spacer(Modifier.height(8.dp))
                 VelocityGraph(velocityData, ink)
             }
+
+            if (notes.isNotEmpty()) {
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    "Insights & Anotações de Deep Work",
+                    fontSize = 11.sp,
+                    color = ink.copy(alpha = 0.35f),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(8.dp))
+                
+                notes.reversed().take(10).forEach { note ->
+                    val dateStr = try {
+                        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                        sdf.format(java.util.Date(note.timestamp))
+                    } catch (e: Exception) {
+                        ""
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = displaySkill(note.exerciseStatement),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ink.copy(alpha = 0.70f)
+                            )
+                            Text(
+                                text = dateStr,
+                                fontSize = 10.sp,
+                                color = ink.copy(alpha = 0.30f)
+                            )
+                        }
+                        
+                        note.noteText?.let { text ->
+                            Text(
+                                text = text,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Light,
+                                color = ink.copy(alpha = 0.85f),
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+
             Spacer(Modifier.height(40.dp))
         }
     }
