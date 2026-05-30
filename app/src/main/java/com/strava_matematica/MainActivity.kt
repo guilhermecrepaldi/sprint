@@ -261,7 +261,11 @@ fun SprintApp(
                                         onPenEvent = { fieldIndex, event ->
                                             folhaViewModel.appendEvent(folha.folhaId, fieldIndex, event)
                                         },
-                                        onConfigChange = sessionViewModel::updateConfig,
+                                        onConfigChange = { newConfig ->
+                                            sessionViewModel.updateConfig(newConfig)
+                                            folhaViewModel.resetForNextFolha()
+                                            sessionViewModel.startSessionFromDashboard()
+                                        },
                                         onEndSession = {
                                             folhaViewModel.resetForNextFolha()
                                             sessionViewModel.startSessionFromDashboard()

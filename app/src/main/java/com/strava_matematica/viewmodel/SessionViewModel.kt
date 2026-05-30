@@ -544,11 +544,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     // medium/Fixacao: padrao 30/300.
     // low/Atencao: mais fixacao, sobe devagar.
     private fun densityToConfig(density: String, base: SessionConfig): SessionConfig = when (density) {
-        "kplus" -> base.copy(difficultyStep = 0.5, focusMode = true, difficultyBlockSize = 20, focusTargetCount = 200, exercisesPerPage = 20, fixationDensity = "kplus")
+        "kplus" -> base.copy(difficultyStep = 0.5, focusMode = true, difficultyBlockSize = 20, focusTargetCount = 200, exercisesPerPage = base.exercisesPerPage.coerceAtLeast(2), fixationDensity = "kplus")
         "exact" -> base.copy(focusMode = true, difficultyBlockSize = 200, focusTargetCount = 200, exercisesPerPage = 1, fixationDensity = "exata")
-        "high" -> base.copy(difficultyStep = 0.8, focusMode = true, difficultyBlockSize = 15, focusTargetCount = 150, exercisesPerPage = 1, fixationDensity = "leve")
-        "low"  -> base.copy(difficultyStep = 0.25, focusMode = true, difficultyBlockSize = 60, focusTargetCount = 600, exercisesPerPage = 1, fixationDensity = "densa")
-        else   -> base.copy(difficultyStep = 0.5, focusMode = true, difficultyBlockSize = 30, focusTargetCount = 300, exercisesPerPage = 1, fixationDensity = "fixa")
+        "high" -> base.copy(difficultyStep = 0.8, focusMode = true, difficultyBlockSize = 15, focusTargetCount = 150, exercisesPerPage = base.exercisesPerPage, fixationDensity = "leve")
+        "low"  -> base.copy(difficultyStep = 0.25, focusMode = true, difficultyBlockSize = 60, focusTargetCount = 600, exercisesPerPage = base.exercisesPerPage, fixationDensity = "densa")
+        else   -> base.copy(difficultyStep = 0.5, focusMode = true, difficultyBlockSize = 30, focusTargetCount = 300, exercisesPerPage = base.exercisesPerPage, fixationDensity = "fixa")
     }
 
     companion object {

@@ -194,12 +194,24 @@ class LocalSprintRepository private constructor(context: Context) {
         config: SessionConfig,
         pageIndex: Int,
     ): Folha {
-        val exercise = selectExercise(studentId, skillTag, config)
+        val count = config.exercisesPerPage.coerceAtLeast(1)
+        val fields = mutableListOf<FolhaField>()
+        var difficultySum = 0.0
+        
+        for (i in 0 until count) {
+            val exercise = selectExercise(studentId, skillTag, config)
+            fields.add(exercise.toFolhaField(fieldIndex = i))
+            difficultySum += exercise.difficulty
+        }
+        
+        val avgDifficulty = if (count > 0) difficultySum / count else 2.0
+        val firstExerciseId = fields.firstOrNull()?.exerciseId ?: "default"
+        
         return Folha(
-            folhaId = "$sessionId:$pageIndex:${exercise.id}",
+            folhaId = "$sessionId:$pageIndex:$firstExerciseId",
             pageIndex = pageIndex,
-            difficulty = exercise.difficulty,
-            fields = listOf(exercise.toFolhaField()),
+            difficulty = avgDifficulty,
+            fields = fields,
         )
     }
 
@@ -326,9 +338,9 @@ class LocalSprintRepository private constructor(context: Context) {
         )
     }
 
-    private fun ProceduralExercise.toFolhaField(): FolhaField {
+    private fun ProceduralExercise.toFolhaField(fieldIndex: Int): FolhaField {
         return FolhaField(
-            fieldIndex = 0,
+            fieldIndex = fieldIndex,
             exerciseId = id,
             subject = "matematica",
             canvasMode = canvasMode,
