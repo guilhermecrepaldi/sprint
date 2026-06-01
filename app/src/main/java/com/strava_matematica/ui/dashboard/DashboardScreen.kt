@@ -106,6 +106,8 @@ private val MODES = listOf(
 @Composable
 fun ActivityHeatmap(
     activityByDate: Map<String, Int> = emptyMap(),
+    selectedDate: String? = null,
+    onDateClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val weeks = 18
@@ -126,12 +128,20 @@ fun ActivityHeatmap(
                     val date = today.minusDays(
                         ((weeks - 1 - weekOffset) * 7 + (6 - dayOffset)).toLong()
                     )
-                    val count = activityByDate[date.toString()] ?: 0
+                    val dateStr = date.toString()
+                    val count = activityByDate[dateStr] ?: 0
+                    val isSelected = selectedDate == dateStr
                     Box(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(cellColor(count))
+                            .border(
+                                width = if (isSelected) 1.dp else 0.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.onBackground else Color.Transparent,
+                                shape = RoundedCornerShape(2.dp)
+                            )
+                            .clickable { onDateClick(dateStr) }
                     )
                 }
             }
@@ -159,6 +169,7 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     var canvasStrokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
     var clearSignal by remember { mutableIntStateOf(0) }
+    var selectedDate by remember { mutableStateOf<String?>(null) }
 
     // Sub-panel abre na 1ª seleção de skill; fecha se skill mudar externamente (OCR)
     var subPanelOpen by remember { mutableStateOf(false) }
@@ -249,8 +260,38 @@ fun DashboardScreen(
             Spacer(Modifier.height(4.dp))
             ActivityHeatmap(
                 activityByDate = activityByDate,
+                selectedDate = selectedDate,
+                onDateClick = { date ->
+                    selectedDate = if (selectedDate == date) null else date
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
+            
+            AnimatedVisibility(visible = selectedDate != null) {
+                val dateVal = selectedDate ?: ""
+                val countVal = activityByDate[dateVal] ?: 0
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Spacing.md)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                        .padding(Spacing.md)
+                ) {
+                    Text(
+                        text = "🗓️ Resumo: $dateVal",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (countVal > 0) "Você completou $countVal exercícios neste dia. Ótimo trabalho construindo sua rotina!" else "Nenhum exercício registrado neste dia.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.weight(1f))

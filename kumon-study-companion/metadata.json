@@ -1,0 +1,6 @@
+{
+  "name": "Kumon Study Companion",
+  "description": "Um simulador interativo do método Kumon, com fichas de exercícios temporizadas de Matemática e Português/Inglês, níveis progressivos, acompanhamento de tempo limite (SCT) e gráficos de progresso.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

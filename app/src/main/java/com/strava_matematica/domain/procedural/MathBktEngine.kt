@@ -16,6 +16,10 @@ object MathBktEngine {
             "fracoes_decimais",
             "porcentagem_razao",
             "potenciacao_radiciacao" -> BktParams(l0 = 0.4, t = 0.25, g = 0.1, s = 0.05)
+            "equacao_2_grau",
+            "polinomios",
+            "matrizes",
+            "trigonometria" -> BktParams(l0 = 0.3, t = 0.2, g = 0.15, s = 0.1)
             else -> BktParams(l0 = 0.2, t = 0.15, g = 0.05, s = 0.1)
         }
     }

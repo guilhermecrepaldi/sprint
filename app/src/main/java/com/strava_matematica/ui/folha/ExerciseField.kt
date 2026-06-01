@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -23,12 +25,16 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -125,6 +131,15 @@ fun ExerciseField(
         null
     }
 
+    val statementText = field.statement
+    val figTagRegex = remember(statementText) { Regex("""\[fig:[^\]]+\]""") }
+    val figMatch = remember(statementText) { figTagRegex.find(statementText) }
+    val figSpec = remember(statementText) { figMatch?.value }
+    val cleanStatement = remember(statementText) { statementText.replace(figTagRegex, "").trim() }
+
+    var localClearSignal by remember { mutableStateOf(0) }
+    var localUndoSignal by remember { mutableStateOf(0) }
+
     if (isCompact) {
         val isCorrect = typedAnswer.trim() == field.expectedAnswer?.trim()
         val hasAnswer = typedAnswer.isNotBlank()
@@ -139,62 +154,22 @@ fun ExerciseField(
             else -> Color(0xFFC62828)       // vermelho coral
         }
 
-        // Tabela de escala proporcional e reativa com base na quantidade de exercícios por página
-        val count = exercisesPerPage
-        val fontSizeStatement = when {
-            count <= 1 -> 24.sp
-            count <= 4 -> 21.sp
-            count <= 12 -> 16.sp
-            count <= 24 -> 13.sp
-            else -> 11.sp
-        }
-        val fontSizeNumber = when {
-            count <= 1 -> 20.sp
-            count <= 4 -> 18.sp
-            count <= 12 -> 14.sp
-            count <= 24 -> 11.sp
-            else -> 9.sp
-        }
-        val fontSizeAnswer = when {
-            count <= 1 -> 26.sp
-            count <= 4 -> 23.sp
-            count <= 12 -> 19.sp
-            count <= 24 -> 15.sp
-            else -> 12.sp
-        }
-        val boxWidth = when {
-            count <= 1 -> 120.dp
-            count <= 4 -> 110.dp
-            count <= 12 -> 86.dp
-            count <= 24 -> 72.dp
-            else -> 60.dp
-        }
-        val boxHeight = when {
-            count <= 1 -> 74.dp
-            count <= 4 -> 64.dp
-            count <= 12 -> 50.dp
-            count <= 24 -> 40.dp
-            else -> 32.dp
-        }
-
+        // Novo Layout Compacto de Linha para a Grade Superior
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                .background(surfaceColor, RoundedCornerShape(12.dp))
-                .border(1.dp, ink.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                .padding(horizontal = if (count > 12) 8.dp else 16.dp, vertical = if (count > 12) 4.dp else 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 8.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Esquerda: Enunciado clássico Kumon (ex: "1.  4 + 2 =")
+            // Esquerda: Enunciado
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (count > 12) 6.dp else 12.dp),
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "${field.fieldIndex + 1}.",
-                    fontSize = fontSizeNumber,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = ink.copy(alpha = 0.35f)
                 )
@@ -209,19 +184,32 @@ fun ExerciseField(
                     )
                 } else {
                     Text(
-                        text = renderLatex(field.statement) + " =",
-                        fontSize = fontSizeStatement,
+                        text = renderLatex(cleanStatement),
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = ink
                     )
                 }
+                
+                // Se houver figura (muito raro em compact), exibe pequena
+                if (figSpec != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .padding(start = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        GeometricDiagram(spec = figSpec, ink = ink)
+                    }
+                }
             }
 
-            // Direita: Quadrado de resposta reativo
+            // Direita: Caixa de Resposta (Canvas Isolado)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(width = boxWidth, height = boxHeight)
+                    .height(60.dp)
+                    .width(130.dp)
                     .background(boxBgColor, RoundedCornerShape(8.dp))
                     .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
                     .clickable { answerPadVisible.value = true }
@@ -232,8 +220,8 @@ fun ExerciseField(
                     penWidth = penWidth,
                     enabled = isActive,
                     isErasing = isErasing,
-                    clearSignal = clearSignal,
-                    undoSignal = undoSignal,
+                    clearSignal = localClearSignal, // Resposta escuta SOMENTE o clear local
+                    undoSignal = undoSignal, 
                     redoSignal = redoSignal,
                     initialStrokes = initialAnswerStrokes,
                     initialRedoStack = initialAnswerRedoStack,
@@ -241,16 +229,28 @@ fun ExerciseField(
                     onSyncStrokes = answerSync,
                     onPenEvent = onPenEvent
                 )
-                // Texto digitado ou reconhecido por caligrafia por cima
                 if (typedAnswer.isNotBlank()) {
                     Text(
                         text = typedAnswer,
-                        fontSize = fontSizeAnswer,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
                             isCorrect -> Color(0xFF2E7D32)
                             else -> Color(0xFFC62828)
                         }
+                    )
+                }
+                
+                // Botão de Limpar Local no topo-direito
+                androidx.compose.material3.IconButton(
+                    onClick = { localClearSignal++ },
+                    modifier = Modifier.align(Alignment.TopEnd).size(24.dp).padding(4.dp)
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Outlined.Clear,
+                        contentDescription = "Limpar Campo",
+                        tint = ink.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -274,116 +274,146 @@ fun ExerciseField(
             }
         }
     } else {
-        Column(
+        // Layout Normal Z-Index Overlap
+        val isCorrect = typedAnswer.trim() == field.expectedAnswer?.trim()
+        val hasAnswer = typedAnswer.isNotBlank()
+        val boxBgColor = when {
+            !hasAnswer -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f)
+            isCorrect -> Color(0xFFE8F5E9)
+            else -> Color(0xFFFFEBEE)
+        }
+        val boxBorderColor = when {
+            !hasAnswer -> ink.copy(alpha = 0.08f)
+            isCorrect -> Color(0xFF2E7D32)
+            else -> Color(0xFFC62828)
+        }
+
+        Box(
             modifier = modifier
                 .fillMaxWidth()
                 .background(surfaceColor, RoundedCornerShape(8.dp))
-                .padding(Spacing.md),
         ) {
-            // ── Statement ────────────────────────────────────────────────────────
-            if (verticalStackData != null) {
-                VerticalArithmeticStack(
-                    term1 = verticalStackData.first,
-                    op = verticalStackData.second,
-                    term2 = verticalStackData.third,
-                    ink = ink,
-                    modifier = Modifier.padding(vertical = Spacing.xs)
-                )
-            } else {
-                Text(
-                    text = renderLatex(field.statement),
-                    fontSize = if (isActive) 24.sp else 22.sp,
-                    lineHeight = if (isActive) 32.sp else 30.sp,
-                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                    color = ink,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Spacer(Modifier.height(Spacing.sm))
+            // Rascunho cobrindo TUDO
+            InkCanvas(
+                modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                penColor = penColor,
+                penWidth = penWidth,
+                enabled = isActive,
+                isErasing = isErasing,
+                clearSignal = clearSignal,
+                undoSignal = undoSignal,
+                redoSignal = redoSignal,
+                initialStrokes = initialScratchStrokes,
+                initialRedoStack = initialScratchRedoStack,
+                guideMode = mappedGuideMode ?: if (isLined) "lined" else "single",
+                onSyncStrokes = onSyncScratch,
+                onPenEvent = onPenEvent,
+            )
 
-            if (!isFullPage) {
-                // ── Scratch area ─────────────────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .weight(scratchRatio.floatValue)
-                        .fillMaxWidth()
-                        .background(fieldColor, RoundedCornerShape(4.dp)),
-                ) {
-                    InkCanvas(
-                        modifier = Modifier.matchParentSize().padding(Spacing.xs),
-                        penColor = penColor,
-                        penWidth = penWidth,
-                        enabled = isActive,
-                        isErasing = isErasing,
-                        clearSignal = clearSignal,
-                        undoSignal = undoSignal,
-                        redoSignal = redoSignal,
-                        initialStrokes = initialScratchStrokes,
-                        initialRedoStack = initialScratchRedoStack,
-                        guideMode = mappedGuideMode ?: if (isLined) "lined" else "single",
-                        onSyncStrokes = onSyncScratch,
-                        onPenEvent = onPenEvent,
+            // Enunciado e Quadrado flutuante
+            Column(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(Spacing.md),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Topo: Statement
+                if (verticalStackData != null) {
+                    VerticalArithmeticStack(
+                        term1 = verticalStackData.first,
+                        op = verticalStackData.second,
+                        term2 = verticalStackData.third,
+                        ink = ink,
+                        modifier = Modifier.padding(vertical = Spacing.xs)
+                    )
+                } else {
+                    Text(
+                        text = "${field.fieldIndex + 1}. " + renderLatex(cleanStatement),
+                        fontSize = if (isActive) 32.sp else 28.sp,
+                        lineHeight = if (isActive) 40.sp else 36.sp,
+                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                        color = ink,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                SplitHeightHandle(
-                    ink = ink,
-                    ratio = scratchRatio.floatValue,
-                    onRatioChange = {
-                        scratchRatio.floatValue = it
-                        SplitRatioPrefs.set(context, field.fieldIndex, it)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
 
-            // ── Answer box ───────────────────────────────────────────────────
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(if (isFullPage) 1f else 1f - scratchRatio.floatValue)
-                    .fillMaxWidth()
-                    .background(fieldColor, RoundedCornerShape(4.dp)),
-            ) {
-                InkCanvas(
-                    modifier = Modifier.matchParentSize().padding(Spacing.xs),
-                    penColor = penColor,
-                    penWidth = penWidth,
-                    enabled = isActive,
-                    isErasing = isErasing,
-                    clearSignal = clearSignal,
-                    undoSignal = if (isFullPage) undoSignal else 0,
-                    redoSignal = if (isFullPage) redoSignal else 0,
-                    initialStrokes = initialAnswerStrokes,
-                    initialRedoStack = initialAnswerRedoStack,
-                    guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "single",
-                    onSyncStrokes = answerSync,
-                    onPenEvent = onPenEvent,
-                    onTap = {
-                        answerPadVisible.value = true
-                    },
-                )
-                Box(
-                    modifier = Modifier.matchParentSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (typedAnswer.isNotBlank()) {
-                        Text(
-                            text = typedAnswer,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Light,
-                            color = ink.copy(alpha = 0.72f),
-                        )
+                if (figSpec != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .padding(bottom = Spacing.md),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        GeometricDiagram(spec = figSpec, ink = ink)
                     }
                 }
-                if (!isFullPage && !hasAnswerStroke.value && typedAnswer.isBlank()) {
-                    Text(
-                        text = "resposta",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Light,
-                        color = ink.copy(alpha = 0.18f),
-                    )
+
+                Spacer(Modifier.weight(1f))
+
+                // Rodapé Inferior Direito: Quadrado de Resposta
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .height(90.dp)
+                            .width(180.dp)
+                            .background(boxBgColor, RoundedCornerShape(8.dp))
+                            .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
+                            .clickable { answerPadVisible.value = true }
+                    ) {
+                        InkCanvas(
+                            modifier = Modifier.matchParentSize().padding(Spacing.xs),
+                            penColor = penColor,
+                            penWidth = penWidth,
+                            enabled = isActive,
+                            isErasing = isErasing,
+                            clearSignal = localClearSignal, // Independente do global
+                            undoSignal = if (isFullPage) undoSignal else 0,
+                            redoSignal = if (isFullPage) redoSignal else 0,
+                            initialStrokes = initialAnswerStrokes,
+                            initialRedoStack = initialAnswerRedoStack,
+                            guideMode = mappedGuideMode ?: if (isFullPage || isLined) "lined" else "single",
+                            onSyncStrokes = answerSync,
+                            onPenEvent = onPenEvent,
+                            onTap = {
+                                answerPadVisible.value = true
+                            },
+                        )
+                        if (typedAnswer.isNotBlank()) {
+                            Text(
+                                text = typedAnswer,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    isCorrect -> Color(0xFF2E7D32)
+                                    else -> Color(0xFFC62828)
+                                }
+                            )
+                        }
+
+                        androidx.compose.material3.IconButton(
+                            onClick = { localClearSignal++ },
+                            modifier = Modifier.align(Alignment.TopEnd).size(32.dp).padding(6.dp)
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Outlined.Clear,
+                                contentDescription = "Limpar",
+                                tint = ink.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
-                if (answerPadVisible.value) {
+            }
+
+            if (answerPadVisible.value) {
+                Dialog(
+                    onDismissRequest = { answerPadVisible.value = false }
+                ) {
                     AnswerPad(
                         ink = ink,
                         onKey = { key ->
@@ -393,10 +423,7 @@ fun ExerciseField(
                                 "clr" -> onTypedAnswerChange("")
                                 else -> onTypedAnswerChange(typedAnswer + key)
                             }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 12.dp),
+                        }
                     )
                 }
             }

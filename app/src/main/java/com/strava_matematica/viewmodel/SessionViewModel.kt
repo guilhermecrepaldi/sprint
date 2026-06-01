@@ -207,6 +207,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         difficultyStart: Double?,
         digitsCount: Int,
         valuesCount: Int,
+        numberSet: String,
         field: FolhaField?,
     ) {
         val chosenSkill = skillTag
@@ -229,11 +230,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 fixationDensity = "exata",
                 digitsCount = digitsCount,
                 valuesCount = valuesCount,
+                numberSet = numberSet,
             )
         } else {
             val densityConfig = densityToConfig(density, base).copy(
                 digitsCount = digitsCount,
                 valuesCount = valuesCount,
+                numberSet = numberSet,
             )
             if (difficultyStart != null) densityConfig.copy(difficultyStart = difficultyStart)
             else densityConfig

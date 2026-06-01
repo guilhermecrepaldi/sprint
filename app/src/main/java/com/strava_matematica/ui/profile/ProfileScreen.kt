@@ -64,11 +64,24 @@ fun ProfileScreen(
                         streakDays = 7,
                         xpTotal = 1250
                     ),
-                    heatmap = emptyList(),
+                    heatmap = (0..60).map { i ->
+                        com.strava_matematica.model.HeatmapDay(
+                            date = java.time.LocalDate.now().minusDays(i.toLong()).toString(),
+                            count = (0..20).random(),
+                            countMorning = (0..10).random(),
+                            countAfternoon = (0..10).random(),
+                            countNight = (0..10).random()
+                        )
+                    },
                     tracks = listOf(
                         TrackProgress(slug = "fundamentos", name = "Fundamentos", totalSkills = 5, attemptedSkills = 4, progress = 0.9f),
                         TrackProgress(slug = "algebra", name = "Álgebra", totalSkills = 5, attemptedSkills = 2, progress = 0.4f),
                         TrackProgress(slug = "calculo", name = "Cálculo", totalSkills = 9, attemptedSkills = 0, progress = 0.0f)
+                    ),
+                    recentSprints = listOf(
+                        com.strava_matematica.model.SprintHistoryItem(sessionId = "1", startedAt = "Hoje às 14:30", skill = "Álgebra - Equação do 2º Grau", accuracy = 18, exercisesDone = 20, durationMin = 15, isActive = false),
+                        com.strava_matematica.model.SprintHistoryItem(sessionId = "2", startedAt = "Ontem às 19:15", skill = "Matrizes e Determinantes", accuracy = 20, exercisesDone = 20, durationMin = 10, isActive = false),
+                        com.strava_matematica.model.SprintHistoryItem(sessionId = "3", startedAt = "Segunda às 10:00", skill = "Fundamentos - Frações", accuracy = 12, exercisesDone = 20, durationMin = 18, isActive = false)
                     )
                 )
             } catch (e: Exception) {
@@ -87,7 +100,56 @@ fun ProfileScreen(
             .padding(Spacing.lg),
     ) {
         // ── Header ────────────────────────────────────────────────────────────
-        Text("Progresso", style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                // Placeholder fotinho (Letra Inicial ou ícone)
+                Text(
+                    text = profile?.studentName?.take(1)?.uppercase() ?: "U",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.width(Spacing.md))
+            Column {
+                Text(
+                    text = profile?.studentName ?: "Carregando...",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Membro desde ${profile?.memberSince ?: ""}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(Modifier.height(Spacing.sm))
+                // Botoes Sociais
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.Button(
+                        onClick = { /* TODO: Vincular Face */ },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2))
+                    ) {
+                        Text("Vincular Facebook")
+                    }
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { /* TODO: Vincular Google */ },
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Text("Vincular Google")
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(Spacing.xl))
 
         when {
@@ -121,13 +183,83 @@ fun ProfileScreen(
                 Spacer(Modifier.height(Spacing.xl))
 
                 // ── Heatmap ────────────────────────────────────────────────────
-                Text(
-                    "Constância",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Constância",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    androidx.compose.material3.TextButton(onClick = {
+                        try {
+                            val sprintsText = p.recentSprints.take(3).joinToString("\n") { "✅ ${it.skill}: ${it.accuracy}/${it.exercisesDone} em ${it.durationMin}min" }
+                            val shareText = "🔥 Confira meu progresso no LOVE CLASS!\n\n" +
+                                            "👤 ${p.studentName}\n" +
+                                            "⭐ Nível Mestre (XP: ${p.xpTotal})\n" +
+                                            "📈 Sequência de ${p.stats.streakDays} dias de estudos!\n\n" +
+                                            "Meus últimos Sprints:\n$sprintsText\n\n" +
+                                            "Baixe o app e venha treinar comigo!"
+                            
+                            val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(sendIntent, "Compartilhar Perfil"))
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }) {
+                        Text("COMPARTILHAR", fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(Spacing.xl))
+                Text("HISTÓRICO DE ESTUDO", style = MaterialTheme.typography.labelSmall, color = ink.copy(alpha = 0.5f))
                 Spacer(Modifier.height(Spacing.sm))
-                Heatmap(days = p.heatmap)
+                
+                var selectedDate by remember { mutableStateOf<String?>(null) }
+                
+                Heatmap(
+                    days = p.heatmap,
+                    selectedDate = selectedDate,
+                    onDateClick = { date -> selectedDate = if (selectedDate == date) null else date }
+                )
+                
+                AnimatedVisibility(visible = selectedDate != null) {
+                    val dateVal = selectedDate ?: ""
+                    val dayData = p.heatmap.find { it.date == dateVal }
+                    val total = dayData?.let { it.countMorning + it.countAfternoon + it.countNight } ?: 0
+                    
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = Spacing.md)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .padding(Spacing.md)
+                    ) {
+                        Text(
+                            text = "🗓️ Resumo: $dateVal",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        if (total > 0) {
+                            Text("Total de exercícios: $total", style = MaterialTheme.typography.bodyMedium, color = ink)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Manhã: ${dayData!!.countMorning}", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
+                            Text("Tarde: ${dayData.countAfternoon}", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
+                            Text("Noite: ${dayData.countNight}", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
+                        } else {
+                            Text("Nenhum exercício registrado neste dia.", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(Spacing.xl))
 
@@ -143,6 +275,22 @@ fun ProfileScreen(
                     TrackRow(track = track)
                     Spacer(Modifier.height(Spacing.sm))
                 }
+
+                // ── Sprints Recentes ───────────────────────────────────────────
+                if (p.recentSprints.isNotEmpty()) {
+                    Spacer(Modifier.height(Spacing.xl))
+                    Text(
+                        "Últimos Sprints",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(Spacing.sm))
+                    
+                    p.recentSprints.forEach { sprint ->
+                        SprintRow(sprint = sprint)
+                        Spacer(Modifier.height(Spacing.sm))
+                    }
+                }
             }
         }
     }
@@ -151,42 +299,65 @@ fun ProfileScreen(
 // ── Heatmap ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun Heatmap(days: List<HeatmapDay>) {
-    val countByDate: Map<String, Int> = days.associate { it.date to it.count }
-    val maxCount = days.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
+private fun Heatmap(days: List<HeatmapDay>, selectedDate: String?, onDateClick: (String) -> Unit) {
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val dayMap = days.associateBy { it.date }
+    val maxCount = days.maxOfOrNull { maxOf(it.countMorning, it.countAfternoon, it.countNight) }?.coerceAtLeast(1) ?: 1
 
-    // Monta as 52 semanas (364 dias, começa de segunda da semana mais antiga)
     val today = java.time.LocalDate.now()
-    val startDate = today.minusDays(363)
+    val cellSize = 22.dp
+    val gap = 4.dp
 
-    val cellSize = 10.dp
-    val gap = 2.dp
-
-    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-        repeat(52) { weekIdx ->
-            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                repeat(7) { dayOfWeek ->
-                    val date = startDate.plusDays((weekIdx * 7 + dayOfWeek).toLong())
-                    val key = date.toString()
-                    val count = countByDate[key] ?: 0
-                    val intensity = if (count == 0) 0f else (count.toFloat() / maxCount).coerceIn(0.15f, 1f)
-                    Box(
-                        modifier = Modifier
-                            .size(cellSize)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(heatColor(intensity)),
-                    )
-                }
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        modifier = Modifier.fillMaxWidth(),
+        reverseLayout = true // Começa da direita (hoje) para a esquerda (passado)
+    ) {
+        items(365) { daysAgo ->
+            val date = today.minusDays(daysAgo.toLong())
+            val heatmapDay = dayMap[date.toString()]
+            val dateStr = date.toString()
+            val isSelected = selectedDate == dateStr
+            
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
+                    .clickable { onDateClick(dateStr) }
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(gap),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Manhã
+                val morningIntensity = heatmapDay?.let { it.countMorning.toFloat() / maxCount }?.coerceIn(0.15f, 1f) ?: 0f
+                Box(modifier = Modifier.size(cellSize).clip(RoundedCornerShape(4.dp)).background(heatColor(morningIntensity, isDark)))
+                
+                // Tarde
+                val afternoonIntensity = heatmapDay?.let { it.countAfternoon.toFloat() / maxCount }?.coerceIn(0.15f, 1f) ?: 0f
+                Box(modifier = Modifier.size(cellSize).clip(RoundedCornerShape(4.dp)).background(heatColor(afternoonIntensity, isDark)))
+                
+                // Noite
+                val nightIntensity = heatmapDay?.let { it.countNight.toFloat() / maxCount }?.coerceIn(0.15f, 1f) ?: 0f
+                Box(modifier = Modifier.size(cellSize).clip(RoundedCornerShape(4.dp)).background(heatColor(nightIntensity, isDark)))
+                
+                // Data (Dia/Mês)
+                Text(
+                    text = "${date.dayOfMonth}/${date.monthValue}",
+                    fontSize = 10.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
     }
 }
 
-private fun heatColor(intensity: Float): Color {
-    if (intensity == 0f) return Color(0xFF1E1E1E)
-    // Verde que vai do escuro (baixo) ao vivo (alto)
-    val base = Color(0xFF1B5E20)
-    val vivid = Color(0xFF4CAF50)
+private fun heatColor(intensity: Float, isDark: Boolean): Color {
+    if (intensity == 0f) return if (isDark) Color(0xFF1E1E1E) else Color(0xFFEEEEEE)
+    // Verde que vai do claro/escuro (baixo) ao vivo (alto)
+    val base = if (isDark) Color(0xFF1B5E20) else Color(0xFFA5D6A7)
+    val vivid = if (isDark) Color(0xFF4CAF50) else Color(0xFF2E7D32)
     return Color(
         red = base.red + (vivid.red - base.red) * intensity,
         green = base.green + (vivid.green - base.green) * intensity,
@@ -244,5 +415,47 @@ private fun StatChip(label: String, value: String, modifier: Modifier = Modifier
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.54f),
         )
+    }
+}
+
+// ── Sprint row ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SprintRow(sprint: com.strava_matematica.model.SprintHistoryItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(Spacing.md),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = sprint.skill,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "${sprint.startedAt} • ${sprint.durationMin} min",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "${sprint.accuracy}/${sprint.exercisesDone}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (sprint.exercisesDone > 0 && sprint.accuracy.toFloat() / sprint.exercisesDone >= 0.8f) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Acertos",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
+        }
     }
 }

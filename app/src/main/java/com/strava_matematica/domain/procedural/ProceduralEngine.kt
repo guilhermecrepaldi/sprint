@@ -23,6 +23,28 @@ object ProceduralEngine {
         return when (skillTag) {
             "soma_subtracao" -> generateSomaSubtracao(mmr, config.digitsCount, config.valuesCount, config.numberSet)
             "multiplicacao_divisao" -> generateMultiplicacaoDivisao(mmr, config.digitsCount)
+            "equacoes_quadraticas", "equacao_2_grau" -> generateEquacao2Grau(mmr)
+            "fatoracao_produtos_notaveis", "polinomios" -> generatePolinomios(mmr)
+
+            // Algebra
+            "fracoes_decimais", "porcentagem_razao", "potenciacao_radiciacao",
+            "equacoes_lineares", "sistemas_equacoes", "inequacoes", "funcao_afim",
+            "funcao_quadratica", "funcao_exponencial", "funcao_logaritmica", "funcao_modular" ->
+                ProceduralAlgebra.generate(skillTag, mmr)
+
+            // Geometry
+            "geometria_plana", "geometria_espacial", "geometria_analitica",
+            "progressoes_pa_pg", "combinatoria", "probabilidade",
+            "trig_razoes", "trig_seno_cosseno_tangente", "trig_identidades", "trig_equacoes" ->
+                ProceduralGeometry.generate(skillTag, mmr)
+
+            // Calculus
+            "nocao_de_limite", "continuidade", "derivadas_basicas",
+            "derivadas_regra_cadeia", "derivadas_produto_quociente",
+            "aplicacoes_derivadas", "integrais_indefinidas",
+            "integrais_definidas", "aplicacoes_integrais" ->
+                ProceduralCalculus.generate(skillTag, mmr)
+
             else -> generateSomaSubtracao(mmr, config.digitsCount, config.valuesCount, config.numberSet) // Fallback
         }
     }
@@ -220,6 +242,70 @@ object ProceduralEngine {
                 answerType = "numeric"
             )
         }
+    }
+    private fun formatPoly(b: Int, c: Int): String {
+        val bStr = when {
+            b == 0 -> ""
+            b == 1 -> " + x"
+            b == -1 -> " - x"
+            b > 0 -> " + ${b}x"
+            else -> " - ${Math.abs(b)}x"
+        }
+        val cStr = when {
+            c == 0 -> ""
+            c > 0 -> " + $c"
+            else -> " - ${Math.abs(c)}"
+        }
+        return "x^2$bStr$cStr"
+    }
+
+    private fun generateEquacao2Grau(mmr: Int): ProceduralExercise {
+        val x1 = Random.nextInt(-10, 11)
+        val x2 = Random.nextInt(-10, 11)
+        
+        val b = -(x1 + x2)
+        val c = x1 * x2
+        
+        val statement = "${formatPoly(b, c)} = 0"
+        val expectedAnswer = "${minOf(x1, x2)}, ${maxOf(x1, x2)}"
+        
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = statement,
+            expectedAnswer = expectedAnswer,
+            primarySkill = "equacao_2_grau",
+            difficulty = (mmr.toDouble() / 100.0) + 1.0,
+            templateId = "bhaskara",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "text"
+        )
+    }
+
+    private fun generatePolinomios(mmr: Int): ProceduralExercise {
+        val a = Random.nextInt(-10, 11)
+        val b = Random.nextInt(-10, 11)
+        
+        val aStr = if (a < 0) "- ${Math.abs(a)}" else "+ $a"
+        val bStr = if (b < 0) "- ${Math.abs(b)}" else "+ $b"
+        val statement = "(x $aStr)(x $bStr) = ?"
+        
+        val sum = a + b
+        val prod = a * b
+        
+        val expectedAnswer = formatPoly(sum, prod)
+        
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = statement,
+            expectedAnswer = expectedAnswer,
+            primarySkill = "polinomios",
+            difficulty = (mmr.toDouble() / 100.0) + 1.0,
+            templateId = "poly_expansion",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "text"
+        )
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

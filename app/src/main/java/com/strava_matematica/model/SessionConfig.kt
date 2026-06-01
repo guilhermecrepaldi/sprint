@@ -43,6 +43,7 @@ data class SessionConfig(
     @SerialName("require_correct_to_advance") val requireCorrectToAdvance: Boolean = false,
     @SerialName("digits_count") val digitsCount: Int = 2,
     @SerialName("values_count") val valuesCount: Int = 2,
+    @SerialName("number_set") val numberSet: String = "naturais",
 ) {
     val backgroundMode: BackgroundMode
         get() = when (background) {
