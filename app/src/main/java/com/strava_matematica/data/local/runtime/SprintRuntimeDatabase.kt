@@ -12,8 +12,9 @@ import androidx.room.RoomDatabase
         ExerciseAttemptEntity::class,
         PenEventEntity::class,
         StudentSkillMemoryEntity::class,
+        ChallengeResultEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class SprintRuntimeDatabase : RoomDatabase() {
@@ -22,6 +23,7 @@ abstract class SprintRuntimeDatabase : RoomDatabase() {
     abstract fun attemptDao(): AttemptDao
     abstract fun skillMemoryDao(): SkillMemoryDao
     abstract fun syncDao(): SyncDao
+    abstract fun challengeDao(): ChallengeDao
 
     companion object {
         @Volatile private var instance: SprintRuntimeDatabase? = null

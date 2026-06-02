@@ -73,6 +73,8 @@ data class SessionUiState(
     val scoreRiskDismissedAt: Int? = null,
     val masteryDetected: Boolean = false,    // 5 corretos seguidos -> sugerir próximo tema
     val suggestedNextSkill: String? = null,  // skill sugerida (linear na árvore)
+    // Offline-First Anti-Cheat
+    val anomaliesLog: List<String> = emptyList(),
 )
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
@@ -449,6 +451,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun resumeSession() {
         _uiState.update { it.copy(isPaused = false) }
+    }
+
+    fun logAnomaly(event: String) {
+        val timestamp = System.currentTimeMillis()
+        val entry = "{\"event\":\"$event\",\"timestamp\":$timestamp}"
+        _uiState.update { it.copy(anomaliesLog = it.anomaliesLog + entry) }
     }
 
     fun addNote(note: SprintNote) {

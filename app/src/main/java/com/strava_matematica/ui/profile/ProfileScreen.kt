@@ -1,6 +1,9 @@
 package com.strava_matematica.ui.profile
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -218,7 +221,7 @@ fun ProfileScreen(
                     }
                 }
                 Spacer(Modifier.height(Spacing.xl))
-                Text("HISTÓRICO DE ESTUDO", style = MaterialTheme.typography.labelSmall, color = ink.copy(alpha = 0.5f))
+                Text("HISTÓRICO DE ESTUDO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
                 Spacer(Modifier.height(Spacing.sm))
                 
                 var selectedDate by remember { mutableStateOf<String?>(null) }
@@ -250,13 +253,13 @@ fun ProfileScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         if (total > 0) {
-                            Text("Total de exercícios: $total", style = MaterialTheme.typography.bodyMedium, color = ink)
+                            Text("Total de exercícios: $total", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                             Spacer(Modifier.height(4.dp))
-                            Text("Manhã: ${dayData!!.countMorning}", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
-                            Text("Tarde: ${dayData.countAfternoon}", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
-                            Text("Noite: ${dayData.countNight}", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
+                            Text("Manhã: ${dayData!!.countMorning}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+                            Text("Tarde: ${dayData.countAfternoon}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+                            Text("Noite: ${dayData.countNight}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
                         } else {
-                            Text("Nenhum exercício registrado neste dia.", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.7f))
+                            Text("Nenhum exercício registrado neste dia.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
                         }
                     }
                 }

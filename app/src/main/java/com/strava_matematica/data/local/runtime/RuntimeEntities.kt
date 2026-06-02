@@ -107,3 +107,16 @@ data class StudentSkillMemoryEntity(
     @ColumnInfo(name = "correct_attempts") val correctAttempts: Int,
     @ColumnInfo(name = "last_updated") val lastUpdated: Long,
 )
+
+@Entity(tableName = "challenge_results")
+data class ChallengeResultEntity(
+    @PrimaryKey val challengeId: String,
+    val studentId: String,
+    val payloadContent: String,
+    val localStartedAt: Long?,
+    val localFinishedAt: Long?,
+    val timeSpentSeconds: Int,
+    val anomaliesLog: String?,
+    val syncStatus: String,
+    val localSignature: String?,
+)
