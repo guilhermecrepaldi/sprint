@@ -37,12 +37,11 @@ fun CurriculumTreeSelector(
     quantities: Map<String, Int> = emptyMap(),
     onQuantityChanged: (String, Int) -> Unit = { _, _ -> }
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(16.dp),
+    Column(
+        modifier = modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(MathCurriculum.tree) { domain ->
+        MathCurriculum.tree.forEach { domain ->
             DomainSelectorNode(
                 domain = domain,
                 mode = mode,
