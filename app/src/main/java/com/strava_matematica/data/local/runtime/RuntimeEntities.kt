@@ -120,3 +120,15 @@ data class ChallengeResultEntity(
     val syncStatus: String,
     val localSignature: String?,
 )
+
+@Entity(tableName = "study_plans")
+data class StudyPlanEntity(
+    @PrimaryKey val id: String,
+    val studentId: String,
+    val title: String,
+    val targetAmount: Int,
+    val currentProgress: Int,
+    val rulesJson: String,
+    val status: String,
+    val createdAt: Long
+)

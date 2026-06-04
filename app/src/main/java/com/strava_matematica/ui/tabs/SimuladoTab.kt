@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import com.strava_matematica.viewmodel.SimuladoViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,30 +53,28 @@ fun SimuladoTab(
         val showSprintScrolls = remember { mutableStateOf(true) }
         val isSimuladoConfigActive = remember { mutableStateOf(true) }
 
+        val simuladoViewModel: SimuladoViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+        val simuladoState by simuladoViewModel.uiState.collectAsState()
+
         com.strava_matematica.ui.folha.ProceduralSimuladoConfigPage(
             config = config,
             showSprintScrolls = showSprintScrolls,
             isSimuladoConfigActive = isSimuladoConfigActive,
             onStartSimulado = { rules, targetTimeStrValue, difficulty ->
                 typedAnswers.clear()
-                val exercises = mutableListOf<com.strava_matematica.domain.procedural.ProceduralExercise>()
+                val mappedRules = rules.map { com.strava_matematica.viewmodel.SimuladoRule(it.skill, it.quantity) }
+                simuladoViewModel.generateSimulado(mappedRules, difficulty)
                 
-                // Geração Procedural Livre - O usuário gera o próprio simulado aleatoriamente
-                ProceduralEngine.randomInstance = kotlin.random.Random.Default
-                
-                for (rule in rules) {
-                    val baseMmr = difficulty.toIntOrNull() ?: 1000
-                    val step = if (rule.quantity > 1) 1500 / rule.quantity else 0
-                    for (i in 0 until rule.quantity) {
-                        val progressiveMmr = baseMmr + (i * step)
-                        exercises.add(ProceduralEngine.generate(rule.skill, progressiveMmr))
-                    }
-                }
-                
-                // Retorna ao aleatório real para a Sprint livre
-                ProceduralEngine.randomInstance = kotlin.random.Random.Default
-                
-                simulatedFields = exercises.mapIndexed { index, ex ->
+                showSprintScrolls.value = false
+                isSimuladoConfigActive.value = false
+                isTimerRunning = true
+            }
+        )
+
+        // Escuta o ViewModel e converte para FolhaField
+        LaunchedEffect(simuladoState.exercises) {
+            if (simuladoState.exercises.isNotEmpty()) {
+                simulatedFields = simuladoState.exercises.mapIndexed { index, ex ->
                     FolhaField(
                         fieldIndex = index,
                         exerciseId = ex.id,
@@ -83,6 +83,18 @@ fun SimuladoTab(
                         expectedAnswer = ex.expectedAnswer
                     )
                 }
+            }
+        }
+        
+        if (simuladoState.isGenerating) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Gerando Matriz Procedural...  / ", color = ink)
+                }
+            }
+        }
                 
                 targetTimeStr = targetTimeStrValue
                 elapsedSeconds = 0

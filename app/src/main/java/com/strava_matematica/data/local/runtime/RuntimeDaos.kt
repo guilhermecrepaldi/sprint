@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 
 @Dao
 interface StudentDao {
@@ -99,3 +100,15 @@ data class ActivityProjection(
     val date: String,
     val count: Int,
 )
+
+@Dao
+interface StudyPlanDao {
+    @Insert
+    suspend fun insert(plan: StudyPlanEntity)
+
+    @Update
+    suspend fun update(plan: StudyPlanEntity)
+
+    @Query("SELECT * FROM study_plans WHERE studentId = :studentId AND status = 'ACTIVE' LIMIT 1")
+    suspend fun getActivePlan(studentId: String): StudyPlanEntity?
+}
