@@ -42,6 +42,12 @@ fun SimuladoTab(
     var isReviewMode by remember { mutableStateOf(false) }
     val typedAnswers = remember { mutableStateMapOf<Int, String>() }
     
+    // Armazena os traços para sobreviverem ao scroll da LazyColumn
+    val scratchStrokes = remember { mutableStateMapOf<Int, List<List<androidx.compose.ui.geometry.Offset>>>() }
+    val scratchRedo = remember { mutableStateMapOf<Int, List<List<androidx.compose.ui.geometry.Offset>>>() }
+    val answerStrokes = remember { mutableStateMapOf<Int, List<List<androidx.compose.ui.geometry.Offset>>>() }
+    val answerRedo = remember { mutableStateMapOf<Int, List<List<androidx.compose.ui.geometry.Offset>>>() }
+    
     val availableTags = listOf(
         "soma_basica", "subtracao_basica", "multiplicacao", "divisao",
         "equacao_2_grau", "polinomios"
@@ -279,10 +285,22 @@ fun SimuladoTab(
                                     isActive = true,
                                     backgroundMode = BackgroundMode.WHITE,
                                     penColor = "#1a1a1a",
-                                    isCompact = true,
+                                    isCompact = false,
                                     exercisesPerPage = 1, // Garante proporções de fontes boas
                                     isBlindMode = true,
+                                    initialScratchStrokes = scratchStrokes[field.fieldIndex].orEmpty(),
+                                    initialScratchRedoStack = scratchRedo[field.fieldIndex].orEmpty(),
+                                    initialAnswerStrokes = answerStrokes[field.fieldIndex].orEmpty(),
+                                    initialAnswerRedoStack = answerRedo[field.fieldIndex].orEmpty(),
                                     typedAnswer = typedAnswers[field.fieldIndex] ?: "",
+                                    onSyncScratch = { s, r -> 
+                                        scratchStrokes[field.fieldIndex] = s
+                                        scratchRedo[field.fieldIndex] = r
+                                    },
+                                    onSyncAnswer = { s, r -> 
+                                        answerStrokes[field.fieldIndex] = s
+                                        answerRedo[field.fieldIndex] = r
+                                    },
                                     onTypedAnswerChange = { answer -> typedAnswers[field.fieldIndex] = answer }
                                 )
                             }

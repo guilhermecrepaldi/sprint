@@ -281,6 +281,12 @@ fun FolhaScreen(
                     }
                 }
                 
+                androidx.compose.material3.HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(),
+                    thickness = 1.dp,
+                    color = ink.copy(alpha = 0.15f)
+                )
+
                 // METADE INFERIOR: Rascunho Global
                 Box(modifier = Modifier.weight(0.65f).fillMaxWidth().background(ink.copy(alpha = 0.02f))) {
                     // O rascunho global será mapeado para o índice 0.
