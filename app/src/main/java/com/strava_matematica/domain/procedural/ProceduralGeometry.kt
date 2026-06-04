@@ -10,17 +10,11 @@ object ProceduralGeometry {
     fun generate(skillTag: String, mmr: Int): ProceduralExercise {
         val diff = (mmr.toDouble() / 100.0).toInt().coerceAtLeast(1)
         return when (skillTag) {
-            "geometria_plana" -> generateGeometriaPlana(diff)
-            "geometria_espacial" -> generateGeometriaEspacial(diff)
-            "geometria_analitica" -> generateGeometriaAnalitica(diff)
-            "progressoes_pa_pg" -> generateProgressoes(diff)
-            "combinatoria" -> generateCombinatoria(diff)
-            "probabilidade" -> generateProbabilidade(diff)
-            "trig_razoes" -> generateTrigRazoes(diff)
-            "trig_seno_cosseno_tangente" -> generateTrigSenoCosseno(diff)
-            "trig_identidades" -> generateTrigIdentidades(diff)
-            "trig_equacoes" -> generateTrigEquacoes(diff)
-            else -> generateProbabilidade(diff)
+            "geo_euc_plan", "geometria_plana" -> generateGeometriaPlana(diff)
+            "geo_euc_spc", "geometria_espacial" -> generateGeometriaEspacial(diff)
+            "geo_ana_cart", "geometria_analitica" -> generateGeometriaAnalitica(diff)
+            "geo_ana_eq" -> generateReta(diff)
+            else -> generateGeometriaPlana(diff) // Fallback
         }
     }
 
@@ -181,9 +175,71 @@ object ProceduralGeometry {
             id = UUID.randomUUID().toString(),
             statement = "No primeiro quadrante, qual o valor em graus de x se $\\cos(x) = 1/2$?\n\n[fig:trig_wave,func=cos,amp=1,freq=1]",
             expectedAnswer = "60",
-            primarySkill = "trig_equacoes",
+            primarySkill = "geo_euc_spc",
             difficulty = difficulty.toDouble(),
-            templateId = "trig_eq_01",
+            templateId = "geo_espacial_01",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "numeric"
+        )
+    }
+
+    /**
+     * RPG: Geometria Analítica (Distância entre dois pontos)
+     * Utiliza trios pitagóricos para garantir que a resposta (distância) seja sempre um número inteiro.
+     */
+    private fun generateGeometriaAnalitica(difficulty: Int): ProceduralExercise {
+        val trios = listOf(
+            Triple(3, 4, 5),
+            Triple(6, 8, 10),
+            Triple(5, 12, 13),
+            Triple(8, 15, 17)
+        )
+        val trio = trios.random(Random)
+        
+        // Ponto A (x1, y1)
+        val x1 = Random.nextInt(-5, 6)
+        val y1 = Random.nextInt(-5, 6)
+        
+        // Ponto B (x2, y2) -> x2 = x1 + dx, y2 = y1 + dy
+        val x2 = x1 + (if (Random.nextBoolean()) trio.first else -trio.first)
+        val y2 = y1 + (if (Random.nextBoolean()) trio.second else -trio.second)
+        
+        val distance = trio.third
+        
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Calcule a distância entre os pontos A($x1, $y1) e B($x2, $y2) no plano cartesiano.",
+            expectedAnswer = distance.toString(),
+            primarySkill = "geo_ana_cart",
+            difficulty = difficulty.toDouble(),
+            templateId = "geo_analitica_01",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "numeric"
+        )
+    }
+
+    private fun generateReta(difficulty: Int): ProceduralExercise {
+        // Encontre o coeficiente angular (m) da reta que passa por A e B
+        // RPG: m = (y2 - y1) / (x2 - x1). Sorteamos m e P1, derivamos P2.
+        val m = Random.nextInt(-4, 5)
+        val dx = Random.nextInt(1, 4) // delta x inteiro
+        val dy = m * dx // garante que dy/dx = m
+        
+        val x1 = Random.nextInt(-5, 6)
+        val y1 = Random.nextInt(-5, 6)
+        
+        val x2 = x1 + dx
+        val y2 = y1 + dy
+        
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Calcule o coeficiente angular \\(m\\) da reta que passa pelos pontos A($x1, $y1) e B($x2, $y2).",
+            expectedAnswer = m.toString(),
+            primarySkill = "geo_ana_eq",
+            difficulty = difficulty.toDouble(),
+            templateId = "geo_analitica_02",
             canvasMode = "blank",
             validatorType = "exact",
             answerType = "numeric"

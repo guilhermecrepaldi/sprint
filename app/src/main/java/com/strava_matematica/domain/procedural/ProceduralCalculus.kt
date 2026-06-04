@@ -7,17 +7,12 @@ object ProceduralCalculus {
 
     fun generate(skillTag: String, mmr: Int, random: Random = Random): ProceduralExercise {
         val type = skillTag
-        val problem = when (type) {
-            "nocao_de_limite" -> generateLimite(random)
-            "continuidade" -> generateContinuidade(random)
-            "derivadas_basicas" -> generateDerivadaBasica(random)
-            "derivadas_regra_cadeia" -> generateRegraCadeia(random)
-            "derivadas_produto_quociente" -> generateProdutoQuociente(random)
-            "aplicacoes_derivadas" -> generateAplicacoesDerivadas(random)
-            "integrais_indefinidas" -> generateIntegralIndefinida(random)
-            "integrais_definidas" -> generateIntegralDefinida(random)
-            "aplicacoes_integrais" -> generateAplicacoesIntegrais(random)
-            else -> Pair("Calcule: \\(1 + 1\\)", "2")
+        val diff = (mmr.toDouble() / 100.0).toInt().coerceAtLeast(1)
+        val problem = when (skillTag) {
+            "calc_dif_lim", "nocao_de_limite" -> generateLimite(diff, random)
+            "calc_dif_der", "derivadas_basicas" -> generateDerivadaBasica(diff, random)
+            "calc_dif_int", "integrais_indefinidas" -> generateIntegral(diff, random)
+            else -> generateDerivadaBasica(diff, random) // Fallback
         }
         
         return ProceduralExercise(
@@ -33,12 +28,53 @@ object ProceduralCalculus {
         )
     }
 
-    private fun generateLimite(random: Random): Pair<String, String> {
-        val a = random.nextInt(1, 5)
-        val b = random.nextInt(1, 5)
+    /**
+     * RPG: Limites. Sorteia um x0 inteiro e a resposta (L) inteira. 
+     * Deriva a equação f(x) linear.
+     */
+    private fun generateLimite(difficulty: Int, random: Random): Pair<String, String> {
+        val x0 = random.nextInt(1, 6)
+        val a = random.nextInt(2, 6)
+        val L = random.nextInt(10, 30)
+        
+        // a*x0 + b = L => b = L - a*x0
+        val b = L - a * x0
+        val sign = if (b >= 0) "+ $b" else "- ${kotlin.math.abs(b)}"
+        
+        return Pair("Calcule o limite:\n\n\\(\\lim_{x \\to $x0} ($a x $sign)\\)", "$L")
+    }
+
+    /**
+     * RPG: Derivada (Regra do Tombo). 
+     * Sorteia resposta (y') em x0. Deriva a equação original.
+     * f(x) = ax^2 + bx. f'(x) = 2ax + b.
+     */
+    private fun generateDerivadaBasica(difficulty: Int, random: Random): Pair<String, String> {
         val x0 = random.nextInt(1, 4)
-        val result = a * x0 + b
-        return Pair("Calcule o limite: \\(\\lim_{x \\to $x0} ($a x + $b)\\)", "$result")
+        val expectedYprime = random.nextInt(5, 20)
+        
+        // y' = 2ax0 + b => b = y' - 2ax0
+        val a = random.nextInt(1, 4)
+        val b = expectedYprime - 2 * a * x0
+        val sign = if (b >= 0) "+ ${b}x" else "- ${kotlin.math.abs(b)}x"
+        
+        return Pair("Dada a função \\(f(x) = $a x^2 $sign\\), calcule o valor da derivada \\(f'($x0)\\).", "$expectedYprime")
+    }
+
+    /**
+     * RPG: Integral Definida simples.
+     * Sorteia função cuja integral dá inteiro (ex: f(x) = 3ax^2, int = ax^3).
+     */
+    private fun generateIntegral(difficulty: Int, random: Random): Pair<String, String> {
+        val a = random.nextInt(1, 5)
+        val lower = 0
+        val upper = random.nextInt(1, 4)
+        
+        // f(x) = 3*a*x^2. Integral F(x) = a*x^3
+        val coef = 3 * a
+        val result = a * (upper * upper * upper)
+        
+        return Pair("Calcule o valor numérico da integral definida:\n\n\\(\\int_{$lower}^{$upper} $coef x^2 \\,dx\\)", "$result")
     }
 
     private fun generateContinuidade(random: Random): Pair<String, String> {
@@ -46,27 +82,6 @@ object ProceduralCalculus {
         val x0 = random.nextInt(1, 3)
         val result = a * x0 * x0
         return Pair("Para qual valor de c a função \\(f(x) = \\begin{cases} $a x^2 & x \\neq $x0 \\\\ c & x = $x0 \\end{cases}\\) é contínua em \\(x = $x0\\)?", "$result")
-    }
-
-    private fun generateDerivadaBasica(random: Random): Pair<String, String> {
-        val type = random.nextInt(3)
-        return when (type) {
-            0 -> {
-                val a = random.nextInt(2, 6)
-                val n = random.nextInt(2, 5)
-                val coef = a * n
-                val exp = n - 1
-                Pair("Calcule a derivada: \\(f(x) = $a x^n\\)", if (exp == 1) "${coef}x" else "${coef}x^$exp")
-            }
-            1 -> {
-                val a = random.nextInt(2, 5)
-                Pair("Calcule a derivada: \\(f(x) = $a \\sin(x)\\)", "$a \\cos(x)")
-            }
-            else -> {
-                val a = random.nextInt(2, 5)
-                Pair("Calcule a derivada: \\(f(x) = $a \\cos(x)\\)", "-$a \\sin(x)")
-            }
-        }
     }
 
     private fun generateRegraCadeia(random: Random): Pair<String, String> {
@@ -88,13 +103,6 @@ object ProceduralCalculus {
         val x0 = random.nextInt(1, 3)
         val result = 2 * a * x0 + b
         return Pair("Se a posição de uma partícula é \\(s(t) = $a t^2 + $b t\\), qual a velocidade em \\(t = $x0\\)?", "$result")
-    }
-
-    private fun generateIntegralIndefinida(random: Random): Pair<String, String> {
-        val a = random.nextInt(1, 5)
-        val n = random.nextInt(1, 4)
-        val exp = n + 1
-        return Pair("Calcule a integral indefinida: \\(\\int $a x^n dx\\)", "\\frac{$a}{$exp} x^$exp + C")
     }
 
     private fun generateIntegralDefinida(random: Random): Pair<String, String> {

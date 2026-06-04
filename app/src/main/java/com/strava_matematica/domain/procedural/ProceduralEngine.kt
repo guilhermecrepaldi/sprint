@@ -33,17 +33,30 @@ object ProceduralEngine {
                 ProceduralAlgebra.generate(skillTag, mmr)
 
             // Geometry
+            "geo_euc_plan", "geo_euc_spc", "geo_euc_non",
+            "geo_ana_cart", "geo_ana_eq", "geo_ana_con",
+            "geo_diff_crv", "geo_diff_man", "geo_diff_riem",
+            "geo_top_spc", "geo_top_cont", "geo_top_comp", "geo_top_alg",
             "geometria_plana", "geometria_espacial", "geometria_analitica",
-            "progressoes_pa_pg", "combinatoria", "probabilidade",
-            "trig_razoes", "trig_seno_cosseno_tangente", "trig_identidades", "trig_equacoes" ->
+            "progressoes_pa_pg", "trig_razoes", "trig_seno_cosseno_tangente", "trig_identidades", "trig_equacoes" ->
                 ProceduralGeometry.generate(skillTag, mmr)
 
             // Calculus
+            "calc_pre_func", "calc_pre_elem", "calc_pre_seq",
+            "calc_dif_lim", "calc_dif_der", "calc_dif_int", "calc_dif_mul",
+            "calc_eq_ode", "calc_eq_pde", "calc_eq_trans",
+            "calc_real_lim", "calc_real_met", "calc_real_comp",
             "nocao_de_limite", "continuidade", "derivadas_basicas",
             "derivadas_regra_cadeia", "derivadas_produto_quociente",
             "aplicacoes_derivadas", "integrais_indefinidas",
             "integrais_definidas", "aplicacoes_integrais" ->
                 ProceduralCalculus.generate(skillTag, mmr)
+
+            // Statistics & Combinatorics
+            "stat_comb_fund", "stat_comb_perm", "stat_comb_bin",
+            "stat_prob_cond", "stat_prob_var", "stat_prob_dist", "stat_prob",
+            "combinatoria", "probabilidade" ->
+                ProceduralStats.generate(skillTag, mmr)
 
             // Linear Algebra
             "soma_produto_matrizes", "determinantes", "operacoes_vetoriais" ->
