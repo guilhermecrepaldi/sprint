@@ -24,6 +24,7 @@ abstract class SprintCatalogDatabase : RoomDatabase() {
                     "exercise_catalog.db",
                 )
                     .createFromAsset("databases/exercise_catalog.db")
+                    .addCallback(ExerciseSeedInstaller())
                     .build()
                     .also { instance = it }
             }

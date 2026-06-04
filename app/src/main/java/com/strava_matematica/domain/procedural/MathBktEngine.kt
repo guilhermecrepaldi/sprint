@@ -28,18 +28,35 @@ object MathBktEngine {
         return getParams(skill).l0
     }
 
-    fun updateMastery(skill: String, currentMastery: Double, isCorrect: Boolean): Double {
+    /**
+     * Calcula o decaimento temporal do BKT baseado no tempo desde o último treino.
+     * @param currentMastery O nível atual de mastery [0.0, 1.0]
+     * @param daysSinceLastPractice Dias corridos desde a última atualização da skill
+     * @return O mastery com o "esquecimento" aplicado (nunca menor que l0)
+     */
+    fun applyTemporalDecay(skill: String, currentMastery: Double, daysSinceLastPractice: Int): Double {
+        if (daysSinceLastPractice <= 7) return currentMastery // Sem penalidade na primeira semana
+        
         val params = getParams(skill)
-        val prevL = if (currentMastery <= 0.0) params.l0 else currentMastery
+        val weeksMissed = (daysSinceLastPractice - 7) / 7.0
+        val decayRate = 0.05 // Perde 5% de certeza por semana ociosa
+        
+        val decayed = currentMastery - (weeksMissed * decayRate)
+        return decayed.coerceAtLeast(params.l0)
+    }
+
+    fun updateMastery(skill: String, currentMastery: Double, isCorrect: Boolean, daysSinceLastPractice: Int = 0): Double {
+        val params = getParams(skill)
+        val decayedL = if (currentMastery <= 0.0) params.l0 else applyTemporalDecay(skill, currentMastery, daysSinceLastPractice)
 
         val pLGivenObs = if (isCorrect) {
-            val numerator = prevL * (1.0 - params.s)
-            val denominator = numerator + (1.0 - prevL) * params.g
-            if (denominator == 0.0) prevL else numerator / denominator
+            val numerator = decayedL * (1.0 - params.s)
+            val denominator = numerator + (1.0 - decayedL) * params.g
+            if (denominator == 0.0) decayedL else numerator / denominator
         } else {
-            val numerator = prevL * params.s
-            val denominator = numerator + (1.0 - prevL) * (1.0 - params.g)
-            if (denominator == 0.0) prevL else numerator / denominator
+            val numerator = decayedL * params.s
+            val denominator = numerator + (1.0 - decayedL) * (1.0 - params.g)
+            if (denominator == 0.0) decayedL else numerator / denominator
         }
 
         val nextL = pLGivenObs + (1.0 - pLGivenObs) * params.t

@@ -67,7 +67,7 @@ Exemplo esperado: se o aluno esta em potencia dificil e quer fixar aquele format
 
 ## Arquitetura offline atual
 
-Sprint central no Android agora roda offline-first, sem backend em runtime e sem IA/OCR:
+Sprint central no Android agora roda offline-first, sem backend em runtime obrigatório. O MLKit NATIVO foi promovido a solução OCR oficial offline-first para o Android:
 
 - Catalogo estatico Room/SQLite em `app/src/main/assets/databases/exercise_catalog.db`.
 - Exportador dev-time em `backend/scripts/export_sqlite_catalog.py`, gerando 16.576 exercicios a partir do Postgres local.
