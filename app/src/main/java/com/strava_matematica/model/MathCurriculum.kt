@@ -3,7 +3,8 @@ package com.strava_matematica.model
 data class CurriculumNode(
     val id: String,
     val name: String,
-    val children: List<CurriculumNode> = emptyList()
+    val children: List<CurriculumNode> = emptyList(),
+    val proceduralTag: String? = null
 )
 
 object MathCurriculum {
@@ -35,7 +36,7 @@ object MathCurriculum {
                     name = "Sistemas Numéricos",
                     children = listOf(
                         CurriculumNode(id = "fnd_num_nat", name = "Números Naturais (Axiomas de Peano e Indução)"),
-                        CurriculumNode(id = "fnd_num_int", name = "Números Inteiros e Racionais"),
+                        CurriculumNode(id = "fnd_num_int", name = "Números Inteiros e Racionais", proceduralTag = "fracoes_decimais"),
                         CurriculumNode(id = "fnd_num_real", name = "Números Reais (Cortes de Dedekind e Supremia)"),
                         CurriculumNode(id = "fnd_num_comp", name = "Números Complexos (Forma Algébrica e Polar)")
                     )
@@ -59,16 +60,16 @@ object MathCurriculum {
                     id = "alg_elem",
                     name = "Álgebra Elementar",
                     children = listOf(
-                        CurriculumNode(id = "alg_elem_poly", name = "Polinômios, Fatoração e Expressões Algébricas"),
-                        CurriculumNode(id = "alg_elem_eq", name = "Equações e Inequações (Linear, Quadrática)"),
-                        CurriculumNode(id = "alg_elem_sys", name = "Sistemas de Equações Lineares Básicos")
+                        CurriculumNode(id = "alg_elem_poly", name = "Polinômios, Fatoração e Expressões Algébricas", proceduralTag = "fatoracao_produtos_notaveis"),
+                        CurriculumNode(id = "alg_elem_eq", name = "Equações e Inequações (Linear, Quadrática)", proceduralTag = "equacoes_lineares"),
+                        CurriculumNode(id = "alg_elem_sys", name = "Sistemas de Equações Lineares Básicos", proceduralTag = "sistemas_equacoes")
                     )
                 ),
                 CurriculumNode(
                     id = "alg_lin",
                     name = "Álgebra Linear",
                     children = listOf(
-                        CurriculumNode(id = "alg_lin_vec", name = "Vetores, Matrizes e Operações Matriciais"),
+                        CurriculumNode(id = "alg_lin_vec", name = "Vetores, Matrizes e Operações Matriciais", proceduralTag = "soma_produto_matrizes"),
                         CurriculumNode(id = "alg_lin_spc", name = "Espaços Vetoriais e Subespaços"),
                         CurriculumNode(id = "alg_lin_trans", name = "Transformações Lineares e Mudança de Base"),
                         CurriculumNode(id = "alg_lin_eig", name = "Autovalores, Autovetores e Decomposição (SVD, PCA)")
@@ -103,8 +104,8 @@ object MathCurriculum {
                     id = "geo_euc",
                     name = "Geometria Euclidiana",
                     children = listOf(
-                        CurriculumNode(id = "geo_euc_plan", name = "Geometria Plana (Triângulos, Polígonos, Áreas)"),
-                        CurriculumNode(id = "geo_euc_spc", name = "Geometria Espacial (Sólidos, Volumes, Projeções)"),
+                        CurriculumNode(id = "geo_euc_plan", name = "Geometria Plana (Triângulos, Polígonos, Áreas)", proceduralTag = "geometria_plana"),
+                        CurriculumNode(id = "geo_euc_spc", name = "Geometria Espacial (Sólidos, Volumes, Projeções)", proceduralTag = "geometria_espacial"),
                         CurriculumNode(id = "geo_euc_non", name = "Axiomas de Euclides e Geometrias Não-Euclidianas")
                     )
                 ),
@@ -146,8 +147,8 @@ object MathCurriculum {
                     id = "calc_pre",
                     name = "Pré-Cálculo",
                     children = listOf(
-                        CurriculumNode(id = "calc_pre_func", name = "Funções Reais (Injetora, Sobrejetora, Bijetora)"),
-                        CurriculumNode(id = "calc_pre_elem", name = "Funções Elementares (Exponencial, Logarítmica, Trigonométrica)"),
+                        CurriculumNode(id = "calc_pre_func", name = "Funções Reais (Injetora, Sobrejetora, Bijetora)", proceduralTag = "funcao_quadratica"),
+                        CurriculumNode(id = "calc_pre_elem", name = "Funções Elementares (Exponencial, Logarítmica, Trigonométrica)", proceduralTag = "funcao_logaritmica"),
                         CurriculumNode(id = "calc_pre_seq", name = "Sequências e Séries Numéricas (Convergência)")
                     )
                 ),
@@ -155,9 +156,9 @@ object MathCurriculum {
                     id = "calc_dif",
                     name = "Cálculo Diferencial e Integral",
                     children = listOf(
-                        CurriculumNode(id = "calc_dif_lim", name = "Limites e Continuidade"),
-                        CurriculumNode(id = "calc_dif_der", name = "Derivadas, Regra da Cadeia e Otimização"),
-                        CurriculumNode(id = "calc_dif_int", name = "Integrais (Indefinidas, Definidas e TFC)"),
+                        CurriculumNode(id = "calc_dif_lim", name = "Limites e Continuidade", proceduralTag = "calc_dif_lim"),
+                        CurriculumNode(id = "calc_dif_der", name = "Derivadas, Regra da Cadeia e Otimização", proceduralTag = "derivadas_regra_cadeia"),
+                        CurriculumNode(id = "calc_dif_int", name = "Integrais (Indefinidas, Definidas e TFC)", proceduralTag = "calc_dif_int"),
                         CurriculumNode(id = "calc_dif_mul", name = "Cálculo Multivariável (Gradiente, Rotacional, Integrais Múltiplas)")
                     )
                 ),
@@ -190,7 +191,7 @@ object MathCurriculum {
                     name = "Análise Combinatória",
                     children = listOf(
                         CurriculumNode(id = "stat_comb_fund", name = "Princípio Fundamental da Contagem"),
-                        CurriculumNode(id = "stat_comb_perm", name = "Permutações, Arranjos e Combinações"),
+                        CurriculumNode(id = "stat_comb_perm", name = "Permutações, Arranjos e Combinações", proceduralTag = "stat_comb_perm"),
                         CurriculumNode(id = "stat_comb_bin", name = "Binômio de Newton e Coeficientes Binomiais")
                     )
                 ),

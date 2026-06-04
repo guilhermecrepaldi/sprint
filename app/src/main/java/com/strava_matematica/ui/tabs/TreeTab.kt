@@ -26,7 +26,7 @@ import com.strava_matematica.model.CurriculumNode
 import com.strava_matematica.model.MathCurriculum
 
 @Composable
-fun TreeTab(modifier: Modifier = Modifier) {
+fun TreeTab(modifier: Modifier = Modifier, onStartSprint: (String) -> Unit) {
     Box(modifier = modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -44,14 +44,14 @@ fun TreeTab(modifier: Modifier = Modifier) {
             }
             
             items(MathCurriculum.tree) { domain ->
-                DomainNodeView(domain)
+                DomainNodeView(domain, onStartSprint)
             }
         }
     }
 }
 
 @Composable
-fun DomainNodeView(domain: CurriculumNode) {
+fun DomainNodeView(domain: CurriculumNode, onStartSprint: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
 
@@ -91,7 +91,7 @@ fun DomainNodeView(domain: CurriculumNode) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 domain.children.forEach { topic ->
-                    TopicNodeView(topic)
+                    TopicNodeView(topic, onStartSprint)
                 }
             }
         }
@@ -99,7 +99,7 @@ fun DomainNodeView(domain: CurriculumNode) {
 }
 
 @Composable
-fun TopicNodeView(topic: CurriculumNode) {
+fun TopicNodeView(topic: CurriculumNode, onStartSprint: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
 
@@ -139,7 +139,7 @@ fun TopicNodeView(topic: CurriculumNode) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 topic.children.forEach { subject ->
-                    SubjectNodeView(subject)
+                    SubjectNodeView(subject, onStartSprint)
                 }
             }
         }
@@ -147,7 +147,7 @@ fun TopicNodeView(topic: CurriculumNode) {
 }
 
 @Composable
-fun SubjectNodeView(subject: CurriculumNode) {
+fun SubjectNodeView(subject: CurriculumNode, onStartSprint: (String) -> Unit) {
     // Para efeito de demonstração de UI conforme solicitado (Sprint e Simulado),
     // usaremos números aleatórios fixados pelo hash do ID do nó,
     // de forma a não ficarem mudando a cada recomposição, mas aparentarem ser reais.
@@ -162,6 +162,7 @@ fun SubjectNodeView(subject: CurriculumNode) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
             .background(Color.White)
+            .clickable { subject.proceduralTag?.let { onStartSprint(it) } }
             .padding(12.dp)
     ) {
         Text(

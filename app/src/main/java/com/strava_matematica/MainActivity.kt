@@ -262,7 +262,11 @@ fun SprintApp(
                     )
 
                     SprintTab.MATHTREE -> com.strava_matematica.ui.tabs.TreeTab(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        onStartSprint = { proceduralTag ->
+                            sessionViewModel.selectSkill(proceduralTag)
+                            goToSprint()
+                        }
                     )
 
                     SprintTab.SPRINT -> {
