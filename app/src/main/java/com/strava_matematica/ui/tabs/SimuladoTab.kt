@@ -58,6 +58,10 @@ fun SimuladoTab(
             onStartSimulado = { rules, targetTimeStrValue, difficulty ->
                 typedAnswers.clear()
                 val exercises = mutableListOf<com.strava_matematica.domain.procedural.ProceduralExercise>()
+                
+                // Geração Procedural Livre - O usuário gera o próprio simulado aleatoriamente
+                ProceduralEngine.randomInstance = kotlin.random.Random.Default
+                
                 for (rule in rules) {
                     val baseMmr = difficulty.toIntOrNull() ?: 1000
                     val step = if (rule.quantity > 1) 1500 / rule.quantity else 0
@@ -66,6 +70,9 @@ fun SimuladoTab(
                         exercises.add(ProceduralEngine.generate(rule.skill, progressiveMmr))
                     }
                 }
+                
+                // Retorna ao aleatório real para a Sprint livre
+                ProceduralEngine.randomInstance = kotlin.random.Random.Default
                 
                 simulatedFields = exercises.mapIndexed { index, ex ->
                     FolhaField(
@@ -216,7 +223,7 @@ fun SimuladoTab(
                         itemsIndexed(simulatedFields) { index, field ->
                             val userAnswer = typedAnswers[field.fieldIndex]?.trim() ?: ""
                             val expectedAnswer = field.expectedAnswer?.trim() ?: ""
-                            val isCorrect = userAnswer.isNotBlank() && userAnswer == expectedAnswer
+                            val isCorrect = userAnswer.isNotBlank() && com.strava_matematica.data.local.repository.DeterministicValidator.evaluate(userAnswer, expectedAnswer, "exact")
                             
                             Row(
                                 modifier = Modifier

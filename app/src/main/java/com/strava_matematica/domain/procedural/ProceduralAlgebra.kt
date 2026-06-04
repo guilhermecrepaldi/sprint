@@ -12,7 +12,11 @@ object ProceduralAlgebra {
             "sistemas_equacoes" -> generateSystem(mmr, random)
             "equacoes_quadraticas", "equacao_2_grau" -> generateQuadratic(mmr, random)
             "fatoracao_produtos_notaveis", "polinomios" -> generatePolynomial(mmr, random)
-            else -> generateLinear(mmr, random) // Fallback
+            "fracoes_decimais" -> generateFracoesDecimais(mmr, random)
+            "porcentagem_razao" -> generatePorcentagemRazao(mmr, random)
+            "potenciacao_radiciacao" -> generatePotenciacaoRadiciacao(mmr, random)
+            "inequacoes" -> generateInequacoes(mmr, random)
+            else -> generateLinear(mmr, random) // Fallback Lote 2 functions
         }
     }
 
@@ -212,5 +216,125 @@ object ProceduralAlgebra {
                 answerType = "text"
             )
         }
+    }
+
+    private fun generateFracoesDecimais(mmr: Int, random: Random): ProceduralExercise {
+        val diffLvl = mmr / 500
+        val type = random.nextInt(2)
+        if (type == 0) {
+            // Fraction to decimal
+            val den = intArrayOf(2, 4, 5, 8, 10, 20, 25).random(random)
+            val num = random.nextInt(1, den * 3)
+            val decimal = num.toDouble() / den.toDouble()
+            val decimalStr = if (decimal % 1.0 == 0.0) decimal.toInt().toString() else decimal.toString()
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Converta a fração para número decimal:\n\n\\( \\frac{}{} \\)",
+                expectedAnswer = decimalStr,
+                primarySkill = "fracoes_decimais",
+                difficulty = mmr.toDouble(),
+                templateId = "alg_frac_01"
+            )
+        } else {
+            // Decimal to fraction
+            val num = random.nextInt(1, 20)
+            val den = intArrayOf(2, 4, 5).random(random)
+            val decimal = num.toDouble() / den.toDouble()
+            val decimalStr = if (decimal % 1.0 == 0.0) decimal.toInt().toString() else decimal.toString()
+            
+            // gcd
+            var a = num
+            var b = den
+            while (b > 0) { val temp = b; b = a % b; a = temp }
+            val numSimp = num / a
+            val denSimp = den / a
+            
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Converta o número decimal para fração irredutível (ex: a/b):\n\n\\(  \\)",
+                expectedAnswer = "/",
+                primarySkill = "fracoes_decimais",
+                difficulty = mmr.toDouble(),
+                templateId = "alg_frac_02"
+            )
+        }
+    }
+
+    private fun generatePorcentagemRazao(mmr: Int, random: Random): ProceduralExercise {
+        val type = random.nextInt(2)
+        if (type == 0) {
+            val pct = intArrayOf(5, 10, 15, 20, 25, 30, 40, 50, 75).random(random)
+            val base = random.nextInt(2, 20) * 10
+            val ans = (pct * base) / 100
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Calcule o valor de:\n\n\\( \\% \\text{ de }  \\)",
+                expectedAnswer = ans.toString(),
+                primarySkill = "porcentagem_razao",
+                difficulty = mmr.toDouble(),
+                templateId = "alg_pct_01"
+            )
+        } else {
+            val ratioBase = random.nextInt(2, 6)
+            val multiplier = random.nextInt(2, 10)
+            val p1 = 2 * multiplier
+            val p2 = ratioBase * multiplier
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Simplifique a razão para a forma irredutível a/b:\n\n\\( \\frac{}{} \\)",
+                // GCD
+                expectedAnswer = "2/".replace("2/2", "1/1").replace("2/4", "1/2").replace("2/6", "1/3"),
+                primarySkill = "porcentagem_razao",
+                difficulty = mmr.toDouble(),
+                templateId = "alg_razao_01"
+            )
+        }
+    }
+
+    private fun generatePotenciacaoRadiciacao(mmr: Int, random: Random): ProceduralExercise {
+        val type = random.nextInt(2)
+        if (type == 0) {
+            val base = random.nextInt(2, 6)
+            val exp = random.nextInt(2, 5)
+            val ans = Math.pow(base.toDouble(), exp.toDouble()).toInt()
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Calcule o valor da potência:\n\n\\( ^ \\)",
+                expectedAnswer = ans.toString(),
+                primarySkill = "potenciacao_radiciacao",
+                difficulty = mmr.toDouble(),
+                templateId = "alg_pot_01"
+            )
+        } else {
+            val rootBase = random.nextInt(2, 13)
+            val ans = rootBase
+            val inside = rootBase * rootBase
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Calcule o valor da raiz quadrada:\n\n\\( \\sqrt{} \\)",
+                expectedAnswer = ans.toString(),
+                primarySkill = "potenciacao_radiciacao",
+                difficulty = mmr.toDouble(),
+                templateId = "alg_rad_01"
+            )
+        }
+    }
+
+    private fun generateInequacoes(mmr: Int, random: Random): ProceduralExercise {
+        val a = random.nextInt(2, 6)
+        val x = random.nextInt(-5, 6)
+        val b = random.nextInt(-10, 10)
+        val c = a * x + b
+        val sign = if (random.nextBoolean()) ">" else "<"
+        val bStr = if (b >= 0) "+ " else "- "
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Resolva a inequação para x:\n\n\\(  x    \\)",
+            expectedAnswer = "x",
+            primarySkill = "inequacoes",
+            difficulty = mmr.toDouble(),
+            templateId = "alg_ineq_01",
+            validatorType = "exact"
+        )
     }
 }

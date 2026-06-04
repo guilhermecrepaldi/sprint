@@ -19,8 +19,8 @@ object ProceduralGeometry {
     }
 
     private fun generateGeometriaPlana(difficulty: Int): ProceduralExercise {
-        val base = Random.nextInt(2, 10)
-        val altura = Random.nextInt(2, 10)
+        val base = ProceduralEngine.randomInstance.nextInt(2, 10)
+        val altura = ProceduralEngine.randomInstance.nextInt(2, 10)
         val area = (base * altura) / 2
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
@@ -36,7 +36,7 @@ object ProceduralGeometry {
     }
 
     private fun generateGeometriaEspacial(difficulty: Int): ProceduralExercise {
-        val lado = Random.nextInt(2, 6)
+        val lado = ProceduralEngine.randomInstance.nextInt(2, 6)
         val volume = lado * lado * lado
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
@@ -52,9 +52,9 @@ object ProceduralGeometry {
     }
 
     private fun generateGeometriaAnalitica(difficulty: Int): ProceduralExercise {
-        val x1 = Random.nextInt(0, 5)
-        val y1 = Random.nextInt(0, 5)
-        val x2 = x1 + Random.nextInt(3, 5) // distância pitagórica básica (ex: 3,4,5)
+        val x1 = ProceduralEngine.randomInstance.nextInt(0, 5)
+        val y1 = ProceduralEngine.randomInstance.nextInt(0, 5)
+        val x2 = x1 + ProceduralEngine.randomInstance.nextInt(3, 5) // distância pitagórica básica (ex: 3,4,5)
         val y2 = y1 + 4
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
@@ -70,9 +70,9 @@ object ProceduralGeometry {
     }
 
     private fun generateProgressoes(difficulty: Int): ProceduralExercise {
-        val a1 = Random.nextInt(1, 5)
-        val r = Random.nextInt(2, 5)
-        val n = Random.nextInt(4, 10)
+        val a1 = ProceduralEngine.randomInstance.nextInt(1, 5)
+        val r = ProceduralEngine.randomInstance.nextInt(2, 5)
+        val n = ProceduralEngine.randomInstance.nextInt(4, 10)
         val an = a1 + (n - 1) * r
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
@@ -88,7 +88,7 @@ object ProceduralGeometry {
     }
 
     private fun generateCombinatoria(difficulty: Int): ProceduralExercise {
-        val n = Random.nextInt(4, 7)
+        val n = ProceduralEngine.randomInstance.nextInt(4, 7)
         var fat = 1
         for (i in 2..n) fat *= i
         return ProceduralExercise(
@@ -198,12 +198,12 @@ object ProceduralGeometry {
         val trio = trios.random(Random)
         
         // Ponto A (x1, y1)
-        val x1 = Random.nextInt(-5, 6)
-        val y1 = Random.nextInt(-5, 6)
+        val x1 = ProceduralEngine.randomInstance.nextInt(-5, 6)
+        val y1 = ProceduralEngine.randomInstance.nextInt(-5, 6)
         
         // Ponto B (x2, y2) -> x2 = x1 + dx, y2 = y1 + dy
-        val x2 = x1 + (if (Random.nextBoolean()) trio.first else -trio.first)
-        val y2 = y1 + (if (Random.nextBoolean()) trio.second else -trio.second)
+        val x2 = x1 + (if (ProceduralEngine.randomInstance.nextBoolean()) trio.first else -trio.first)
+        val y2 = y1 + (if (ProceduralEngine.randomInstance.nextBoolean()) trio.second else -trio.second)
         
         val distance = trio.third
         
@@ -223,12 +223,12 @@ object ProceduralGeometry {
     private fun generateReta(difficulty: Int): ProceduralExercise {
         // Encontre o coeficiente angular (m) da reta que passa por A e B
         // RPG: m = (y2 - y1) / (x2 - x1). Sorteamos m e P1, derivamos P2.
-        val m = Random.nextInt(-4, 5)
-        val dx = Random.nextInt(1, 4) // delta x inteiro
+        val m = ProceduralEngine.randomInstance.nextInt(-4, 5)
+        val dx = ProceduralEngine.randomInstance.nextInt(1, 4) // delta x inteiro
         val dy = m * dx // garante que dy/dx = m
         
-        val x1 = Random.nextInt(-5, 6)
-        val y1 = Random.nextInt(-5, 6)
+        val x1 = ProceduralEngine.randomInstance.nextInt(-5, 6)
+        val y1 = ProceduralEngine.randomInstance.nextInt(-5, 6)
         
         val x2 = x1 + dx
         val y2 = y1 + dy

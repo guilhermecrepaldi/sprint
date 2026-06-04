@@ -18,6 +18,8 @@ data class ProceduralExercise(
 )
 
 object ProceduralEngine {
+    var randomInstance: Random = Random.Default
+
 
     fun generate(skillTag: String, mmr: Int, config: SessionConfig = SessionConfig()): ProceduralExercise {
         return when (skillTag) {
@@ -80,7 +82,7 @@ object ProceduralEngine {
 
     private fun generateSomaSubtracao(mmr: Int, digitsCount: Int, valuesCount: Int, numberSet: String): ProceduralExercise {
         val count = valuesCount.coerceIn(2, 6)
-        val ops = List(count - 1) { if (Random.nextBoolean()) "+" else "-" }
+        val ops = List(count - 1) { if (ProceduralEngine.randomInstance.nextBoolean()) "+" else "-" }
         
         when (numberSet) {
             "racionais" -> {
@@ -88,7 +90,7 @@ object ProceduralEngine {
                 val denoms = listOf(2, 3, 4, 5, 6, 8)
                 val fractions = List(count) {
                     val den = denoms.random()
-                    val num = Random.nextInt(1, den * digitsCount)
+                    val num = ProceduralEngine.randomInstance.nextInt(1, den * digitsCount)
                     Fraction(num, den).simplify()
                 }
                 
@@ -127,8 +129,8 @@ object ProceduralEngine {
                 val maxBound = Math.pow(10.0, digitsCount.toDouble()).toInt() - 1
                 
                 val decimals = List(count) {
-                    val isNeg = Random.nextBoolean()
-                    val rawVal = Random.nextInt(minBound * 10, maxBound * 10 + 1) / 10.0
+                    val isNeg = ProceduralEngine.randomInstance.nextBoolean()
+                    val rawVal = ProceduralEngine.randomInstance.nextInt(minBound * 10, maxBound * 10 + 1) / 10.0
                     if (isNeg) -rawVal else rawVal
                 }
                 
@@ -165,8 +167,8 @@ object ProceduralEngine {
                 val maxBound = Math.pow(10.0, digitsCount.toDouble()).toInt() - 1
                 
                 val integers = List(count) {
-                    val isNeg = Random.nextBoolean()
-                    val magnitude = Random.nextInt(minBound, maxBound + 1)
+                    val isNeg = ProceduralEngine.randomInstance.nextBoolean()
+                    val magnitude = ProceduralEngine.randomInstance.nextInt(minBound, maxBound + 1)
                     if (isNeg) -magnitude else magnitude
                 }
                 
@@ -205,7 +207,7 @@ object ProceduralEngine {
                 val minBound = if (digitsCount <= 1) 1 else Math.pow(10.0, (digitsCount - 1).toDouble()).toInt()
                 val maxBound = Math.pow(10.0, digitsCount.toDouble()).toInt() - 1
                 
-                val terms = List(count) { Random.nextInt(minBound, maxBound + 1) }
+                val terms = List(count) { ProceduralEngine.randomInstance.nextInt(minBound, maxBound + 1) }
                 var ans = terms[0]
                 val statementBuilder = StringBuilder().append(terms[0])
                 for (i in 0 until ops.size) {
@@ -239,9 +241,9 @@ object ProceduralEngine {
         val minBound = if (digitsCount <= 1) 2 else Math.pow(10.0, (digitsCount - 1).toDouble()).toInt()
         val maxBound = Math.pow(10.0, digitsCount.toDouble()).toInt() - 1
 
-        val a = Random.nextInt(minBound, maxBound + 1)
-        val b = Random.nextInt(2, if (digitsCount <= 1) 9 else 12)
-        val isMult = Random.nextBoolean()
+        val a = ProceduralEngine.randomInstance.nextInt(minBound, maxBound + 1)
+        val b = ProceduralEngine.randomInstance.nextInt(2, if (digitsCount <= 1) 9 else 12)
+        val isMult = ProceduralEngine.randomInstance.nextBoolean()
 
         val difficulty = (mmr.toDouble() / 100.0) + (digitsCount * 0.8)
 
