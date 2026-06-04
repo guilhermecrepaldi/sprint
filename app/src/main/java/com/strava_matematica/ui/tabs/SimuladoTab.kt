@@ -67,8 +67,15 @@ fun SimuladoTab(
                 
                 showSprintScrolls.value = false
                 isSimuladoConfigActive.value = false
-                isTimerRunning = true
-            }
+                targetTimeStr = targetTimeStrValue
+                elapsedSeconds = 0
+                isBreakMode = false
+                breakElapsedSeconds = 0
+                hasTakenBreak = false
+                isReviewMode = false
+                isRunning = true
+            },
+            modifier = modifier
         )
 
         // Escuta o ViewModel e converte para FolhaField
@@ -91,21 +98,10 @@ fun SimuladoTab(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.material3.CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Gerando Matriz Procedural...  / ", color = ink)
+                    Text("Gerando Matriz Procedural...", color = Color.Black)
                 }
             }
         }
-                
-                targetTimeStr = targetTimeStrValue
-                elapsedSeconds = 0
-                isBreakMode = false
-                breakElapsedSeconds = 0
-                hasTakenBreak = false
-                isReviewMode = false
-                isRunning = true
-            },
-            modifier = modifier
-        )
     } else {
         // MODO EXECUÇÃO OU PAUSA
         val targetTimeMinutes = targetTimeStr.toIntOrNull() ?: 30

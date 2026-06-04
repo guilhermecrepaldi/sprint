@@ -274,6 +274,12 @@ object ProceduralEngine {
             )
         }
     }
+
+    private fun formatInteger(valInt: Int, isFirst: Boolean): String {
+        return if (valInt < 0) {
+            if (isFirst) valInt.toString() else "($valInt)"
+        } else {
+            valInt.toString()
         }
     }
 

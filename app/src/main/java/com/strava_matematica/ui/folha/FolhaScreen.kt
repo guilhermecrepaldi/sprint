@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
@@ -858,8 +859,17 @@ internal val SPRINT_DIGITS = listOf(
 internal val SPRINT_VALUES = listOf(
     "2" to "2 valores",
     "3" to "3 valores",
-    "4" to "4 valores",
-    "5" to "5 va@Composable
+    "5" to "5 valores",
+)
+
+internal val SPRINT_NUMBER_SETS = listOf(
+    "N" to "Naturais",
+    "Z" to "Inteiros",
+    "Q" to "Racionais",
+    "R" to "Reais",
+)
+
+@Composable
 private fun SprintScrollConfigPage(
     config: SessionConfig,
     selectedSkillTag: String,
@@ -1032,13 +1042,6 @@ valuesCount: Int, numberSet: String) -> Unit,
                     .padding(end = Spacing.sm),
             )
         }
-    }
-}},
-            onRegisterVisibilityChange = {},
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = Spacing.sm),
-        )
     }
 }
 

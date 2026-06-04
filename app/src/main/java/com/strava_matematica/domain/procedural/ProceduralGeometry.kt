@@ -51,23 +51,7 @@ object ProceduralGeometry {
         )
     }
 
-    private fun generateGeometriaAnalitica(difficulty: Int): ProceduralExercise {
-        val x1 = ProceduralEngine.randomInstance.nextInt(0, 5)
-        val y1 = ProceduralEngine.randomInstance.nextInt(0, 5)
-        val x2 = x1 + ProceduralEngine.randomInstance.nextInt(3, 5) // distância pitagórica básica (ex: 3,4,5)
-        val y2 = y1 + 4
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = "Qual o quadrado da distância entre os pontos ($x1, $y1) e ($x2, $y2)?",
-            expectedAnswer = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)).toString(),
-            primarySkill = "geometria_analitica",
-            difficulty = difficulty.toDouble(),
-            templateId = "geo_analitica_01",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "numeric"
-        )
-    }
+
 
     private fun generateProgressoes(difficulty: Int): ProceduralExercise {
         val a1 = ProceduralEngine.randomInstance.nextInt(1, 5)

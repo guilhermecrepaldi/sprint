@@ -117,11 +117,7 @@ fun SprintApp(
     val coroutineScope = rememberCoroutineScope()
     val handwritingRecognizer = remember { MlKitRecognizer(context) }
     
-    DisposableEffect(handwritingRecognizer) {
-        onDispose {
-            handwritingRecognizer.close()
-        }
-    }
+
     
     val lifecycleOwner = LocalLifecycleOwner.current
 
