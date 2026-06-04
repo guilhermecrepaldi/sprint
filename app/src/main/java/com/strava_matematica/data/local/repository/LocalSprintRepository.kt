@@ -194,16 +194,43 @@ class LocalSprintRepository private constructor(context: Context) {
         config: SessionConfig,
         pageIndex: Int,
     ): Folha {
-        val count = config.exercisesPerPage.coerceAtLeast(1)
         val fields = mutableListOf<FolhaField>()
         var difficultySum = 0.0
-        
-        for (i in 0 until count) {
-            val exercise = selectExercise(studentId, skillTag, config)
-            fields.add(exercise.toFolhaField(fieldIndex = i))
-            difficultySum += exercise.difficulty
+
+        if (!config.simuladoRulesJson.isNullOrEmpty()) {
+            try {
+                val rules = json.decodeFromString<List<com.strava_matematica.ui.folha.SimuladoSequenceRule>>(config.simuladoRulesJson)
+                var globalIndex = 0
+                for (rule in rules) {
+                    val ruleConfig = config.copy(
+                        digitsCount = rule.digits.toIntOrNull() ?: config.digitsCount,
+                        valuesCount = rule.terms.toIntOrNull() ?: config.valuesCount,
+                        numberSet = rule.numberSet
+                    )
+                    for (i in 0 until rule.quantity) {
+                        val exercise = selectExercise(studentId, rule.skill, ruleConfig)
+                        fields.add(exercise.toFolhaField(fieldIndex = globalIndex))
+                        difficultySum += exercise.difficulty
+                        globalIndex++
+                    }
+                }
+            } catch (e: Exception) {
+                // Se der erro ao ler o json do simulado, cai para o modo padrão
+                e.printStackTrace()
+            }
+        }
+
+        // Modo Padrão (Fallback)
+        if (fields.isEmpty()) {
+            val count = config.exercisesPerPage.coerceAtLeast(1)
+            for (i in 0 until count) {
+                val exercise = selectExercise(studentId, skillTag, config)
+                fields.add(exercise.toFolhaField(fieldIndex = i))
+                difficultySum += exercise.difficulty
+            }
         }
         
+        val count = fields.size
         val avgDifficulty = if (count > 0) difficultySum / count else 2.0
         val firstExerciseId = fields.firstOrNull()?.exerciseId ?: "default"
         

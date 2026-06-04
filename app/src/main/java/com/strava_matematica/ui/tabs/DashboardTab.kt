@@ -2,8 +2,12 @@ package com.strava_matematica.ui.tabs
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +20,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +49,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.strava_matematica.design.glassmorphism
+import androidx.compose.ui.draw.scale
 
 // ── Section enum ──────────────────────────────────────────────────────────────
 
@@ -216,6 +224,16 @@ private fun PerfilSection(
     ) {
         TabPill(onTap = onBack)  // toque no pill = volta para lista
 
+        Spacer(Modifier.height(16.dp))
+
+        // Profile Header (GitHub Style)
+        ProfileHeader(ink)
+        
+        Spacer(Modifier.height(24.dp))
+        
+        // Popular Repositories (Recent Exercises)
+        RecentExercises(history, ink)
+
         Spacer(Modifier.height(32.dp))
 
         Column(
@@ -232,15 +250,17 @@ private fun PerfilSection(
             StatRow("Tema mais praticado", displaySkill(mostPracticed))
             StatRow("Velocidade média", if (overallAvg > 0) "${overallAvg.roundToInt()} seg/ex" else "—")
 
+            // GitHub Calendar Heatmap
             if (activityDays.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Calendário",
-                    fontSize = 10.sp,
-                    color = ink.copy(alpha = 0.30f),
+                    "1,143 contributions in the last year", // GitHub style label
+                    fontSize = 14.sp,
+                    color = ink.copy(alpha = 0.80f),
+                    fontWeight = FontWeight.Medium
                 )
-                Spacer(Modifier.height(2.dp))
-                ActivityStrip(activityDays.takeLast(35), ink)
+                Spacer(Modifier.height(8.dp))
+                GitHubCalendarMap(activityDays, ink)
             }
 
             // Velocity graph
@@ -272,19 +292,31 @@ private fun PerfilSection(
                     } catch (e: Exception) {
                         ""
                     }
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.98f else 1f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+                        label = "BounceNote"
+                    )
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f),
-                                shape = RoundedCornerShape(10.dp)
+                            .scale(scale)
+                            .glassmorphism(
+                                cornerRadius = 12.dp,
+                                blurRadius = 15f,
+                                alpha = 0.5f,
+                                borderColor = ink.copy(alpha = 0.08f),
+                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                             )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f),
-                                shape = RoundedCornerShape(10.dp)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = {}
                             )
-                            .padding(14.dp),
+                            .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Row(
@@ -325,24 +357,60 @@ private fun PerfilSection(
 }
 
 @Composable
-private fun ActivityStrip(days: List<HeatmapDay>, ink: androidx.compose.ui.graphics.Color) {
-    val maxCount = days.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
-    Canvas(
+private fun GitHubCalendarMap(days: List<HeatmapDay>, ink: androidx.compose.ui.graphics.Color) {
+    if (days.isEmpty()) return
+    
+    // Ensure we take up to 140 days (20 weeks)
+    val recentDays = days.takeLast(140)
+    val columns = recentDays.chunked(7)
+    
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(24.dp),
+            .border(1.dp, ink.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+            .padding(16.dp)
     ) {
-        if (days.isEmpty()) return@Canvas
-        val step = size.width / days.size.coerceAtLeast(1)
-        val radius = kotlin.math.min(3.4.dp.toPx(), step * 0.28f)
-        val cy = size.height / 2f
-        days.forEachIndexed { index, day ->
-            val intensity = if (day.count <= 0) 0.06f else (0.18f + (day.count.toFloat() / maxCount) * 0.50f).coerceIn(0.18f, 0.68f)
-            drawCircle(
-                color = ink.copy(alpha = intensity),
-                radius = radius,
-                center = androidx.compose.ui.geometry.Offset(step * index + step / 2f, cy),
-            )
+        androidx.compose.foundation.lazy.LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(columns) { col ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    col.forEach { day ->
+                        val intensity = if (day.count <= 0) 0.05f else (0.2f + (day.count.toFloat() / 10f) * 0.8f).coerceIn(0.2f, 1f)
+                        val cellColor = if (day.count <= 0) ink.copy(alpha = 0.05f) else androidx.compose.ui.graphics.Color(0xFF39D353).copy(alpha = intensity)
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .background(cellColor, RoundedCornerShape(3.dp))
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        // "Less ... More" legend
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Less", fontSize = 12.sp, color = ink.copy(alpha = 0.5f))
+            Spacer(Modifier.width(6.dp))
+            listOf(0.05f, 0.3f, 0.5f, 0.7f, 1.0f).forEach { alpha ->
+                val cellColor = if (alpha == 0.05f) ink.copy(alpha = 0.05f) else androidx.compose.ui.graphics.Color(0xFF39D353).copy(alpha = alpha)
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 2.dp)
+                        .size(12.dp)
+                        .background(cellColor, RoundedCornerShape(2.dp))
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Text("More", fontSize = 12.sp, color = ink.copy(alpha = 0.5f))
         }
     }
 }
@@ -354,8 +422,8 @@ private fun StatRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, fontSize = 14.sp, color = ink.copy(alpha = 0.55f))
-        Text(text = value, fontSize = 14.sp, color = ink.copy(alpha = 0.80f), fontWeight = FontWeight.Medium)
+        Text(text = label, fontSize = 18.sp, color = ink.copy(alpha = 0.70f))
+        Text(text = value, fontSize = 20.sp, color = ink.copy(alpha = 0.90f), fontWeight = FontWeight.Bold)
     }
     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.07f))
 }
@@ -463,11 +531,6 @@ private fun HistoricoSection(
                         sprint = sprint,
                         onTap = { if (sprint.isActive) onGoToSprint() else onStartSession() },
                     )
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = ink.copy(alpha = 0.07f),
-                        modifier = Modifier.padding(start = 24.dp),
-                    )
                 }
             }
             item { Spacer(Modifier.height(32.dp)) }
@@ -478,11 +541,31 @@ private fun HistoricoSection(
 @Composable
 private fun SprintListItem(sprint: SprintHistoryItem, onTap: () -> Unit) {
     val ink = MaterialTheme.colorScheme.onBackground
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
+        label = "BounceListItem"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onTap)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .scale(scale)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .glassmorphism(
+                cornerRadius = 14.dp,
+                alpha = if (sprint.isActive) 0.8f else 0.4f,
+                borderColor = ink.copy(alpha = if (sprint.isActive) 0.15f else 0.05f),
+                backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onTap
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -549,4 +632,90 @@ private fun formatMinutes(totalMinutes: Int): String {
     val h = totalMinutes / 60
     val m = totalMinutes % 60
     return if (h > 0) "${h}h ${m}min" else "${m}min"
+}
+
+@Composable
+private fun ProfileHeader(ink: androidx.compose.ui.graphics.Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Avatar mockado
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(ink.copy(alpha = 0.08f), androidx.compose.foundation.shape.CircleShape)
+                .border(1.dp, ink.copy(alpha = 0.15f), androidx.compose.foundation.shape.CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("E", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = ink.copy(alpha = 0.5f))
+        }
+        Column {
+            Text(
+                text = "Estudante",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = ink.copy(alpha = 0.95f)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "aluno · he/him",
+                fontSize = 16.sp,
+                color = ink.copy(alpha = 0.55f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentExercises(history: List<SprintHistoryItem>, ink: androidx.compose.ui.graphics.Color) {
+    val recent = history.distinctBy { it.skill }.takeLast(4).reversed()
+    if (recent.isEmpty()) return
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        Text("Exercícios feitos por último", fontSize = 16.sp, color = ink.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(16.dp))
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(recent) { sprint ->
+                Column(
+                    modifier = Modifier
+                        .width(260.dp)
+                        .border(1.dp, ink.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                        .padding(16.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Text(
+                            text = displaySkill(sprint.skill),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = androidx.compose.ui.graphics.Color(0xFF0969DA), // GitHub Blue
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .border(1.dp, ink.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Public", fontSize = 10.sp, color = ink.copy(alpha = 0.6f))
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.foundation.layout.Box(modifier = Modifier.size(12.dp).background(androidx.compose.ui.graphics.Color(0xFFE34C26), androidx.compose.foundation.shape.CircleShape)) // Mock language color
+                        Spacer(Modifier.width(6.dp))
+                        Text("Math", fontSize = 12.sp, color = ink.copy(alpha = 0.6f))
+                        Spacer(Modifier.width(16.dp))
+                        Text("${sprint.exercisesDone} ex", fontSize = 12.sp, color = ink.copy(alpha = 0.6f))
+                    }
+                }
+            }
+        }
+    }
 }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyColumn
@@ -91,6 +92,7 @@ fun FolhaScreen(
     selectedSkillTag: String = "soma_subtracao",
     densityLevel: String = "medium",
     onApplySprintScrollSelection: (skillTag: String, density: String, exactCurrent: Boolean, difficultyStart: Double?, digitsCount: Int, valuesCount: Int, numberSet: String, field: FolhaField?) -> Unit = { _, _, _, _, _, _, _, _ -> },
+    onStartSimulado: (List<SimuladoSequenceRule>, String, String) -> Unit = { _, _, _ -> },
     onSyncScratch: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onSyncAnswer: (fieldIndex: Int, strokes: List<List<Offset>>, redoStack: List<List<Offset>>) -> Unit = { _, _, _ -> },
     onTypedAnswerChange: (fieldIndex: Int, answer: String) -> Unit = { _, _ -> },
@@ -224,16 +226,24 @@ fun FolhaScreen(
         ) {
             val ink = MaterialTheme.colorScheme.onBackground
             // Layout 50/50 Global Sprint
-            val limit = config.exercisesPerPage.coerceAtMost(20).coerceAtMost(folha.fields.size)
+            val limit = config.exercisesPerPage.coerceAtMost(folha.fields.size)
             val displayedFields = folha.fields.take(limit)
             
             Column(modifier = Modifier.fillMaxSize()) {
-                // METADE SUPERIOR: Grade de exercícios com scroll vertical
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                // METADE SUPERIOR: Grade de exercícios (Wrap Content para otimizar espaço de rascunho)
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.35f, fill = false)
+                ) {
                     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 340.dp),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(Spacing.md),
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(1), // Preencher primeira coluna (Ocupa 100% da largura)
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                        contentPadding = PaddingValues(
+                            start = Spacing.md, 
+                            end = Spacing.md, 
+                            top = 64.dp,  // Padding extra para evitar sobreposição com o seletor superior
+                            bottom = Spacing.md
+                        ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -270,11 +280,8 @@ fun FolhaScreen(
                     }
                 }
                 
-                // Divisória Visual
-                Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(ink.copy(alpha = 0.1f)))
-
                 // METADE INFERIOR: Rascunho Global
-                Box(modifier = Modifier.weight(1f).fillMaxWidth().background(ink.copy(alpha = 0.02f))) {
+                Box(modifier = Modifier.weight(0.65f).fillMaxWidth().background(ink.copy(alpha = 0.02f))) {
                     // O rascunho global será mapeado para o índice 0.
                     InkCanvas(
                         modifier = Modifier.matchParentSize().padding(4.dp),
@@ -326,22 +333,15 @@ fun FolhaScreen(
                 )
                 
                 if (isSimuladoConfigActive.value) {
-                    SimuladoConfigPage(
+                    ProceduralSimuladoConfigPage(
                         config = config,
                         showSprintScrolls = showSprintScrolls,
                         isSimuladoConfigActive = isSimuladoConfigActive,
+                        onStartSimulado = onStartSimulado,
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .width(360.dp)
-                            .align(Alignment.CenterEnd)
+                            .fillMaxSize()
                             .background(
                                 color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
-                                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                             )
                     )
                 } else {
@@ -355,18 +355,11 @@ fun FolhaScreen(
                         isSimulationActive = isSimulationActive,
                         showSprintScrolls = showSprintScrolls,
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .width(360.dp)
-                            .align(Alignment.CenterEnd)
+                            .fillMaxSize()
                             .background(
                                 color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
-                                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                             ),
+                        onStartSimulado = onStartSimulado,
                         onApply = { skill, density, layoutMode, difficultyStart, digits, values, numberSet ->
                             showSprintScrolls.value = false
                             val effectiveDensity = if (layoutMode == "kplus") "kplus" else density
@@ -773,7 +766,7 @@ private fun MasteryChip(
     }
 }
 
-private val SPRINT_DIFFICULTIES = listOf(
+internal val SPRINT_DIFFICULTIES = listOf(
     "auto"  to "auto",
     "1.0"   to "fácil",
     "3.0"   to "médio",
@@ -781,7 +774,7 @@ private val SPRINT_DIFFICULTIES = listOf(
     "8.0"   to "expert",
 )
 
-private val SPRINT_GROUPS = listOf(
+internal val SPRINT_GROUPS = listOf(
     "SIMULADO" to "simulado",
     "FUNDAMENTOS" to "fundamentos",
     "ALGEBRA" to "álgebra",
@@ -792,7 +785,7 @@ private val SPRINT_GROUPS = listOf(
     "CALCULO" to "cálculo",
 )
 
-private val SPRINT_SKILLS_BY_GROUP = mapOf(
+internal val SPRINT_SKILLS_BY_GROUP = mapOf(
     "FUNDAMENTOS" to listOf(
         "soma_subtracao" to "soma",
         "multiplicacao_divisao" to "mult",
@@ -843,40 +836,30 @@ private val SPRINT_SKILLS_BY_GROUP = mapOf(
     ),
 )
 
-private val SPRINT_DENSITIES = listOf(
+internal val SPRINT_DENSITIES = listOf(
     "high" to "leve",
     "medium" to "fixa",
     "low" to "densa",
 )
 
-private val SPRINT_ZOOMS = listOf(
+internal val SPRINT_ZOOMS = listOf(
     "theme" to "tema",
     "exact" to "exato",
     "kplus" to "k+",
 )
 
-private val SPRINT_DIGITS = listOf(
+internal val SPRINT_DIGITS = listOf(
     "1" to "unidades",
     "2" to "dezenas",
     "3" to "centenas",
     "4" to "milhares",
 )
 
-private val SPRINT_VALUES = listOf(
+internal val SPRINT_VALUES = listOf(
     "2" to "2 valores",
     "3" to "3 valores",
     "4" to "4 valores",
-    "5" to "5 valores",
-)
-
-private val SPRINT_NUMBER_SETS = listOf(
-    "naturais" to "naturais",
-    "inteiros" to "inteiros",
-    "decimais" to "decimais",
-    "mix" to "mix",
-)
-
-@Composable
+    "5" to "5 va@Composable
 private fun SprintScrollConfigPage(
     config: SessionConfig,
     selectedSkillTag: String,
@@ -886,15 +869,14 @@ private fun SprintScrollConfigPage(
     skillFluency: Map<String, Float>,
     isSimulationActive: androidx.compose.runtime.MutableState<Boolean>,
     showSprintScrolls: androidx.compose.runtime.MutableState<Boolean>,
-    onApply: (skillTag: String, density: String, layoutMode: String, difficultyStart: Double?, digitsCount: Int, valuesCount: Int, numberSet: String) -> Unit,
+    onApply: (skillTag: String, density: String, layoutMode: String, difficultyStart: Double?, digitsCount: Int, 
+valuesCount: Int, numberSet: String) -> Unit,
+    onStartSimulado: (List<SimuladoSequenceRule>, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val initialGroup = SPRINT_SKILLS_BY_GROUP.entries.firstOrNull { it.value.any { s -> s.first == selectedSkillTag } }?.key ?: "FUNDAMENTOS"
-    val selectedGroup = remember { mutableStateOf(initialGroup) }
+    val isSimuladoMode = remember { mutableStateOf(false) }
 
-    val initialSkill = selectedSkillTag.takeIf { tag -> SPRINT_SKILLS_BY_GROUP.values.flatten().any { it.first == tag } }
-        ?: SPRINT_SKILLS_BY_GROUP.values.first().first().first
-    val selectedSkill = remember { mutableStateOf(initialSkill) }
+    val selectedSkill = remember { mutableStateOf("soma_subtracao") }
     val selectedDensity = remember { mutableStateOf(densityLevel.takeIf { it in listOf("high", "medium", "low") } ?: "medium") }
     val selectedZoom = remember { mutableStateOf(if (densityLevel == "exact") "exact" else if (densityLevel == "kplus") "kplus" else "theme") }
     val selectedDifficulty = remember { mutableStateOf("auto") }
@@ -905,172 +887,122 @@ private fun SprintScrollConfigPage(
     val ink = MaterialTheme.colorScheme.onBackground
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
-        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth()
-                .padding(top = Spacing.md, bottom = Spacing.md, end = 100.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .fillMaxSize()
+                .padding(top = Spacing.md, bottom = Spacing.md)
         ) {
-            SprintScrollRow(
-                label = "categoria",
-                options = SPRINT_GROUPS,
-                selectedKey = selectedGroup.value,
-                onSelected = { group ->
-                    selectedGroup.value = group
-                    val firstSkillOfGroup = SPRINT_SKILLS_BY_GROUP[group]?.firstOrNull()?.first ?: "soma_subtracao"
-                    selectedSkill.value = firstSkillOfGroup
-                },
-            )
-
-            androidx.compose.runtime.key(selectedGroup.value) {
-                if (selectedGroup.value != "simulado") {
-                    SprintScrollRow(
-                        label = "tema específico",
-                        options = SPRINT_SKILLS_BY_GROUP[selectedGroup.value] ?: emptyList(),
-                        selectedKey = selectedSkill.value,
-                        onSelected = { selectedSkill.value = it },
-                    )
+            // Mode Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    onClick = { isSimuladoMode.value = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!isSimuladoMode.value) MaterialTheme.colorScheme.primary else ink.copy(alpha = 0.1f)
+                    ),
+                    modifier = Modifier.weight(1f).padding(end = 4.dp)
+                ) {
+                    Text("Sprint Contínuo", color = if (!isSimuladoMode.value) Color.White else ink.copy(alpha = 0.7f))
+                }
+                Button(
+                    onClick = { isSimuladoMode.value = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSimuladoMode.value) MaterialTheme.colorScheme.primary else ink.copy(alpha = 0.1f)
+                    ),
+                    modifier = Modifier.weight(1f).padding(start = 4.dp)
+                ) {
+                    Text("Criar Simulado", color = if (isSimuladoMode.value) Color.White else ink.copy(alpha = 0.7f))
                 }
             }
 
-            if (selectedGroup.value == "simulado") {
-                SimuladoConfigPage(
+            if (isSimuladoMode.value) {
+                ProceduralSimuladoConfigPage(
                     config = config,
                     showSprintScrolls = showSprintScrolls,
                     isSimuladoConfigActive = isSimulationActive,
-                    modifier = Modifier.fillMaxWidth(),
+                    onStartSimulado = onStartSimulado,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                 )
             } else {
-                SprintScrollRow(
-                    label = "casas decimais",
-                    options = SPRINT_DIGITS,
-                    selectedKey = selectedDigits.value,
-                    onSelected = { selectedDigits.value = it },
-                )
-
-                SprintScrollRow(
-                    label = "termos da conta",
-                    options = SPRINT_VALUES,
-                    selectedKey = selectedValues.value,
-                    onSelected = { selectedValues.value = it },
-                )
-
-                SprintScrollRow(
-                    label = "conjunto numérico",
-                    options = SPRINT_NUMBER_SETS,
-                    selectedKey = selectedNumberSet.value,
-                    onSelected = { selectedNumberSet.value = it },
-                )
-                // Painel Cognitivo Premium
-                val acc = skillAccuracy[selectedSkill.value]
-                val att = skillAttempts[selectedSkill.value] ?: 0
-                val fluency = skillFluency[selectedSkill.value] ?: 0f
-                val mmr = com.strava_matematica.domain.procedural.EloMatchmaker.masterScoreToMmr(fluency.toDouble())
-                val isUnderInefficacy = (att >= 5 && (acc ?: 0f) < 0.40f) || (att > 0 && fluency < 0.15f)
-                val isMastery = fluency >= 0.85f
-
+                // Sprint Mode
+                val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = Spacing.md)
-                        .background(
-                            color = when {
-                                isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F).copy(alpha = 0.08f)
-                                isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C).copy(alpha = 0.08f)
-                                else -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.03f)
-                            },
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = when {
-                                isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F).copy(alpha = 0.24f)
-                                isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C).copy(alpha = 0.24f)
-                                else -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
-                            },
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(Spacing.md),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                        .weight(1f)
+                        .verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "MMR: $mmr",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = when {
-                                isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F)
-                                isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C)
-                                else -> ink.copy(alpha = 0.64f)
-                            }
-                        )
-                        Text(
-                            text = "$att tentativas" + (acc?.let { " · ${(it * 100).toInt()}% acerto" } ?: ""),
-                            fontSize = 11.sp,
-                            color = ink.copy(alpha = 0.45f)
-                        )
-                    }
-                    Spacer(Modifier.height(2.dp))
                     Text(
-                        text = when {
-                            isUnderInefficacy -> "⚠️ ALERTA: Ineficácia Crítica (Quarentena). Erros reduzem MMR de forma exponencial!"
-                            isMastery -> "🏆 DOMÍNIO COGNITIVO: Mastery sólido alcançado."
-                            else -> "📈 FIXAÇÃO: Pratique com consistência para atingir o Mastery."
-                        },
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = when {
-                            isUnderInefficacy -> androidx.compose.ui.graphics.Color(0xFFD32F2F)
-                            isMastery -> androidx.compose.ui.graphics.Color(0xFF388E3C)
-                            else -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
-                        },
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        text = "1. Selecione o Assunto Curricular:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ink.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    CurriculumTreeSelector(
+                        mode = SelectorMode.SINGLE_SELECTION,
+                        selectedSingleId = selectedSkill.value,
+                        onSingleSelected = { selectedSkill.value = it }
+                    )
+
+                    Text(
+                        text = "2. Configurações de Dificuldade/UI:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ink.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    SprintScrollRow(
+                        label = "casas decimais",
+                        options = SPRINT_DIGITS,
+                        selectedKey = selectedDigits.value,
+                        onSelected = { selectedDigits.value = it },
+                    )
+
+                    SprintScrollRow(
+                        label = "termos da conta",
+                        options = SPRINT_VALUES,
+                        selectedKey = selectedValues.value,
+                        onSelected = { selectedValues.value = it },
+                    )
+
+                    SprintScrollRow(
+                        label = "conjunto numérico",
+                        options = SPRINT_NUMBER_SETS,
+                        selectedKey = selectedNumberSet.value,
+                        onSelected = { selectedNumberSet.value = it },
+                    )
+
+                    SprintScrollRow(
+                        label = "densidade",
+                        options = SPRINT_DENSITIES,
+                        selectedKey = selectedDensity.value,
+                        onSelected = { selectedDensity.value = it },
+                    )
+                    SprintScrollRow(
+                        label = "zoom",
+                        options = SPRINT_ZOOMS,
+                        selectedKey = selectedZoom.value,
+                        onSelected = { selectedZoom.value = it },
+                    )
+                    SprintScrollRow(
+                        label = "dificuldade",
+                        options = SPRINT_DIFFICULTIES,
+                        selectedKey = selectedDifficulty.value,
+                        onSelected = { selectedDifficulty.value = it },
                     )
                 }
-
-            SprintScrollRow(
-                label = "densidade",
-                options = SPRINT_DENSITIES,
-                selectedKey = selectedDensity.value,
-                onSelected = { selectedDensity.value = it },
-            )
-            SprintScrollRow(
-                label = "zoom",
-                options = SPRINT_ZOOMS,
-                selectedKey = selectedZoom.value,
-                onSelected = { selectedZoom.value = it },
-            )
-            SprintScrollRow(
-                label = "dificuldade",
-                options = SPRINT_DIFFICULTIES,
-                selectedKey = selectedDifficulty.value,
-                onSelected = { selectedDifficulty.value = it },
-            )
+            }
         }
-        }
-        EnterSquare(
-            onAdvance = {
-                val diff = selectedDifficulty.value.toDoubleOrNull()
-                onApply(
-                    selectedSkill.value,
-                    selectedDensity.value,
-                    selectedZoom.value,
-                    diff,
-                    selectedDigits.value.toIntOrNull() ?: 2,
-                    selectedValues.value.toIntOrNull() ?: 2,
-                    selectedNumberSet.value
-                )
-            },
-            onTripleTap = {
-                if (selectedGroup.value != "simulado") {
+        
+        if (!isSimuladoMode.value) {
+            EnterSquare(
+                onAdvance = {
                     val diff = selectedDifficulty.value.toDoubleOrNull()
                     onApply(
                         selectedSkill.value,
@@ -1081,8 +1013,27 @@ private fun SprintScrollConfigPage(
                         selectedValues.value.toIntOrNull() ?: 2,
                         selectedNumberSet.value
                     )
-                }
-            },
+                },
+                onTripleTap = {
+                    val diff = selectedDifficulty.value.toDoubleOrNull()
+                    onApply(
+                        selectedSkill.value,
+                        selectedDensity.value,
+                        selectedZoom.value,
+                        diff,
+                        selectedDigits.value.toIntOrNull() ?: 2,
+                        selectedValues.value.toIntOrNull() ?: 2,
+                        selectedNumberSet.value
+                    )
+                },
+                onRegisterVisibilityChange = {},
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = Spacing.sm),
+            )
+        }
+    }
+}},
             onRegisterVisibilityChange = {},
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -1092,7 +1043,7 @@ private fun SprintScrollConfigPage(
 }
 
 @Composable
-private fun SprintScrollRow(
+internal fun SprintScrollRow(
     label: String,
     options: List<Pair<String, String>>,
     selectedKey: String,
@@ -1190,139 +1141,6 @@ private fun SprintScrollRow(
     }
 }
 
-@Composable
-private fun SimuladoConfigPage(
-    config: SessionConfig,
-    showSprintScrolls: androidx.compose.runtime.MutableState<Boolean>,
-    isSimuladoConfigActive: androidx.compose.runtime.MutableState<Boolean>,
-    modifier: Modifier = Modifier
-) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val scrollState = rememberScrollState()
-
-    val topics = listOf(
-        "soma" to "Soma Básica",
-        "sub" to "Subtração",
-        "mult" to "Multiplicação",
-        "div" to "Divisão",
-        "eq1" to "Equação 1º Grau",
-        "eq2" to "Equação 2º Grau",
-        "frac" to "Frações",
-        "pot" to "Potenciação",
-        "rad" to "Radiciação",
-        "prob" to "Probabilidade"
-    )
-
-    val topicCounts = remember { mutableStateOf(topics.associate { it.first to 0 }) }
-    val targetTime = remember { mutableStateOf("30") }
-    val selectedDifficulty = remember { mutableStateOf("auto") }
-    val selectedDigits = remember { mutableStateOf(config.digitsCount.toString()) }
-
-    Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Configuração do Simulado",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = ink.copy(alpha = 0.8f)
-            )
-
-            Text("TÓPICOS E QUESTÕES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ink.copy(alpha = 0.4f))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ink.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
-                    .border(1.dp, ink.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                topics.forEach { (key, label) ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = label, fontSize = 13.sp, color = ink.copy(alpha = 0.7f))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IconButton(
-                                onClick = {
-                                    val current = topicCounts.value[key] ?: 0
-                                    if (current > 0) topicCounts.value = topicCounts.value.toMutableMap().apply { put(key, current - 1) }
-                                },
-                                modifier = Modifier.size(24.dp).background(ink.copy(alpha = 0.05f), CircleShape)
-                            ) { Text("-", fontSize = 12.sp, color = ink.copy(alpha = 0.6f)) }
-                            Text(text = "${topicCounts.value[key] ?: 0}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ink.copy(alpha = 0.8f), modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
-                            IconButton(
-                                onClick = {
-                                    val current = topicCounts.value[key] ?: 0
-                                    topicCounts.value = topicCounts.value.toMutableMap().apply { put(key, current + 1) }
-                                },
-                                modifier = Modifier.size(24.dp).background(ink.copy(alpha = 0.05f), CircleShape)
-                            ) { Text("+", fontSize = 12.sp, color = ink.copy(alpha = 0.6f)) }
-                        }
-                    }
-                }
-            }
-
-            Text("TEMPO ALVO (MINUTOS)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ink.copy(alpha = 0.4f))
-            OutlinedTextField(
-                value = targetTime.value,
-                onValueChange = { targetTime.value = it },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp)
-            )
-
-            Text("CONFIGURAÇÕES GERAIS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ink.copy(alpha = 0.4f))
-            SprintScrollRow(
-                label = "dificuldade",
-                options = SPRINT_DIFFICULTIES,
-                selectedKey = selectedDifficulty.value,
-                onSelected = { selectedDifficulty.value = it }
-            )
-
-            SprintScrollRow(
-                label = "casas decimais",
-                options = SPRINT_DIGITS,
-                selectedKey = selectedDigits.value,
-                onSelected = { selectedDigits.value = it }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    println("Exportar TXT/MD clicado!")
-                },
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = ink.copy(alpha = 0.1f)),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("Exportar TXT/MD", color = ink.copy(alpha = 0.7f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-
-            Button(
-                onClick = {
-                    showSprintScrolls.value = false
-                    isSimuladoConfigActive.value = false
-                    // TODO: trigger actual Simulado generation based on topicCounts
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("Iniciar no App", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
 
 /**
  * Intercepts 1-finger long-press before InkCanvas sees it → toggles eraser.

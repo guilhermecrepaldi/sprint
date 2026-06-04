@@ -19,12 +19,14 @@ import com.strava_matematica.design.Spacing
 import com.strava_matematica.domain.procedural.ProceduralEngine
 import com.strava_matematica.model.BackgroundMode
 import com.strava_matematica.model.FolhaField
+import com.strava_matematica.model.SessionConfig
 import com.strava_matematica.ui.folha.ExerciseField
 import kotlinx.coroutines.delay
 
 @Composable
 fun SimuladoTab(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    config: SessionConfig
 ) {
     var isRunning by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf("equacao_2_grau") }
@@ -35,103 +37,56 @@ fun SimuladoTab(
     var isBreakMode by remember { mutableStateOf(false) }
     var breakElapsedSeconds by remember { mutableStateOf(0) }
     var hasTakenBreak by remember { mutableStateOf(false) }
+    var isReviewMode by remember { mutableStateOf(false) }
+    val typedAnswers = remember { mutableStateMapOf<Int, String>() }
     
     val availableTags = listOf(
         "soma_basica", "subtracao_basica", "multiplicacao", "divisao",
         "equacao_2_grau", "polinomios"
     )
-
     val context = LocalContext.current
 
     if (!isRunning) {
         // MODO CONFIGURAÇÃO
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(Spacing.lg),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("Configuração do Simulado", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(Spacing.xl))
+        val showSprintScrolls = remember { mutableStateOf(true) }
+        val isSimuladoConfigActive = remember { mutableStateOf(true) }
 
-            Text("Tópico/Matéria:")
-            availableTags.forEach { tag ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selectedTag == tag,
-                        onClick = { selectedTag = tag }
+        com.strava_matematica.ui.folha.ProceduralSimuladoConfigPage(
+            config = config,
+            showSprintScrolls = showSprintScrolls,
+            isSimuladoConfigActive = isSimuladoConfigActive,
+            onStartSimulado = { rules, targetTimeStrValue, difficulty ->
+                typedAnswers.clear()
+                val exercises = mutableListOf<com.strava_matematica.domain.procedural.ProceduralExercise>()
+                for (rule in rules) {
+                    val baseMmr = difficulty.toIntOrNull() ?: 1000
+                    val step = if (rule.quantity > 1) 1500 / rule.quantity else 0
+                    for (i in 0 until rule.quantity) {
+                        val progressiveMmr = baseMmr + (i * step)
+                        exercises.add(ProceduralEngine.generate(rule.skill, progressiveMmr))
+                    }
+                }
+                
+                simulatedFields = exercises.mapIndexed { index, ex ->
+                    FolhaField(
+                        fieldIndex = index,
+                        exerciseId = ex.id,
+                        statement = ex.statement,
+                        skillTags = listOf(ex.primarySkill),
+                        expectedAnswer = ex.expectedAnswer
                     )
-                    Text(tag)
                 }
-            }
-
-            Spacer(Modifier.height(Spacing.lg))
-            OutlinedTextField(
-                value = numQuestions,
-                onValueChange = { numQuestions = it },
-                label = { Text("Número de Questões") },
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            OutlinedTextField(
-                value = targetTimeStr,
-                onValueChange = { targetTimeStr = it },
-                label = { Text("Tempo Alvo (minutos)") },
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
-            )
-
-            Spacer(Modifier.height(Spacing.xl))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(onClick = {
-                    val count = numQuestions.toIntOrNull() ?: 5
-                    val exercises = (0 until count).map { ProceduralEngine.generate(selectedTag, 1500) }
-                    
-                    var mdContent = "# Simulado - $selectedTag\n\n"
-                    exercises.forEachIndexed { index, ex ->
-                        mdContent += "### Questão ${index + 1}\n${ex.statement}\n\n"
-                    }
-                    mdContent += "---\n# Gabarito\n\n"
-                    exercises.forEachIndexed { index, ex ->
-                        mdContent += "**${index + 1}:** ${ex.expectedAnswer}\n"
-                    }
-
-                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "Simulado Matemática")
-                        putExtra(Intent.EXTRA_TEXT, mdContent)
-                    }
-                    context.startActivity(Intent.createChooser(sendIntent, "Exportar Simulado"))
-                }) {
-                    Text("Exportar TXT/MD")
-                }
-
-                Button(
-                    onClick = {
-                        val count = numQuestions.toIntOrNull() ?: 5
-                        val exercises = (0 until count).map { ProceduralEngine.generate(selectedTag, 1500) }
-                        simulatedFields = exercises.mapIndexed { index, ex ->
-                            FolhaField(
-                                fieldIndex = index,
-                                exerciseId = ex.id,
-                                statement = ex.statement,
-                                skillTags = listOf(ex.primarySkill),
-                                expectedAnswer = ex.expectedAnswer
-                            )
-                        }
-                        elapsedSeconds = 0
-                        isBreakMode = false
-                        breakElapsedSeconds = 0
-                        hasTakenBreak = false
-                        isRunning = true
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Iniciar no App", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
+                
+                targetTimeStr = targetTimeStrValue
+                elapsedSeconds = 0
+                isBreakMode = false
+                breakElapsedSeconds = 0
+                hasTakenBreak = false
+                isReviewMode = false
+                isRunning = true
+            },
+            modifier = modifier
+        )
     } else {
         // MODO EXECUÇÃO OU PAUSA
         val targetTimeMinutes = targetTimeStr.toIntOrNull() ?: 30
@@ -216,53 +171,110 @@ fun SimuladoTab(
         } else {
             // TELA DE PROVA (Simulado)
             Column(
-            modifier = modifier.fillMaxSize()
-        ) {
-            // Header Timer
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "Tempo: ${elapsedSeconds / 60}m ${elapsedSeconds % 60}s",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Button(onClick = {
-                    // Finaliza e volta pra config
-                    isRunning = false
-                }) {
-                    Text("Finalizar Simulado")
-                }
-            }
-
-            // Lista de Questões
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                itemsIndexed(simulatedFields) { index, field ->
-                    // Usando o ExerciseField 50/50 em um container de altura fixa
-                    Box(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(600.dp)) {
-                        ExerciseField(
-                            field = field,
-                            isActive = true,
-                            backgroundMode = BackgroundMode.WHITE,
-                            penColor = "#1a1a1a",
-                            isCompact = true,
-                            exercisesPerPage = 1 // Garante proporções de fontes boas
+                // Header da Prova ou Revisão
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isReviewMode) {
+                        Text(
+                            text = "Gabarito e Correção",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32)
                         )
+                        Button(onClick = {
+                            isRunning = false
+                            isReviewMode = false
+                        }) {
+                            Text("Nova Configuração")
+                        }
+                    } else {
+                        Text(
+                            text = "Tempo: ${elapsedSeconds / 60}m ${elapsedSeconds % 60}s",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Button(onClick = {
+                            isReviewMode = true
+                        }) {
+                            Text("Finalizar Simulado")
+                        }
+                    }
+                }
+
+                // Lista de Questões
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (isReviewMode) {
+                        itemsIndexed(simulatedFields) { index, field ->
+                            val userAnswer = typedAnswers[field.fieldIndex]?.trim() ?: ""
+                            val expectedAnswer = field.expectedAnswer?.trim() ?: ""
+                            val isCorrect = userAnswer.isNotBlank() && userAnswer == expectedAnswer
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        color = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${index + 1}.",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black.copy(alpha = 0.7f)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Sua resposta: ${if (userAnswer.isEmpty()) "(em branco)" else userAnswer}",
+                                        fontSize = 16.sp,
+                                        color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                    )
+                                    if (!isCorrect) {
+                                        Text(
+                                            text = "Gabarito: $expectedAnswer",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFF2E7D32)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        itemsIndexed(simulatedFields) { index, field ->
+                            // Tablet-First: Otimizado para Galaxy Tab S6 Lite (tela grande e uso de caneta stylus)
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 600.dp, max = 800.dp)) {
+                                ExerciseField(
+                                    field = field,
+                                    isActive = true,
+                                    backgroundMode = BackgroundMode.WHITE,
+                                    penColor = "#1a1a1a",
+                                    isCompact = true,
+                                    exercisesPerPage = 1, // Garante proporções de fontes boas
+                                    isBlindMode = true,
+                                    typedAnswer = typedAnswers[field.fieldIndex] ?: "",
+                                    onTypedAnswerChange = { answer -> typedAnswers[field.fieldIndex] = answer }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
-}
 }

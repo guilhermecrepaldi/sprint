@@ -23,10 +23,10 @@ object ProceduralEngine {
         return when (skillTag) {
             "soma_subtracao" -> generateSomaSubtracao(mmr, config.digitsCount, config.valuesCount, config.numberSet)
             "multiplicacao_divisao" -> generateMultiplicacaoDivisao(mmr, config.digitsCount)
-            "equacoes_quadraticas", "equacao_2_grau" -> generateEquacao2Grau(mmr)
-            "fatoracao_produtos_notaveis", "polinomios" -> generatePolinomios(mmr)
 
             // Algebra
+            "equacoes_quadraticas", "equacao_2_grau",
+            "fatoracao_produtos_notaveis", "polinomios",
             "fracoes_decimais", "porcentagem_razao", "potenciacao_radiciacao",
             "equacoes_lineares", "sistemas_equacoes", "inequacoes", "funcao_afim",
             "funcao_quadratica", "funcao_exponencial", "funcao_logaritmica", "funcao_modular" ->
@@ -45,8 +45,24 @@ object ProceduralEngine {
             "integrais_definidas", "aplicacoes_integrais" ->
                 ProceduralCalculus.generate(skillTag, mmr)
 
-            else -> generateSomaSubtracao(mmr, config.digitsCount, config.valuesCount, config.numberSet) // Fallback
+            // Linear Algebra
+            "soma_produto_matrizes", "determinantes", "operacoes_vetoriais" ->
+                ProceduralLinearAlgebra.generate(skillTag, mmr)
+
+            else -> generatePlaceholder(skillTag, mmr)
         }
+    }
+
+    private fun generatePlaceholder(skillTag: String, mmr: Int): ProceduralExercise {
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Conteúdo não programado na Engine: $skillTag\nMMR Alvo: $mmr",
+            expectedAnswer = "0",
+            primarySkill = skillTag,
+            difficulty = mmr.toDouble(),
+            templateId = "placeholder",
+            canvasMode = "blank"
+        )
     }
 
     private fun generateSomaSubtracao(mmr: Int, digitsCount: Int, valuesCount: Int, numberSet: String): ProceduralExercise {
@@ -243,78 +259,6 @@ object ProceduralEngine {
             )
         }
     }
-    private fun formatPoly(b: Int, c: Int): String {
-        val bStr = when {
-            b == 0 -> ""
-            b == 1 -> " + x"
-            b == -1 -> " - x"
-            b > 0 -> " + ${b}x"
-            else -> " - ${Math.abs(b)}x"
-        }
-        val cStr = when {
-            c == 0 -> ""
-            c > 0 -> " + $c"
-            else -> " - ${Math.abs(c)}"
-        }
-        return "x^2$bStr$cStr"
-    }
-
-    private fun generateEquacao2Grau(mmr: Int): ProceduralExercise {
-        val x1 = Random.nextInt(-10, 11)
-        val x2 = Random.nextInt(-10, 11)
-        
-        val b = -(x1 + x2)
-        val c = x1 * x2
-        
-        val statement = "${formatPoly(b, c)} = 0"
-        val expectedAnswer = "${minOf(x1, x2)}, ${maxOf(x1, x2)}"
-        
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = statement,
-            expectedAnswer = expectedAnswer,
-            primarySkill = "equacao_2_grau",
-            difficulty = (mmr.toDouble() / 100.0) + 1.0,
-            templateId = "bhaskara",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "text"
-        )
-    }
-
-    private fun generatePolinomios(mmr: Int): ProceduralExercise {
-        val a = Random.nextInt(-10, 11)
-        val b = Random.nextInt(-10, 11)
-        
-        val aStr = if (a < 0) "- ${Math.abs(a)}" else "+ $a"
-        val bStr = if (b < 0) "- ${Math.abs(b)}" else "+ $b"
-        val statement = "(x $aStr)(x $bStr) = ?"
-        
-        val sum = a + b
-        val prod = a * b
-        
-        val expectedAnswer = formatPoly(sum, prod)
-        
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = statement,
-            expectedAnswer = expectedAnswer,
-            primarySkill = "polinomios",
-            difficulty = (mmr.toDouble() / 100.0) + 1.0,
-            templateId = "poly_expansion",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "text"
-        )
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private fun formatInteger(valInt: Int, isFirst: Boolean): String {
-        return if (valInt < 0) {
-            if (isFirst) "$valInt" else "($valInt)"
-        } else {
-            "$valInt"
         }
     }
 

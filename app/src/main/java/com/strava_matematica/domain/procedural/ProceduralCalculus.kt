@@ -101,7 +101,7 @@ object ProceduralCalculus {
         val aEven = random.nextInt(1, 4) * 2
         val upper = random.nextInt(1, 3)
         val result = (aEven / 2) * upper * upper
-        return Pair("Calcule a integral definida: \\(\\int_{0}^{$upper} $aEven x dx\\)", "$result")
+        return Pair("Calcule a integral definida: \\(\\int_{0}^{$upper} $aEven x dx\\)\n\n[fig:area_under_curve,a=0,b=$upper]", "$result")
     }
 
     private fun generateAplicacoesIntegrais(random: Random): Pair<String, String> {

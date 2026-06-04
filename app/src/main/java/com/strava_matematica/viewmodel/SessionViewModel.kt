@@ -22,6 +22,7 @@ import com.strava_matematica.model.FolhaField
 import com.strava_matematica.model.SessionConfig
 import com.strava_matematica.model.SessionStatus
 import com.strava_matematica.model.SubmitResult
+import com.strava_matematica.util.SessionLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -105,12 +106,22 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         if (savedNotes.isNotEmpty()) {
             _uiState.update { it.copy(notes = savedNotes) }
         }
+
+        // Carregar config persistida
+        val configRaw = prefs.getString("saved_config_v1", null)
+        if (configRaw != null) {
+            runCatching {
+                val savedConfig = kotlinx.serialization.json.Json.decodeFromString<SessionConfig>(configRaw)
+                _uiState.update { it.copy(config = savedConfig) }
+            }
+        }
     }
 
     // ── Config ───────────────────────────────────────────────────────────────
 
     fun updateConfig(config: SessionConfig) {
         _uiState.update { it.copy(config = config) }
+        prefs.edit().putString("saved_config_v1", kotlinx.serialization.json.Json.encodeToString(config)).apply()
     }
 
     // ── Gesture onboarding ───────────────────────────────────────────────────
@@ -202,6 +213,32 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startSessionFromDashboard()
     }
 
+    fun startSimulado(rules: List<com.strava_matematica.ui.folha.SimuladoSequenceRule>, targetTime: String, difficulty: String) {
+        val rulesJson = kotlinx.serialization.json.Json.encodeToString(rules)
+        val selectedConfig = _uiState.value.config.copy(
+            simuladoRulesJson = rulesJson,
+            difficultyStart = if (difficulty == "auto") 2.0 else difficulty.toDoubleOrNull() ?: 2.0
+        )
+
+        SessionLogger.clear()
+        SessionLogger.logSessionStart("SIMULADO", rules.map { it.skill }, difficulty)
+
+        _uiState.update {
+            it.copy(
+                selectedSkillTag = "simulado",
+                densityLevel = "simulado",
+                config = selectedConfig,
+                apiStatus = ApiStatus.CONNECTING,
+                errorMessage = null,
+                scoreRiskVisible = false,
+                scoreRiskDismissedAt = null,
+                masteryDetected = false,
+                suggestedNextSkill = null,
+            )
+        }
+        startSessionFromDashboard()
+    }
+
     fun applySprintScrollSelection(
         skillTag: String,
         density: String,
@@ -276,6 +313,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     private fun startSession(skillTag: String, density: String, baseConfig: SessionConfig) {
         val densityConfig = densityToConfig(density, baseConfig)
+        
+        SessionLogger.clear()
+        SessionLogger.logSessionStart("SPRINT", listOf(skillTag), densityConfig.difficultyStart.toString())
+
         _uiState.update { it.copy(apiStatus = ApiStatus.CONNECTING, errorMessage = null) }
         viewModelScope.launch {
             try {
@@ -336,6 +377,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 val finished = res.sessionStatus == "finished"
                 val folhaCorrect = res.results.count { it.isCorrect }
                 val folhaTotal = res.results.size
+
+                val statement = folha.fields.firstOrNull()?.statement ?: ""
+                val ans = res.results.firstOrNull()?.recognizedAnswer ?: ""
+                val isCorr = res.results.firstOrNull()?.isCorrect == true
+                SessionLogger.logExerciseAttempt(statement, ans, isCorr)
+
                 val mark = when {
                     res.results.isEmpty() -> ResultMark.EMPTY
                     res.results.first().recognizedAnswer.isNullOrBlank() -> ResultMark.EMPTY

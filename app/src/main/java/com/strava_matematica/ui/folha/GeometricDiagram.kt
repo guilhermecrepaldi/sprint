@@ -310,6 +310,242 @@ fun GeometricDiagram(
                     drawText(textLayoutResult = txtY, topLeft = Offset(axisY - txtY.size.width - 6.dp.toPx(), pyVisual - txtY.size.height / 2f))
                 }
             }
+
+            "trig_unit_circle" -> {
+                val radius = (minOf(width, height) / 2f) * 0.8f
+                val cx = width / 2f
+                val cy = height / 2f
+
+                // Eixos X e Y
+                drawLine(color = ink.copy(alpha = 0.3f), start = Offset(cx - radius * 1.2f, cy), end = Offset(cx + radius * 1.2f, cy), strokeWidth = 1.dp.toPx())
+                drawLine(color = ink.copy(alpha = 0.3f), start = Offset(cx, cy - radius * 1.2f), end = Offset(cx, cy + radius * 1.2f), strokeWidth = 1.dp.toPx())
+
+                // Círculo
+                drawCircle(color = ink.copy(alpha = 0.6f), radius = radius, center = Offset(cx, cy), style = Stroke(width = 1.5f.dp.toPx()))
+
+                // Raio e Ângulo
+                val angleDeg = params["angle"]?.toFloatOrNull() ?: 45f
+                val angleRad = Math.toRadians(angleDeg.toDouble())
+                val endX = cx + (radius * Math.cos(angleRad)).toFloat()
+                val endY = cy - (radius * Math.sin(angleRad)).toFloat() // Y is inverted in Canvas
+
+                drawLine(color = Color(0xFF2196F3), start = Offset(cx, cy), end = Offset(endX, endY), strokeWidth = 2.dp.toPx())
+
+                // Projeções (Seno/Cosseno)
+                val showProj = params["show_proj"] == "true"
+                if (showProj) {
+                    val dotEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                    // Seno (Vertical)
+                    drawLine(color = Color(0xFFE91E63), start = Offset(endX, endY), end = Offset(endX, cy), strokeWidth = 1.5f.dp.toPx(), pathEffect = dotEffect)
+                    // Cosseno (Horizontal)
+                    drawLine(color = Color(0xFF4CAF50), start = Offset(endX, endY), end = Offset(cx, endY), strokeWidth = 1.5f.dp.toPx(), pathEffect = dotEffect)
+                }
+
+                // Arco do ângulo
+                val arcRadius = radius * 0.25f
+                drawArc(
+                    color = ink.copy(alpha = 0.8f),
+                    startAngle = 0f,
+                    sweepAngle = -angleDeg,
+                    useCenter = false,
+                    topLeft = Offset(cx - arcRadius, cy - arcRadius),
+                    size = Size(arcRadius * 2, arcRadius * 2),
+                    style = Stroke(width = 1.5f.dp.toPx())
+                )
+
+                // Rótulo do ângulo
+                val angleLabel = params["label"] ?: "${angleDeg.toInt()}°"
+                val labelText = textMeasurer.measure(angleLabel, style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ink))
+                drawText(textLayoutResult = labelText, topLeft = Offset(cx + arcRadius * 1.2f, cy - arcRadius * 1.2f - labelText.size.height / 2f))
+            }
+
+            "triangle_generic" -> {
+                val margin = 32.dp.toPx()
+                val tw = width - margin * 2
+                val th = height - margin * 2
+
+                val angleA = params["A"]?.toDoubleOrNull() ?: 60.0
+                val angleB = params["B"]?.toDoubleOrNull() ?: 60.0
+                val angleC = 180.0 - angleA - angleB
+
+                val pA = Offset(margin, height - margin)
+                val pB = Offset(width - margin, height - margin)
+                
+                val sideC = width - margin * 2
+                val radA = Math.toRadians(angleA)
+                val radB = Math.toRadians(angleB)
+                val radC = Math.toRadians(angleC)
+
+                val sideB = (sideC * Math.sin(radB)) / Math.sin(radC)
+                
+                val pC_x = margin + (sideB * Math.cos(radA)).toFloat()
+                val pC_y = (height - margin) - (sideB * Math.sin(radA)).toFloat()
+
+                val pC = Offset(pC_x, pC_y)
+
+                val path = Path().apply {
+                    moveTo(pA.x, pA.y)
+                    lineTo(pB.x, pB.y)
+                    lineTo(pC.x, pC.y)
+                    close()
+                }
+                drawPath(path = path, color = ink, style = Stroke(width = 2.dp.toPx()))
+
+                val aLabel = params["a_label"] ?: ""
+                val bLabel = params["b_label"] ?: ""
+                val cLabel = params["c_label"] ?: ""
+
+                if (aLabel.isNotBlank()) {
+                    val txt = textMeasurer.measure(aLabel, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ink))
+                    drawText(txt, topLeft = Offset((pB.x + pC.x)/2f + 4f, (pB.y + pC.y)/2f - txt.size.height/2f))
+                }
+                if (bLabel.isNotBlank()) {
+                    val txt = textMeasurer.measure(bLabel, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ink))
+                    drawText(txt, topLeft = Offset((pA.x + pC.x)/2f - txt.size.width - 4f, (pA.y + pC.y)/2f - txt.size.height/2f))
+                }
+                if (cLabel.isNotBlank()) {
+                    val txt = textMeasurer.measure(cLabel, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ink))
+                    drawText(txt, topLeft = Offset((pA.x + pB.x)/2f - txt.size.width/2f, pB.y + 4f))
+                }
+            }
+
+            "trig_wave" -> {
+                val func = params["func"] ?: "sin"
+                val amp = params["amp"]?.toFloatOrNull() ?: 1f
+                val freq = params["freq"]?.toFloatOrNull() ?: 1f
+                val shift = params["shift"]?.toFloatOrNull() ?: 0f
+
+                val margin = 24.dp.toPx()
+                val axisX = height / 2f
+                val axisY = margin + 20.dp.toPx()
+
+                drawLine(color = ink.copy(alpha = 0.3f), start = Offset(margin, axisX), end = Offset(width - margin, axisX), strokeWidth = 1.dp.toPx())
+                drawLine(color = ink.copy(alpha = 0.3f), start = Offset(axisY, margin), end = Offset(axisY, height - margin), strokeWidth = 1.dp.toPx())
+
+                val curvePath = Path()
+                var first = true
+                val startX = axisY
+                val endX = width - margin
+
+                for (xPx in startX.toInt()..endX.toInt()) {
+                    val xMath = (xPx - axisY) / 40f
+                    val angle = (xMath * freq) + shift
+                    val yMath = if (func == "cos") Math.cos(angle.toDouble()).toFloat() else Math.sin(angle.toDouble()).toFloat()
+                    val yPx = axisX - (yMath * amp * 40f)
+
+                    if (yPx in margin..(height - margin)) {
+                        if (first) {
+                            curvePath.moveTo(xPx.toFloat(), yPx)
+                            first = false
+                        } else {
+                            curvePath.lineTo(xPx.toFloat(), yPx)
+                        }
+                    }
+                }
+                drawPath(path = curvePath, color = Color(0xFFE91E63), style = Stroke(width = 2.dp.toPx()))
+            }
+
+            "vector_2d" -> {
+                val margin = 32.dp.toPx()
+                val cx = width / 2f
+                val cy = height / 2f
+                
+                // Eixos
+                drawLine(color = ink.copy(alpha = 0.2f), start = Offset(0f, cy), end = Offset(width, cy), strokeWidth = 1.dp.toPx())
+                drawLine(color = ink.copy(alpha = 0.2f), start = Offset(cx, 0f), end = Offset(cx, height), strokeWidth = 1.dp.toPx())
+                
+                val scale = 20f
+                val vx = params["vx"]?.toFloatOrNull() ?: 3f
+                val vy = params["vy"]?.toFloatOrNull() ?: 2f
+                val ux = params["ux"]?.toFloatOrNull() ?: -2f
+                val uy = params["uy"]?.toFloatOrNull() ?: 1f
+                
+                val endVx = cx + vx * scale
+                val endVy = cy - vy * scale
+                val endUx = cx + ux * scale
+                val endUy = cy - uy * scale
+
+                // Vector v (Blue)
+                drawLine(color = Color(0xFF2196F3), start = Offset(cx, cy), end = Offset(endVx, endVy), strokeWidth = 2.5f.dp.toPx())
+                drawCircle(color = Color(0xFF2196F3), radius = 4.dp.toPx(), center = Offset(endVx, endVy))
+                val vLabel = textMeasurer.measure("v", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2196F3)))
+                drawText(vLabel, topLeft = Offset(endVx + 4f, endVy - vLabel.size.height))
+
+                // Vector u (Red)
+                drawLine(color = Color(0xFFE91E63), start = Offset(cx, cy), end = Offset(endUx, endUy), strokeWidth = 2.5f.dp.toPx())
+                drawCircle(color = Color(0xFFE91E63), radius = 4.dp.toPx(), center = Offset(endUx, endUy))
+                val uLabel = textMeasurer.measure("u", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE91E63)))
+                drawText(uLabel, topLeft = Offset(endUx + 4f, endUy - uLabel.size.height))
+            }
+
+            "area_under_curve" -> {
+                val margin = 24.dp.toPx()
+                val axisX = height - margin - 20.dp.toPx()
+                val axisY = margin + 30.dp.toPx()
+
+                // Eixos
+                drawLine(color = ink.copy(alpha = 0.3f), start = Offset(margin, axisX), end = Offset(width - margin, axisX), strokeWidth = 1.dp.toPx())
+                drawLine(color = ink.copy(alpha = 0.3f), start = Offset(axisY, margin), end = Offset(axisY, height - margin), strokeWidth = 1.dp.toPx())
+
+                val curvePath = Path()
+                val fillPath = Path()
+                
+                var first = true
+                val startX = axisY
+                val endX = width - margin - 20.dp.toPx()
+                
+                val lowerBound = params["a"]?.toFloatOrNull() ?: 1f
+                val upperBound = params["b"]?.toFloatOrNull() ?: 3f
+                
+                fillPath.moveTo(axisY + lowerBound * 40f, axisX)
+
+                for (xPx in startX.toInt()..endX.toInt()) {
+                    val xMath = (xPx - axisY) / 40f
+                    // Exemplo: curva y = 0.5 * x^2 + 1
+                    val yMath = 0.5f * xMath * xMath + 1f
+                    val yPx = axisX - (yMath * 20f)
+
+                    if (yPx in margin..(height - margin)) {
+                        if (first) {
+                            curvePath.moveTo(xPx.toFloat(), yPx)
+                            first = false
+                        } else {
+                            curvePath.lineTo(xPx.toFloat(), yPx)
+                        }
+                        
+                        // Adicionar ponto ao preenchimento se estiver no intervalo da integral
+                        if (xMath >= lowerBound && xMath <= upperBound) {
+                            fillPath.lineTo(xPx.toFloat(), yPx)
+                        }
+                    }
+                }
+                
+                // Desenhar a curva da função
+                drawPath(path = curvePath, color = Color(0xFF9C27B0), style = Stroke(width = 2.dp.toPx()))
+                
+                // Fechar o polígono de preenchimento e pintar a área da integral
+                val lastXMath = minOf((endX - axisY) / 40f, upperBound)
+                val lastYMath = 0.5f * lastXMath * lastXMath + 1f
+                val lastYPx = axisX - (lastYMath * 20f)
+                
+                fillPath.lineTo(axisY + lastXMath * 40f, axisX)
+                fillPath.close()
+                
+                drawPath(path = fillPath, color = Color(0xFF9C27B0).copy(alpha = 0.2f))
+                
+                // Delimitadores a e b
+                val dotEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+                val aPx = axisY + lowerBound * 40f
+                val bPx = axisY + upperBound * 40f
+                drawLine(color = Color(0xFF9C27B0), start = Offset(aPx, axisX), end = Offset(aPx, axisX - (0.5f*lowerBound*lowerBound+1f)*20f), pathEffect = dotEffect)
+                drawLine(color = Color(0xFF9C27B0), start = Offset(bPx, axisX), end = Offset(bPx, axisX - (0.5f*upperBound*upperBound+1f)*20f), pathEffect = dotEffect)
+                
+                // Textos a e b
+                val aText = textMeasurer.measure("a", style = TextStyle(fontSize = 12.sp, color = ink))
+                drawText(aText, topLeft = Offset(aPx - aText.size.width/2f, axisX + 4f))
+                val bText = textMeasurer.measure("b", style = TextStyle(fontSize = 12.sp, color = ink))
+                drawText(bText, topLeft = Offset(bPx - bText.size.width/2f, axisX + 4f))
+            }
         }
     }
 }

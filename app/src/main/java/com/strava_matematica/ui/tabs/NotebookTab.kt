@@ -87,7 +87,7 @@ private data class PageColor(val label: String, val background: String, val colo
 private val PageColors = listOf(
     PageColor("Branco",    "white",     Color(0xFFF7F8F6)),
     PageColor("Parchment", "parchment", Color(0xFFF5EFD0)),
-    PageColor("Cinza",     "slate",     Color(0xFFE8EAE6)),
+    PageColor("Azul Claro","lightblue", Color(0xFFE3F2FD)),
     PageColor("Escuro",    "dark",      Color(0xFF11140F)),
 )
 

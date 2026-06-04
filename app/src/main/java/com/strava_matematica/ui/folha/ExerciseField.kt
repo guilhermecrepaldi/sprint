@@ -67,6 +67,7 @@ fun ExerciseField(
     isKPlus: Boolean = false,
     isCompact: Boolean = false,
     exercisesPerPage: Int = 1,
+    isBlindMode: Boolean = false,
     // Split-canvas params
     initialScratchStrokes: List<List<Offset>> = emptyList(),
     initialAnswerStrokes: List<List<Offset>> = emptyList(),
@@ -132,10 +133,10 @@ fun ExerciseField(
     }
 
     val statementText = field.statement
-    val figTagRegex = remember(statementText) { Regex("""\[fig:[^\]]+\]""") }
-    val figMatch = remember(statementText) { figTagRegex.find(statementText) }
-    val figSpec = remember(statementText) { figMatch?.value }
-    val cleanStatement = remember(statementText) { statementText.replace(figTagRegex, "").trim() }
+    val mediaTagRegex = remember(statementText) { Regex("""\[(fig|img|svg):[^\]]+\]""") }
+    val mediaMatch = remember(statementText) { mediaTagRegex.find(statementText) }
+    val mediaSpec = remember(statementText) { mediaMatch?.value }
+    val cleanStatement = remember(statementText) { statementText.replace(mediaTagRegex, "").trim() }
 
     var localClearSignal by remember { mutableStateOf(0) }
     var localUndoSignal by remember { mutableStateOf(0) }
@@ -145,11 +146,13 @@ fun ExerciseField(
         val hasAnswer = typedAnswer.isNotBlank()
         val boxBgColor = when {
             !hasAnswer -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f)
+            isBlindMode && hasAnswer -> Color(0xFFF5F5F5) // Neutral color for answered in blind mode
             isCorrect -> Color(0xFFE8F5E9)  // verde claro pastel
             else -> Color(0xFFFFEBEE)       // vermelho claro pastel
         }
         val boxBorderColor = when {
             !hasAnswer -> ink.copy(alpha = 0.08f)
+            isBlindMode && hasAnswer -> Color(0xFF9E9E9E) // Neutral border for answered in blind mode
             isCorrect -> Color(0xFF2E7D32)  // verde esmeralda
             else -> Color(0xFFC62828)       // vermelho coral
         }
@@ -160,10 +163,11 @@ fun ExerciseField(
                 .fillMaxWidth()
                 .padding(vertical = 8.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Esquerda: Enunciado
             Row(
+                modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -192,14 +196,19 @@ fun ExerciseField(
                 }
                 
                 // Se houver figura (muito raro em compact), exibe pequena
-                if (figSpec != null) {
+                if (mediaSpec != null) {
                     Box(
                         modifier = Modifier
                             .size(60.dp)
                             .padding(start = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        GeometricDiagram(spec = figSpec, ink = ink)
+                        if (mediaSpec.startsWith("[fig:")) {
+                            GeometricDiagram(spec = mediaSpec, ink = ink)
+                        } else {
+                            // Placeholder futuro para img/svg
+                            Text("Media", color = ink.copy(alpha = 0.5f), fontSize = 10.sp)
+                        }
                     }
                 }
             }
@@ -208,8 +217,8 @@ fun ExerciseField(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .height(60.dp)
-                    .width(130.dp)
+                    .height(90.dp)
+                    .width(195.dp)
                     .background(boxBgColor, RoundedCornerShape(8.dp))
                     .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
                     .clickable { answerPadVisible.value = true }
@@ -230,14 +239,11 @@ fun ExerciseField(
                     onPenEvent = onPenEvent
                 )
                 if (typedAnswer.isNotBlank()) {
-                    Text(
-                        text = typedAnswer,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            isCorrect -> Color(0xFF2E7D32)
-                            else -> Color(0xFFC62828)
-                        }
+                    MathAnswerTemplate(
+                        expectedAnswer = field.expectedAnswer,
+                        studentInput = typedAnswer,
+                        isCorrect = isCorrect,
+                        ink = ink
                     )
                 }
                 
@@ -279,11 +285,13 @@ fun ExerciseField(
         val hasAnswer = typedAnswer.isNotBlank()
         val boxBgColor = when {
             !hasAnswer -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f)
+            isBlindMode && hasAnswer -> Color(0xFFF5F5F5) // Neutral color
             isCorrect -> Color(0xFFE8F5E9)
             else -> Color(0xFFFFEBEE)
         }
         val boxBorderColor = when {
             !hasAnswer -> ink.copy(alpha = 0.08f)
+            isBlindMode && hasAnswer -> Color(0xFF9E9E9E) // Neutral border
             isCorrect -> Color(0xFF2E7D32)
             else -> Color(0xFFC62828)
         }
@@ -337,7 +345,7 @@ fun ExerciseField(
                     )
                 }
 
-                if (figSpec != null) {
+                if (mediaSpec != null) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -345,7 +353,12 @@ fun ExerciseField(
                             .padding(bottom = Spacing.md),
                         contentAlignment = Alignment.Center
                     ) {
-                        GeometricDiagram(spec = figSpec, ink = ink)
+                        if (mediaSpec.startsWith("[fig:")) {
+                            GeometricDiagram(spec = mediaSpec, ink = ink)
+                        } else {
+                            // Placeholder futuro para img/svg
+                            Text("Media area", color = ink.copy(alpha = 0.5f))
+                        }
                     }
                 }
 
@@ -384,14 +397,11 @@ fun ExerciseField(
                             },
                         )
                         if (typedAnswer.isNotBlank()) {
-                            Text(
-                                text = typedAnswer,
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = when {
-                                    isCorrect -> Color(0xFF2E7D32)
-                                    else -> Color(0xFFC62828)
-                                }
+                            MathAnswerTemplate(
+                                expectedAnswer = field.expectedAnswer,
+                                studentInput = typedAnswer,
+                                isCorrect = isCorrect,
+                                ink = ink
                             )
                         }
 
@@ -522,8 +532,23 @@ fun InkCanvas(
     onPenEvent: (PenEvent) -> Unit = {},
     onTap: (() -> Unit)? = null,
 ) {
-    val strokes = remember(initialStrokes) { mutableStateListOf(*initialStrokes.toTypedArray()) }
-    val redoStack = remember(initialRedoStack) { mutableStateListOf(*initialRedoStack.toTypedArray()) }
+    val strokes = remember { mutableStateListOf(*initialStrokes.toTypedArray()) }
+    val redoStack = remember { mutableStateListOf(*initialRedoStack.toTypedArray()) }
+    
+    LaunchedEffect(initialStrokes) {
+        if (initialStrokes != strokes.toList()) {
+            strokes.clear()
+            strokes.addAll(initialStrokes)
+        }
+    }
+    
+    LaunchedEffect(initialRedoStack) {
+        if (initialRedoStack != redoStack.toList()) {
+            redoStack.clear()
+            redoStack.addAll(initialRedoStack)
+        }
+    }
+    
     val inkColor = remember(penColor) { parseHexColor(penColor) }
     var currentStroke = remember { mutableListOf<Offset>() }
     var strokeStartedAt = remember { 0L }

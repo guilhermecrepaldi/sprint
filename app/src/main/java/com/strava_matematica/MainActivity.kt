@@ -6,14 +6,21 @@ import androidx.compose.animation.core.tween
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -21,6 +28,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,6 +57,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.strava_matematica.design.StravaMathTheme
 import com.strava_matematica.model.ApiStatus
@@ -69,13 +80,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
 import com.strava_matematica.recognizer.MlKitRecognizer
 import kotlinx.coroutines.launch
+import com.strava_matematica.ui.components.LiveLogDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 // ── Top rail tabs ──────────────────────────────────────────────────────────────
 private enum class SprintTab(val label: String) {
-    PEN("Caneta"),
-    PAPER("Papel"),
-    GESTURES("Gestos"),
+    SETUP("Ajustes"),
     DASHBOARD("Painel"),
+    MATHTREE("Árvore"),
     SPRINT("Sprint"),
     NOTES("Notas"),
     SIMULADO("Simulado")
@@ -102,6 +117,12 @@ fun SprintApp(
     val coroutineScope = rememberCoroutineScope()
     val handwritingRecognizer = remember { MlKitRecognizer(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    var showLiveLogDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    if (showLiveLogDialog) {
+        LiveLogDialog(onDismiss = { showLiveLogDialog = false })
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -373,11 +394,23 @@ fun SprintApp(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            TopRail(
-                selectedTab = selectedTab,
-                onSelect = { selectedTab = it },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                TopRail(
+                    selectedTab = selectedTab,
+                    onSelect = { selectedTab = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                IconButton(
+                    onClick = { showLiveLogDialog = true },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp, top = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share, 
+                        contentDescription = "Live Log / Logshare",
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+                }
+            }
 
             Crossfade(
                 targetState = selectedTab,
@@ -389,23 +422,33 @@ fun SprintApp(
             ) { tab ->
                 Box(Modifier.fillMaxSize()) {
                     when (tab) {
-                    SprintTab.PEN -> PenTab(
-                        config = state.config,
-                        onConfigChange = sessionViewModel::updateConfig,
-                        onGoToSprint = goToSprint,
-                    )
-
-                    SprintTab.PAPER -> NotebookTab(
-                        config = state.config,
-                        onConfigChange = sessionViewModel::updateConfig,
-                        onGoToSprint = goToSprint,
-                    )
-
-                    SprintTab.GESTURES -> GesturesTab(
-                        gestureConfig = state.gestureConfig,
-                        onGestureChange = sessionViewModel::updateGesture,
-                        onGoToSprint = goToSprint,
-                    )
+                    SprintTab.SETUP -> {
+                        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                                PenTab(
+                                    config = state.config,
+                                    onConfigChange = sessionViewModel::updateConfig,
+                                    onGoToSprint = goToSprint,
+                                )
+                            }
+                            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)))
+                            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                                NotebookTab(
+                                    config = state.config,
+                                    onConfigChange = sessionViewModel::updateConfig,
+                                    onGoToSprint = goToSprint
+                                )
+                            }
+                            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)))
+                            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                                GesturesTab(
+                                    gestureConfig = state.gestureConfig,
+                                    onGestureChange = sessionViewModel::updateGesture,
+                                    onGoToSprint = goToSprint
+                                )
+                            }
+                        }
+                    }
 
                     SprintTab.DASHBOARD -> DashboardTab(
                         history = state.sprintHistory,
@@ -415,6 +458,10 @@ fun SprintApp(
                         notes = state.notes,
                         onGoToSprint = goToSprint,
                         onStartSession = sessionViewModel::startSessionFromDashboard,
+                    )
+
+                    SprintTab.MATHTREE -> com.strava_matematica.ui.tabs.TreeTab(
+                        modifier = Modifier.fillMaxSize()
                     )
 
                     SprintTab.SPRINT -> {
@@ -468,6 +515,7 @@ fun SprintApp(
                                         selectedSkillTag = state.selectedSkillTag,
                                         densityLevel = state.densityLevel,
                                         onApplySprintScrollSelection = sessionViewModel::applySprintScrollSelection,
+                                        onStartSimulado = sessionViewModel::startSimulado,
                                         onSyncScratch = { fieldIndex, strokes, redoStack ->
                                             folhaViewModel.syncScratch(folha.folhaId, fieldIndex, strokes, redoStack)
                                         },
@@ -537,7 +585,8 @@ fun SprintApp(
                     )
                     
                     SprintTab.SIMULADO -> com.strava_matematica.ui.tabs.SimuladoTab(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        config = state.config
                     )
                 }
                     if (tab == SprintTab.SPRINT &&
@@ -664,58 +713,57 @@ private fun TopRail(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp),
+            .height(64.dp), // Height increased slightly to fit bigger letters
         contentAlignment = Alignment.TopCenter,
     ) {
         val sidePadding = ((maxWidth - tabWidth) / 2).coerceAtLeast(0.dp)
         LazyRow(
             state = listState,
             contentPadding = PaddingValues(horizontal = sidePadding),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp), // Increased gap for bigger text
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(top = 5.dp),
+                .height(64.dp)
+                .padding(top = 8.dp),
         ) {
             itemsIndexed(tabs) { _, tab ->
                 val selected = tab == selectedTab
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                
+                // Spring animations
+                val scale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.90f else if (selected) 1.05f else 1f,
+                    animationSpec = spring(dampingRatio = 0.55f, stiffness = 400f),
+                    label = "TopRailTabScale"
+                )
+                val bgAlpha by animateFloatAsState(
+                    targetValue = if (selected) 0.12f else 0.0f,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "TopRailTabBg"
+                )
+
                 Box(
                     modifier = Modifier
                         .size(width = tabWidth, height = 48.dp)
-                        .clickable { selectWithTripleTap(tab) }
-                        .drawBehind {
-                            val ink = androidx.compose.ui.graphics.Color.Black
-                            val markAlpha = if (selected) 0.24f else 0.07f
-                            val radius = 2.4.dp.toPx()
-                            val gap = 11.dp.toPx()
-                            val cy = 12.dp.toPx()
-                            repeat(3) { i ->
-                                drawCircle(
-                                    color = ink.copy(alpha = markAlpha),
-                                    radius = radius,
-                                    center = androidx.compose.ui.geometry.Offset(
-                                        x = size.width / 2 + (i - 1) * gap,
-                                        y = cy,
-                                    ),
-                                )
-                            }
-                            if (selected) {
-                                drawLine(
-                                    color = ink.copy(alpha = 0.22f),
-                                    start = androidx.compose.ui.geometry.Offset(size.width * 0.30f, size.height - 6.dp.toPx()),
-                                    end = androidx.compose.ui.geometry.Offset(size.width * 0.70f, size.height - 6.dp.toPx()),
-                                    strokeWidth = 1.dp.toPx(),
-                                )
-                            }
-                        },
-                    contentAlignment = Alignment.BottomCenter,
+                        .scale(scale)
+                        .background(
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = bgAlpha),
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { selectWithTripleTap(tab) }
+                        ),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = tab.label,
-                        fontSize = 8.sp,
-                        letterSpacing = 0.sp,
+                        fontSize = 17.sp, // Letras maiores
+                        fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.ExtraBold else androidx.compose.ui.text.font.FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground.copy(
-                            alpha = if (selected) 0.24f else 0.0f,
+                            alpha = if (selected) 1.0f else 0.70f, // Não escurecendo muito (NÃO veremos as últimas no scroll resolvido)
                         ),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),

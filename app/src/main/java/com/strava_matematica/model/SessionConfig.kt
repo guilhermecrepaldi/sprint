@@ -3,7 +3,7 @@ package com.strava_matematica.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-enum class BackgroundMode { WHITE, PARCHMENT, SLATE, DARK }
+enum class BackgroundMode { WHITE, PARCHMENT, SLATE, DARK, LIGHTBLUE }
 enum class DurationMode { UNLIMITED, TIMED, PAGES }
 enum class DifficultyProgression { ARITHMETIC, GEOMETRIC }
 enum class SessionStatus { GESTURE_ONBOARDING, CONFIG, CALIBRATION, DASHBOARD, ACTIVE, SUBMITTING, RESULT, FINISHED, DRILL, DRILL_RESULT, RANKING, ERROR }
@@ -13,7 +13,7 @@ enum class ApiStatus { CONNECTING, OK, OFFLINE, ERROR }
 data class SessionConfig(
     val subject: String = "math",
     @SerialName("show_thermometer") val showThermometer: Boolean = true,
-    val background: String = "parchment",
+    val background: String = "lightblue",
     @SerialName("pen_color") val penColor: String = "#1a1a1a",
     @SerialName("duration_mode") val durationMode: String = "unlimited",
     @SerialName("duration_limit_ms") val durationLimitMs: Int? = null,
@@ -44,12 +44,14 @@ data class SessionConfig(
     @SerialName("digits_count") val digitsCount: Int = 2,
     @SerialName("values_count") val valuesCount: Int = 2,
     @SerialName("number_set") val numberSet: String = "naturais",
+    @SerialName("simulado_rules_json") val simuladoRulesJson: String? = null,
 ) {
     val backgroundMode: BackgroundMode
         get() = when (background) {
             "dark"      -> BackgroundMode.DARK
             "parchment" -> BackgroundMode.PARCHMENT
             "slate"     -> BackgroundMode.SLATE
+            "lightblue" -> BackgroundMode.LIGHTBLUE
             else        -> BackgroundMode.WHITE
         }
 }

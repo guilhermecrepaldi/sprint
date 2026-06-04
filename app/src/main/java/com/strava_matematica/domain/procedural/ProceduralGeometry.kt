@@ -131,7 +131,7 @@ object ProceduralGeometry {
         // hip = 5
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Em um triângulo retângulo de catetos 3 e 4, qual o valor do seno do ângulo oposto ao cateto 3? (Responda em decimal).",
+            statement = "Em um triângulo retângulo de catetos 3 e 4, qual o valor do seno do ângulo oposto ao cateto 3? (Responda em decimal).\n\n[fig:right_triangle,angle=θ,opp=3,adj=4,hyp=5]",
             expectedAnswer = "0.6",
             primarySkill = "trig_razoes",
             difficulty = difficulty.toDouble(),
@@ -143,11 +143,15 @@ object ProceduralGeometry {
     }
 
     private fun generateTrigSenoCosseno(difficulty: Int): ProceduralExercise {
-        val angles = listOf("30^\\circ" to "1/2", "60^\\circ" to "\\sqrt{3}/2", "90^\\circ" to "1")
+        val angles = listOf(
+            Triple("30^\\circ", "1/2", "30"), 
+            Triple("60^\\circ", "\\sqrt{3}/2", "60"), 
+            Triple("90^\\circ", "1", "90")
+        )
         val chosen = angles.random()
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Qual o valor numérico de $\\sin(${chosen.first})$?",
+            statement = "Qual o valor numérico de $\\sin(${chosen.first})$?\n\n[fig:trig_unit_circle,angle=${chosen.third},show_proj=true]",
             expectedAnswer = chosen.second,
             primarySkill = "trig_seno_cosseno_tangente",
             difficulty = difficulty.toDouble(),
@@ -175,7 +179,7 @@ object ProceduralGeometry {
     private fun generateTrigEquacoes(difficulty: Int): ProceduralExercise {
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "No primeiro quadrante, qual o valor em graus de x se $\\cos(x) = 1/2$?",
+            statement = "No primeiro quadrante, qual o valor em graus de x se $\\cos(x) = 1/2$?\n\n[fig:trig_wave,func=cos,amp=1,freq=1]",
             expectedAnswer = "60",
             primarySkill = "trig_equacoes",
             difficulty = difficulty.toDouble(),
