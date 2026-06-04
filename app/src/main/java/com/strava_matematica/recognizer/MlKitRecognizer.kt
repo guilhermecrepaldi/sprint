@@ -14,7 +14,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 class MlKitRecognizer(@Suppress("UNUSED_PARAMETER") context: Context) : MathRecognizer {
 
-    private val modelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("zxx-Zmath-x-math")
+    private val modelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("zxx-Zsym-x-math")
     private val model = modelIdentifier?.let {
         DigitalInkRecognitionModel.builder(it).build()
     }
