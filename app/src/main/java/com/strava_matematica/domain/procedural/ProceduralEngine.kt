@@ -28,7 +28,7 @@ object ProceduralEngine {
 
             // Algebra
             "equacoes_quadraticas", "equacao_2_grau",
-            "fatoracao_produtos_notaveis", "polinomios",
+            "fatoracao_produtos_notaveis", "polinomios", "alg_elem_poly",
             "fracoes_decimais", "porcentagem_razao", "potenciacao_radiciacao",
             "equacoes_lineares", "sistemas_equacoes", "inequacoes", "funcao_afim",
             "funcao_quadratica", "funcao_exponencial", "funcao_logaritmica", "funcao_modular" ->

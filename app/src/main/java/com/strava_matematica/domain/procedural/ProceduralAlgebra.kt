@@ -11,7 +11,7 @@ object ProceduralAlgebra {
             "equacoes_lineares" -> generateLinear(mmr, random)
             "sistemas_equacoes" -> generateSystem(mmr, random)
             "equacoes_quadraticas", "equacao_2_grau" -> generateQuadratic(mmr, random)
-            "fatoracao_produtos_notaveis", "polinomios" -> generatePolynomial(mmr, random)
+            "fatoracao_produtos_notaveis", "polinomios", "alg_elem_poly" -> generatePolynomial(mmr, random)
             "fracoes_decimais" -> generateFracoesDecimais(mmr, random)
             "porcentagem_razao" -> generatePorcentagemRazao(mmr, random)
             "potenciacao_radiciacao" -> generatePotenciacaoRadiciacao(mmr, random)
@@ -234,7 +234,7 @@ object ProceduralAlgebra {
             val decimalStr = if (decimal % 1.0 == 0.0) decimal.toInt().toString() else decimal.toString()
             return ProceduralExercise(
                 id = UUID.randomUUID().toString(),
-                statement = "Converta a fração para número decimal:\n\n\\( \\frac{}{} \\)",
+                statement = "Converta a fração para número decimal:\n\n\\( \\frac{$num}{$den} \\)",
                 expectedAnswer = decimalStr,
                 primarySkill = "fracoes_decimais",
                 difficulty = mmr.toDouble(),
@@ -256,8 +256,8 @@ object ProceduralAlgebra {
             
             return ProceduralExercise(
                 id = UUID.randomUUID().toString(),
-                statement = "Converta o número decimal para fração irredutível (ex: a/b):\n\n\\(  \\)",
-                expectedAnswer = "/",
+                statement = "Converta o número decimal para fração irredutível (ex: a/b):\n\n\\( $decimalStr \\)",
+                expectedAnswer = "$numSimp/$denSimp",
                 primarySkill = "fracoes_decimais",
                 difficulty = mmr.toDouble(),
                 templateId = "alg_frac_02"
@@ -273,7 +273,7 @@ object ProceduralAlgebra {
             val ans = (pct * base) / 100
             return ProceduralExercise(
                 id = UUID.randomUUID().toString(),
-                statement = "Calcule o valor de:\n\n\\( \\% \\text{ de }  \\)",
+                statement = "Calcule o valor de:\n\n\\( $pct\\% \\text{ de } $base \\)",
                 expectedAnswer = ans.toString(),
                 primarySkill = "porcentagem_razao",
                 difficulty = mmr.toDouble(),
@@ -284,11 +284,17 @@ object ProceduralAlgebra {
             val multiplier = random.nextInt(2, 10)
             val p1 = 2 * multiplier
             val p2 = ratioBase * multiplier
+            
+            var a = 2; var b = ratioBase
+            while (b > 0) { val t = b; b = a % b; a = t }
+            val numAns = 2 / a
+            val denAns = ratioBase / a
+
             return ProceduralExercise(
                 id = UUID.randomUUID().toString(),
-                statement = "Simplifique a razão para a forma irredutível a/b:\n\n\\( \\frac{}{} \\)",
+                statement = "Simplifique a razão para a forma irredutível a/b:\n\n\\( \\frac{$p1}{$p2} \\)",
                 // GCD
-                expectedAnswer = "2/".replace("2/2", "1/1").replace("2/4", "1/2").replace("2/6", "1/3"),
+                expectedAnswer = "$numAns/$denAns",
                 primarySkill = "porcentagem_razao",
                 difficulty = mmr.toDouble(),
                 templateId = "alg_razao_01"
@@ -304,7 +310,7 @@ object ProceduralAlgebra {
             val ans = Math.pow(base.toDouble(), exp.toDouble()).toInt()
             return ProceduralExercise(
                 id = UUID.randomUUID().toString(),
-                statement = "Calcule o valor da potência:\n\n\\( ^ \\)",
+                statement = "Calcule o valor da potência:\n\n\\( $base^{$exp} \\)",
                 expectedAnswer = ans.toString(),
                 primarySkill = "potenciacao_radiciacao",
                 difficulty = mmr.toDouble(),
@@ -316,7 +322,7 @@ object ProceduralAlgebra {
             val inside = rootBase * rootBase
             return ProceduralExercise(
                 id = UUID.randomUUID().toString(),
-                statement = "Calcule o valor da raiz quadrada:\n\n\\( \\sqrt{} \\)",
+                statement = "Calcule o valor da raiz quadrada:\n\n\\( \\sqrt{$inside} \\)",
                 expectedAnswer = ans.toString(),
                 primarySkill = "potenciacao_radiciacao",
                 difficulty = mmr.toDouble(),
@@ -334,8 +340,8 @@ object ProceduralAlgebra {
         val bStr = if (b >= 0) "+ " else "- "
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Resolva a inequação para x:\n\n\\(  x    \\)",
-            expectedAnswer = "x",
+            statement = "Resolva a inequação para x:\n\n\\( ${a}x $bStr${abs(b)} $sign $c \\)",
+            expectedAnswer = "x $sign $x",
             primarySkill = "inequacoes",
             difficulty = mmr.toDouble(),
             templateId = "alg_ineq_01",
@@ -351,7 +357,7 @@ object ProceduralAlgebra {
         val bStr = if (b >= 0) "+ " else "- "
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Dada a função afim \\( f(x) =  x  \\), calcule o valor de \\( f() \\).",
+            statement = "Dada a função afim \\( f(x) = ${a}x $bStr${abs(b)} \\), calcule o valor de \\( f($x) \\).",
             expectedAnswer = fx.toString(),
             primarySkill = "funcao_afim",
             difficulty = mmr.toDouble(),
@@ -365,12 +371,12 @@ object ProceduralAlgebra {
         val b = -2 * a * xv
         val c = random.nextInt(-5, 6)
         val yv = a * xv * xv + b * xv + c
-        val bStr = if (b > 0) "+ x" else if (b < 0) "- x" else ""
-        val cStr = if (c > 0) "+ " else if (c < 0) "- " else ""
+        val bStr = if (b > 0) "+ ${b}x" else if (b < 0) "- ${abs(b)}x" else ""
+        val cStr = if (c > 0) "+ $c" else if (c < 0) "- ${abs(c)}" else ""
         val signA = if (a == 1) "" else "-"
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Dada a função quadrática \\( f(x) = x^2   \\), encontre a coordenada \\( y \\) do vértice (ou seja, o valor máximo/mínimo da função).",
+            statement = "Dada a função quadrática \\( f(x) = ${signA}x^2 $bStr $cStr \\), encontre a coordenada \\( y \\) do vértice (ou seja, o valor máximo/mínimo da função).".replace("  ", " "),
             expectedAnswer = yv.toString(),
             primarySkill = "funcao_quadratica",
             difficulty = mmr.toDouble(),
@@ -384,7 +390,7 @@ object ProceduralAlgebra {
         val result = Math.pow(base.toDouble(), x.toDouble()).toInt()
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Resolva a equação exponencial para x:\n\n\\( ^x =  \\)",
+            statement = "Resolva a equação exponencial para x:\n\n\\( $base^x = $result \\)",
             expectedAnswer = x.toString(),
             primarySkill = "funcao_exponencial",
             difficulty = mmr.toDouble(),
@@ -398,7 +404,7 @@ object ProceduralAlgebra {
         val argument = Math.pow(base.toDouble(), x.toDouble()).toInt()
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Calcule o valor do logaritmo:\n\n\\( \\log_{}() \\)",
+            statement = "Calcule o valor do logaritmo:\n\n\\( \\log_{$base}($argument) \\)",
             expectedAnswer = x.toString(),
             primarySkill = "funcao_logaritmica",
             difficulty = mmr.toDouble(),
@@ -417,10 +423,10 @@ object ProceduralAlgebra {
         val bStr = if (b >= 0) "+ " else "- "
         val num1 = minOf(root1, root2)
         val num2 = maxOf(root1, root2)
-        val expected = ", "
+        val expected = "$num1, $num2"
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Resolva a equação modular e encontre os valores de x:\n\n\\( | x | =  \\)",
+            statement = "Resolva a equação modular e encontre os valores de x:\n\n\\( |${a}x $bStr${abs(b)}| = $c \\)",
             expectedAnswer = expected,
             primarySkill = "funcao_modular",
             difficulty = mmr.toDouble(),
