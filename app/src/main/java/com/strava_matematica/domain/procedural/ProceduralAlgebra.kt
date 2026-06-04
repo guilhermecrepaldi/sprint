@@ -16,7 +16,12 @@ object ProceduralAlgebra {
             "porcentagem_razao" -> generatePorcentagemRazao(mmr, random)
             "potenciacao_radiciacao" -> generatePotenciacaoRadiciacao(mmr, random)
             "inequacoes" -> generateInequacoes(mmr, random)
-            else -> generateLinear(mmr, random) // Fallback Lote 2 functions
+            "funcao_afim" -> generateFuncaoAfim(mmr, random)
+            "funcao_quadratica" -> generateFuncaoQuadratica(mmr, random)
+            "funcao_exponencial" -> generateFuncaoExponencial(mmr, random)
+            "funcao_logaritmica" -> generateFuncaoLogaritmica(mmr, random)
+            "funcao_modular" -> generateFuncaoModular(mmr, random)
+            else -> generateLinear(mmr, random) // Fallback Lote 3/4 functions
         }
     }
 
@@ -335,6 +340,91 @@ object ProceduralAlgebra {
             difficulty = mmr.toDouble(),
             templateId = "alg_ineq_01",
             validatorType = "exact"
+        )
+    }
+
+    private fun generateFuncaoAfim(mmr: Int, random: Random): ProceduralExercise {
+        val a = random.nextInt(2, 6)
+        val b = random.nextInt(-10, 10)
+        val x = random.nextInt(-5, 6)
+        val fx = a * x + b
+        val bStr = if (b >= 0) "+ " else "- "
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Dada a função afim \\( f(x) =  x  \\), calcule o valor de \\( f() \\).",
+            expectedAnswer = fx.toString(),
+            primarySkill = "funcao_afim",
+            difficulty = mmr.toDouble(),
+            templateId = "alg_fafim_01"
+        )
+    }
+
+    private fun generateFuncaoQuadratica(mmr: Int, random: Random): ProceduralExercise {
+        val a = if (random.nextBoolean()) 1 else -1
+        val xv = random.nextInt(-5, 6)
+        val b = -2 * a * xv
+        val c = random.nextInt(-5, 6)
+        val yv = a * xv * xv + b * xv + c
+        val bStr = if (b > 0) "+ x" else if (b < 0) "- x" else ""
+        val cStr = if (c > 0) "+ " else if (c < 0) "- " else ""
+        val signA = if (a == 1) "" else "-"
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Dada a função quadrática \\( f(x) = x^2   \\), encontre a coordenada \\( y \\) do vértice (ou seja, o valor máximo/mínimo da função).",
+            expectedAnswer = yv.toString(),
+            primarySkill = "funcao_quadratica",
+            difficulty = mmr.toDouble(),
+            templateId = "alg_fquad_01"
+        )
+    }
+
+    private fun generateFuncaoExponencial(mmr: Int, random: Random): ProceduralExercise {
+        val base = random.nextInt(2, 5)
+        val x = random.nextInt(1, 5)
+        val result = Math.pow(base.toDouble(), x.toDouble()).toInt()
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Resolva a equação exponencial para x:\n\n\\( ^x =  \\)",
+            expectedAnswer = x.toString(),
+            primarySkill = "funcao_exponencial",
+            difficulty = mmr.toDouble(),
+            templateId = "alg_fexp_01"
+        )
+    }
+
+    private fun generateFuncaoLogaritmica(mmr: Int, random: Random): ProceduralExercise {
+        val base = random.nextInt(2, 5)
+        val x = random.nextInt(1, 4)
+        val argument = Math.pow(base.toDouble(), x.toDouble()).toInt()
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Calcule o valor do logaritmo:\n\n\\( \\log_{}() \\)",
+            expectedAnswer = x.toString(),
+            primarySkill = "funcao_logaritmica",
+            difficulty = mmr.toDouble(),
+            templateId = "alg_flog_01"
+        )
+    }
+
+    private fun generateFuncaoModular(mmr: Int, random: Random): ProceduralExercise {
+        val a = random.nextInt(1, 4)
+        val root1 = random.nextInt(-3, 6)
+        val root2 = root1 + random.nextInt(2, 6)
+        
+        val c = a * abs(root1 - root2) / 2
+        val b = -a * (root1 + root2) / 2
+        
+        val bStr = if (b >= 0) "+ " else "- "
+        val num1 = minOf(root1, root2)
+        val num2 = maxOf(root1, root2)
+        val expected = ", "
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Resolva a equação modular e encontre os valores de x:\n\n\\( | x | =  \\)",
+            expectedAnswer = expected,
+            primarySkill = "funcao_modular",
+            difficulty = mmr.toDouble(),
+            templateId = "alg_fmod_01"
         )
     }
 }
