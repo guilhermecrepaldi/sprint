@@ -41,6 +41,17 @@ class LocalSprintRepository private constructor(context: Context) {
     private val runtime = SprintRuntimeDatabase.getInstance(context)
     private val json = Json { ignoreUnknownKeys = true }
 
+    private val recentStatements = mutableListOf<String>()
+    
+    private fun addRecent(statement: String) {
+        if (recentStatements.size >= 35) {
+            recentStatements.removeAt(0)
+        }
+        recentStatements.add(statement)
+    }
+
+    private fun isRecent(statement: String): Boolean = recentStatements.contains(statement)
+
     suspend fun startSession(
         studentId: String,
         skillTag: String,
@@ -249,39 +260,56 @@ class LocalSprintRepository private constructor(context: Context) {
     ): ProceduralExercise {
         val currentMemory = runtime.skillMemoryDao().get(studentId, skillTag)
         val mmr = currentMemory?.masterScore?.let { EloMatchmaker.masterScoreToMmr(it) } ?: 1000
-        
         val useProcedural = skillTag == "soma_subtracao" || skillTag == "multiplicacao_divisao"
-        if (!useProcedural) {
-            // 1. Tentar buscar do catálogo SQLite offline real de 16k exercícios para skills avançadas
-            val count = catalog.countBySkill(skillTag)
-            if (count > 0) {
-                val targetDifficulty = mmr.toDouble() / 100.0
-                val offset = kotlin.random.Random.nextInt(count)
-                val exerciseId = catalog.exerciseIdBySkillDifficultyOffset(skillTag, targetDifficulty, 0)
-                    ?: catalog.exerciseIdBySkillOffset(skillTag, offset)
-                    ?: catalog.exerciseIdBySkillOffset(skillTag, 0)
+        
+        var bestExercise: ProceduralExercise? = null
+        
+        for (attempt in 1..10) {
+            var exercise: ProceduralExercise? = null
+            
+            if (!useProcedural) {
+                val count = catalog.countBySkill(skillTag)
+                if (count > 0) {
+                    val targetDifficulty = mmr.toDouble() / 100.0
+                    val countAtDiff = catalog.countBySkillDifficulty(skillTag, targetDifficulty)
+                    
+                    val exerciseId = if (countAtDiff > 0) {
+                        catalog.exerciseIdBySkillDifficultyOffset(skillTag, targetDifficulty, kotlin.random.Random.nextInt(countAtDiff))
+                    } else {
+                        catalog.exerciseIdBySkillOffset(skillTag, kotlin.random.Random.nextInt(count))
+                    }
 
-                if (exerciseId != null) {
-                    val entity = catalog.getById(exerciseId)
-                    if (entity != null) {
-                        return ProceduralExercise(
-                            id = entity.id,
-                            statement = entity.statement,
-                            expectedAnswer = entity.expectedAnswer,
-                            primarySkill = entity.primarySkill,
-                            difficulty = entity.difficulty,
-                            templateId = entity.templateId ?: "default",
-                            canvasMode = entity.canvasMode,
-                            validatorType = entity.validatorType,
-                            answerType = entity.answerType,
-                        )
+                    if (exerciseId != null) {
+                        val entity = catalog.getById(exerciseId)
+                        if (entity != null) {
+                            exercise = ProceduralExercise(
+                                id = entity.id,
+                                statement = entity.statement,
+                                expectedAnswer = entity.expectedAnswer,
+                                primarySkill = entity.primarySkill,
+                                difficulty = entity.difficulty,
+                                templateId = entity.templateId ?: "default",
+                                canvasMode = entity.canvasMode,
+                                validatorType = entity.validatorType,
+                                answerType = entity.answerType,
+                            )
+                        }
                     }
                 }
             }
+            
+            if (exercise == null) {
+                exercise = ProceduralEngine.generate(skillTag, mmr, config)
+            }
+            
+            bestExercise = exercise
+            if (!isRecent(exercise.statement)) {
+                break
+            }
         }
         
-        // Fallback síncrono ou geração didática para a engine procedural
-        return ProceduralEngine.generate(skillTag, mmr, config)
+        bestExercise?.let { addRecent(it.statement) }
+        return bestExercise ?: ProceduralEngine.generate(skillTag, mmr, config)
     }
 
     private suspend fun ensureStudent(studentId: String) {

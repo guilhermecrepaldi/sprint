@@ -11,6 +11,9 @@ interface ExerciseDao {
     @Query("SELECT COUNT(*) FROM exercises WHERE primary_skill = :skill")
     suspend fun countBySkill(skill: String): Int
 
+    @Query("SELECT COUNT(*) FROM exercises WHERE primary_skill = :skill AND difficulty >= :minimumDifficulty")
+    suspend fun countBySkillDifficulty(skill: String, minimumDifficulty: Double): Int
+
     @Query("SELECT id FROM exercises WHERE primary_skill = :skill ORDER BY difficulty, statement, id LIMIT 1 OFFSET :offset")
     suspend fun exerciseIdBySkillOffset(skill: String, offset: Int): String?
 
