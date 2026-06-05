@@ -631,7 +631,7 @@ fun GeometricDiagram(
                     val currentXVisual = margin + fraction * (width - 2 * margin)
                     val xMath = (currentXVisual - axisY) / 30f
                     
-                    val yMath = kotlin.math.pow(baseVal, xMath)
+                    val yMath = Math.pow(baseVal.toDouble(), xMath.toDouble()).toFloat()
                     val currentYVisual = axisX - (yMath * 30f)
                     
                     if (currentYVisual in (margin - 10f)..(height - margin + 10f)) {
@@ -677,7 +677,7 @@ fun GeometricDiagram(
                 }
                 drawPath(path = curvePath, color = ink, style = Stroke(width = 2.dp.toPx()))
             }
-\n        }
+        }
     }
 }
 

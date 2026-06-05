@@ -515,7 +515,7 @@ fun FolhaScreen(
                     
                     // Ícone 2: Árvore (Abre configurações/árvore atual)
                     IconButton(
-                        onClick = { showSettingsSheet.value = true },
+                        onClick = { showSprintScrolls.value = true },
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
                             .size(32.dp)

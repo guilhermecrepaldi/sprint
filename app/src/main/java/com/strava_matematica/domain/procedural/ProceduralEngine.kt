@@ -21,7 +21,35 @@ object ProceduralEngine {
     var randomInstance: Random = Random.Default
 
 
+        private val statementHistory = java.util.LinkedList<String>()
+    private const val HISTORY_SIZE = 30
+
     fun generate(skillTag: String, mmr: Int, config: SessionConfig = SessionConfig()): ProceduralExercise {
+        var exercise: ProceduralExercise
+        var attempts = 0
+        do {
+            exercise = generateInternal(skillTag, mmr, config)
+            attempts++
+        } while (statementHistory.contains(exercise.statement) && attempts < 10)
+        
+        statementHistory.addLast(exercise.statement)
+        if (statementHistory.size > HISTORY_SIZE) {
+            statementHistory.removeFirst()
+        }
+        return exercise
+    }
+
+    private fun generateInternal(skillTag: String, mmr: Int, config: SessionConfig): ProceduralExercise {
+        // Grandezas e Lógica
+        if (skillTag in listOf("rule_of_3", "percentage", "interest")) return ProceduralProportions.generate(skillTag, mmr)
+        if (skillTag in listOf("sets_venn", "propositional")) return ProceduralLogic.generate(skillTag, mmr)
+        
+        // Aritmética Avançada
+        if (skillTag in listOf("mmc_mdc", "divisibility_primes", "dizimas", "scientific_notation")) return ProceduralArithmetic.generate(skillTag, mmr)
+        
+        // Funções Reais
+        if (skillTag in listOf("function_eval", "function_domain", "function_composition", "function_exp_log")) return ProceduralFunctions.generate(skillTag, mmr)
+        
         return when (skillTag) {
             "soma_subtracao" -> generateSomaSubtracao(mmr, config.digitsCount, config.valuesCount, config.numberSet)
             "multiplicacao_divisao" -> generateMultiplicacaoDivisao(mmr, config.digitsCount)
