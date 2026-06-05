@@ -24,7 +24,7 @@ object ProceduralGeometry {
         val area = (base * altura) / 2
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Calcule a área de um triângulo com base $base e altura $altura.",
+            statement = "Calcule a área do triângulo retângulo abaixo.\n\n[fig:right_triangle, angle=90, opp=$altura, adj=$base]",
             expectedAnswer = area.toString(),
             primarySkill = "geometria_plana",
             difficulty = difficulty.toDouble(),

@@ -46,6 +46,10 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.AccountTree
+import com.strava_matematica.model.CurriculumNode
+import com.strava_matematica.model.MathCurriculum
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -470,6 +474,59 @@ fun FolhaScreen(
                         tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.30f),
                         modifier = Modifier.size(16.dp),
                     )
+                }
+
+                // Buscando o nó atual para os botões de Youtube e Árvore
+                val currentNode = remember(selectedSkillTag) {
+                    fun findNode(tag: String, nodes: List<CurriculumNode>): CurriculumNode? {
+                        for (n in nodes) {
+                            if (n.proceduralTag == tag || n.id == tag) return n
+                            val f = findNode(tag, n.children)
+                            if (f != null) return f
+                        }
+                        return null
+                    }
+                    findNode(selectedSkillTag, MathCurriculum.tree)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = Spacing.sm, end = 370.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Ícone 1: YouTube
+                    if (currentNode?.youtubeUrl != null) {
+                        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                        IconButton(
+                            onClick = { uriHandler.openUri(currentNode.youtubeUrl) },
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape)
+                                .size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.PlayArrow,
+                                contentDescription = "Assistir vídeo: ${currentNode.name}",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    
+                    // Ícone 2: Árvore (Abre configurações/árvore atual)
+                    IconButton(
+                        onClick = { showSettingsSheet.value = true },
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                            .size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountTree,
+                            contentDescription = "Ver na árvore",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
                 // Seletor circular de questões por folha (LazyRow de 1 a 40)
