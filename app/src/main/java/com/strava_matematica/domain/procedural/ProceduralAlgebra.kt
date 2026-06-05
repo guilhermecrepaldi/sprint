@@ -433,4 +433,41 @@ object ProceduralAlgebra {
             templateId = "alg_fmod_01"
         )
     }
+
+    private fun generateSystems(difficulty: Int): ProceduralExercise {
+        // 2x + y = a
+        // x - y = b
+        val x = ProceduralEngine.randomInstance.nextInt(-5, 5)
+        val y = ProceduralEngine.randomInstance.nextInt(-5, 5)
+        val a = 2 * x + y
+        val b = x - y
+        
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Resolva o sistema linear:\n2x + y = $a\nx - y = $b\nQual é o valor de x?",
+            expectedAnswer = x.toString(),
+            primarySkill = "systems",
+            difficulty = difficulty.toDouble(),
+            templateId = "alg_01",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "numeric"
+        )
+    }
+
+    private fun generatePolynomials(difficulty: Int): ProceduralExercise {
+        val root = ProceduralEngine.randomInstance.nextInt(1, 5)
+        val pStatement = "Dado o polinômio p(x) = x^2 - ${root + 1}x + $root, encontre as raízes reais."
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = pStatement,
+            expectedAnswer = "$root, 1",
+            primarySkill = "polynomials",
+            difficulty = difficulty.toDouble(),
+            templateId = "alg_02",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "text"
+        )
+    }
 }

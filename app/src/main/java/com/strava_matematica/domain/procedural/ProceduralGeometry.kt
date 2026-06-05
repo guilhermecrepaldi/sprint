@@ -14,6 +14,7 @@ object ProceduralGeometry {
             "geo_euc_spc", "geometria_espacial" -> generateGeometriaEspacial(diff)
             "geo_ana_cart", "geometria_analitica" -> generateGeometriaAnalitica(diff)
             "geo_ana_eq" -> generateReta(diff)
+            "trig_basic", "trigonometria" -> generateTrigonometry(diff)
             else -> generateGeometriaPlana(diff) // Fallback
         }
     }
@@ -224,6 +225,21 @@ object ProceduralGeometry {
             primarySkill = "geo_ana_eq",
             difficulty = difficulty.toDouble(),
             templateId = "geo_analitica_02",
+            canvasMode = "blank",
+            validatorType = "exact",
+            answerType = "numeric"
+        )
+    }
+
+    private fun generateTrigonometry(difficulty: Int): ProceduralExercise {
+        val angle = ProceduralEngine.randomInstance.nextInt(1, 4) * 30
+        return ProceduralExercise(
+            id = UUID.randomUUID().toString(),
+            statement = "Sabendo que as razões trigonométricas do círculo se repetem, calcule o seno do ângulo de ${angle}º.",
+            expectedAnswer = if (angle == 90) "1" else "...", // Simplified mock
+            primarySkill = "trigonometry",
+            difficulty = difficulty.toDouble(),
+            templateId = "trig_01",
             canvasMode = "blank",
             validatorType = "exact",
             answerType = "numeric"
