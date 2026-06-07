@@ -42,12 +42,16 @@ object ProceduralArithmetic {
     }
 
     private fun generatePrimes(difficulty: Int): ProceduralExercise {
+        val rng = ProceduralEngine.randomInstance
         val primes = listOf(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47)
-        val p = primes.random(ProceduralEngine.randomInstance)
+        val composites = listOf(4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 22, 24, 25, 26, 27, 28, 30, 32, 33, 34, 35, 36, 38, 39, 40, 42, 44, 45, 46, 48, 49, 50)
+        val usePrime = rng.nextBoolean()
+        val n = if (usePrime) primes.random(rng) else composites.random(rng)
+        val answer = if (usePrime) "Sim" else "Não"
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "O número $p é primo? Responda com 'Sim' ou 'Não'.",
-            expectedAnswer = "Sim",
+            statement = "O número $n é primo? Responda com 'Sim' ou 'Não'.",
+            expectedAnswer = answer,
             primarySkill = "divisibility_primes",
             difficulty = difficulty.toDouble(),
             templateId = "arithmetic_02",
@@ -58,24 +62,44 @@ object ProceduralArithmetic {
     }
 
     private fun generateDizimas(difficulty: Int): ProceduralExercise {
-        val period = ProceduralEngine.randomInstance.nextInt(1, 9)
-        val fracNum = period
-        val fracDen = 9
+        val rng = ProceduralEngine.randomInstance
+        val isTwoDigit = rng.nextBoolean()
         fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
-        val g = gcd(fracNum, fracDen)
-        val expected = "${fracNum / g}/${fracDen / g}"
-        
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = "Qual a fração geratriz da dízima periódica 0,$period$period$period...? (Simplifique a fração)",
-            expectedAnswer = expected,
-            primarySkill = "dizimas",
-            difficulty = difficulty.toDouble(),
-            templateId = "arithmetic_03",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "fraction"
-        )
+
+        if (isTwoDigit) {
+            // Dízima periódica composta: 0.ababab... = ab/99
+            val period = rng.nextInt(11, 99)
+            val g = gcd(period, 99)
+            val num = period / g
+            val den = 99 / g
+            val display = "$period"
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Qual a fração geratriz da dízima periódica 0,${display}${display}${display}...? (Simplifique)",
+                expectedAnswer = "$num/$den",
+                primarySkill = "dizimas",
+                difficulty = difficulty.toDouble(),
+                templateId = "arithmetic_03",
+                canvasMode = "blank",
+                validatorType = "exact",
+                answerType = "fraction"
+            )
+        } else {
+            // Dízima periódica simples: 0.NNN... = N/9
+            val period = rng.nextInt(1, 9)
+            val g = gcd(period, 9)
+            return ProceduralExercise(
+                id = UUID.randomUUID().toString(),
+                statement = "Qual a fração geratriz da dízima periódica 0,$period$period$period...? (Simplifique)",
+                expectedAnswer = "${period / g}/${9 / g}",
+                primarySkill = "dizimas",
+                difficulty = difficulty.toDouble(),
+                templateId = "arithmetic_03",
+                canvasMode = "blank",
+                validatorType = "exact",
+                answerType = "fraction"
+            )
+        }
     }
 
     private fun generateScientificNotation(difficulty: Int): ProceduralExercise {

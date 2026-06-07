@@ -19,7 +19,7 @@ class MlKitRecognizer(@Suppress("UNUSED_PARAMETER") context: Context) : MathReco
         DigitalInkRecognitionModel.builder(it).build()
     }
 
-    override suspend fun recognize(strokes: List<List<Offset>>): String? {
+    override suspend fun recognize(strokes: List<List<Offset>>, expectedAnswer: String?): String? {
         val model = this.model ?: return null
         if (strokes.isEmpty()) return null
 
@@ -45,8 +45,36 @@ class MlKitRecognizer(@Suppress("UNUSED_PARAMETER") context: Context) : MathReco
             )
             recognizer.recognize(ink)
                 .addOnSuccessListener { result ->
-                    val text = result.candidates.firstOrNull()?.text
-                    continuation.resume(text)
+                    var bestText = result.candidates.firstOrNull()?.text
+                    if (expectedAnswer != null && bestText != null) {
+                        val expectedClean = expectedAnswer.replace("\\s".toRegex(), "")
+                        for (candidate in result.candidates) {
+                            val candidateClean = candidate.text.replace("\\s".toRegex(), "")
+                            if (candidateClean == expectedClean) {
+                                bestText = candidate.text
+                                continuation.resume(bestText)
+                                return@addOnSuccessListener
+                            }
+                        }
+                    }
+
+                    // Se não achamos a resposta exata, tentar mitigar alucinações de letras
+                    if (bestText != null) {
+                        val isExpectedNumeric = expectedAnswer?.matches(Regex("""^-?\d+([.,]\d+)?$""")) == true
+                        val isMathExpected = true // Na matemática, preferimos sempre números e sinais
+
+                        val mathRegex = Regex("""^[-+*/=0-9().,\s]+$""")
+                        if (!bestText!!.matches(mathRegex)) {
+                            for (candidate in result.candidates) {
+                                if (candidate.text.matches(mathRegex)) {
+                                    bestText = candidate.text
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    continuation.resume(bestText)
                 }
                 .addOnFailureListener {
                     continuation.resume(null)

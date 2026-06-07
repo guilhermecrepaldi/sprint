@@ -24,7 +24,7 @@ interface MathRecognizer {
      * @return LaTeX string (e.g. `"x = 5"`, `"\frac{1}{2}"`), or null if
      *         recognition is unavailable or failed.
      */
-    suspend fun recognize(strokes: List<List<Offset>>): String?
+    suspend fun recognize(strokes: List<List<Offset>>, expectedAnswer: String? = null): String?
 
     /** Release any native resources (call from ViewModel.onCleared). */
     fun release() { /* default: no-op */ }
@@ -32,5 +32,5 @@ interface MathRecognizer {
 
 /** Always returns null — uses Claude OCR on the backend. Zero setup needed. */
 object NoOpRecognizer : MathRecognizer {
-    override suspend fun recognize(strokes: List<List<Offset>>): String? = null
+    override suspend fun recognize(strokes: List<List<Offset>>, expectedAnswer: String?): String? = null
 }

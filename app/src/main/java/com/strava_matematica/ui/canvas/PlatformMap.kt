@@ -217,7 +217,8 @@ fun PlatformMap(
             val status = skillStatuses[tag]
             val (fill, border) = nodeColorsForStatus(status)
             drawNode(pos, nodeRadiusPx, fill, border, strokePx)
-            drawMapLabel(measurer, label(tag), pos + Offset(0f, nodeRadiusPx + 10f), CanvasColors.TextSecondary)
+            val text = if (status == "automatizado") "🏆 " + label(tag) else label(tag)
+            drawMapLabel(measurer, text, pos + Offset(0f, nodeRadiusPx + 10f), CanvasColors.TextSecondary)
         }
 
         // ── Draw unlocked nodes ───────────────────────────────────────────────
@@ -231,8 +232,9 @@ fun PlatformMap(
                                  else nodeColorsForStatus(status)
             val alpha = if (locked) 0.4f else 1f
             drawNode(pos, nodeRadiusPx, fill, border, strokePx, alpha)
+            val text = if (status == "automatizado") "🏆 " + label(tag) else label(tag)
             drawMapLabel(
-                measurer, label(tag),
+                measurer, text,
                 pos + Offset(0f, nodeRadiusPx + 10f),
                 CanvasColors.TextSecondary.copy(alpha = alpha),
             )

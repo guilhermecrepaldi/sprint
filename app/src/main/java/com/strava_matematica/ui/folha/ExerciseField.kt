@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
@@ -247,8 +246,8 @@ fun ExerciseField(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .height(90.dp)
-                    .width(195.dp)
+                    .height(110.dp)
+                    .width(260.dp)
                     .background(boxBgColor, RoundedCornerShape(8.dp))
                     .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
             ) {
@@ -476,7 +475,7 @@ private fun AnswerPad(
     onKey: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val keys = listOf("7", "8", "9", "-", "4", "5", "6", ".", "1", "2", "3", "/", "0", "x", "=", "del", "clr", "ok")
+    val keys = listOf("7", "8", "9", "-", "4", "5", "6", ".", "1", "2", "3", "/", "0", "x", "+", "=", "(", ")", "del", "clr", "ok")
     Row(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f), RoundedCornerShape(8.dp))

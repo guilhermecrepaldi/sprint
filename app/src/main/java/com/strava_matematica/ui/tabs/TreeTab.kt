@@ -26,7 +26,7 @@ import com.strava_matematica.model.CurriculumNode
 import com.strava_matematica.model.MathCurriculum
 
 @Composable
-fun TreeTab(modifier: Modifier = Modifier, onStartSprint: (String) -> Unit) {
+fun TreeTab(modifier: Modifier = Modifier, skillStatuses: Map<String, String> = emptyMap(), onStartSprint: (String) -> Unit) {
     Box(modifier = modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -44,14 +44,14 @@ fun TreeTab(modifier: Modifier = Modifier, onStartSprint: (String) -> Unit) {
             }
             
             items(MathCurriculum.tree) { domain ->
-                DomainNodeView(domain, onStartSprint)
+                DomainNodeView(domain, skillStatuses, onStartSprint)
             }
         }
     }
 }
 
 @Composable
-fun DomainNodeView(domain: CurriculumNode, onStartSprint: (String) -> Unit) {
+fun DomainNodeView(domain: CurriculumNode, skillStatuses: Map<String, String>, onStartSprint: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
 
@@ -91,7 +91,7 @@ fun DomainNodeView(domain: CurriculumNode, onStartSprint: (String) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 domain.children.forEach { topic ->
-                    TopicNodeView(topic, onStartSprint)
+                    TopicNodeView(topic, skillStatuses, onStartSprint)
                 }
             }
         }
@@ -99,7 +99,7 @@ fun DomainNodeView(domain: CurriculumNode, onStartSprint: (String) -> Unit) {
 }
 
 @Composable
-fun TopicNodeView(topic: CurriculumNode, onStartSprint: (String) -> Unit) {
+fun TopicNodeView(topic: CurriculumNode, skillStatuses: Map<String, String>, onStartSprint: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
 
@@ -139,7 +139,7 @@ fun TopicNodeView(topic: CurriculumNode, onStartSprint: (String) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 topic.children.forEach { subject ->
-                    SubjectNodeView(subject, onStartSprint)
+                    SubjectNodeView(subject, skillStatuses, onStartSprint)
                 }
             }
         }
@@ -147,7 +147,7 @@ fun TopicNodeView(topic: CurriculumNode, onStartSprint: (String) -> Unit) {
 }
 
 @Composable
-fun SubjectNodeView(subject: CurriculumNode, onStartSprint: (String) -> Unit) {
+fun SubjectNodeView(subject: CurriculumNode, skillStatuses: Map<String, String>, onStartSprint: (String) -> Unit) {
     // Para efeito de demonstração de UI conforme solicitado (Sprint e Simulado),
     // usaremos números aleatórios fixados pelo hash do ID do nó,
     // de forma a não ficarem mudando a cada recomposição, mas aparentarem ser reais.
@@ -157,19 +157,21 @@ fun SubjectNodeView(subject: CurriculumNode, onStartSprint: (String) -> Unit) {
     val simuladoAttempts = (hash % 50) + 5
     val simuladoAcc = 50 + (hash % 45)
 
+    val isMastered = skillStatuses[subject.proceduralTag ?: subject.id] == "automatizado"
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
+            .background(if (isMastered) Color(0xFFFFFDF5) else Color.White)
             .clickable { subject.proceduralTag?.let { onStartSprint(it) } }
             .padding(12.dp)
     ) {
         Text(
-            text = "• ${subject.name}",
+            text = if (isMastered) "🏆 ${subject.name}" else "• ${subject.name}",
             fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF2C3E50)
+            fontWeight = if (isMastered) FontWeight.Bold else FontWeight.Medium,
+            color = if (isMastered) Color(0xFFD4AF37) else Color(0xFF2C3E50)
         )
         Spacer(modifier = Modifier.height(6.dp))
         Row(

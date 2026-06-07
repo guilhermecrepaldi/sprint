@@ -35,6 +35,7 @@ fun CurriculumTreeSelector(
     modifier: Modifier = Modifier,
     mode: SelectorMode,
     selectedSingleId: String? = null,
+    skillStatuses: Map<String, String> = emptyMap(),
     onSingleSelected: (String) -> Unit = {},
     quantities: Map<String, Int> = emptyMap(),
     onQuantityChanged: (String, Int) -> Unit = { _, _ -> }
@@ -58,6 +59,7 @@ fun CurriculumTreeSelector(
                 domain = domain,
                 mode = mode,
                 selectedSingleId = selectedSingleId,
+                skillStatuses = skillStatuses,
                 onSingleSelected = onSingleSelected,
                 quantities = quantities,
                 onQuantityChanged = onQuantityChanged
@@ -71,6 +73,7 @@ fun DomainSelectorNode(
     domain: CurriculumNode,
     mode: SelectorMode,
     selectedSingleId: String?,
+    skillStatuses: Map<String, String>,
     onSingleSelected: (String) -> Unit,
     quantities: Map<String, Int>,
     onQuantityChanged: (String, Int) -> Unit
@@ -125,6 +128,7 @@ fun DomainSelectorNode(
                         topic = topic,
                         mode = mode,
                         selectedSingleId = selectedSingleId,
+                        skillStatuses = skillStatuses,
                         onSingleSelected = onSingleSelected,
                         quantities = quantities,
                         onQuantityChanged = onQuantityChanged
@@ -140,6 +144,7 @@ fun TopicSelectorNode(
     topic: CurriculumNode,
     mode: SelectorMode,
     selectedSingleId: String?,
+    skillStatuses: Map<String, String>,
     onSingleSelected: (String) -> Unit,
     quantities: Map<String, Int>,
     onQuantityChanged: (String, Int) -> Unit
@@ -187,6 +192,7 @@ fun TopicSelectorNode(
                         subject = subject,
                         mode = mode,
                         selectedSingleId = selectedSingleId,
+                        skillStatuses = skillStatuses,
                         onSingleSelected = onSingleSelected,
                         quantities = quantities,
                         onQuantityChanged = onQuantityChanged
@@ -202,17 +208,20 @@ fun SubjectSelectorNode(
     subject: CurriculumNode,
     mode: SelectorMode,
     selectedSingleId: String?,
+    skillStatuses: Map<String, String>,
     onSingleSelected: (String) -> Unit,
     quantities: Map<String, Int>,
     onQuantityChanged: (String, Int) -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
 
+    val isMastered = skillStatuses[subject.proceduralTag ?: subject.id] == "automatizado"
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
+            .background(if (isMastered) Color(0xFFFFFDF5) else Color.White)
             .clickable {
                 if (mode == SelectorMode.SINGLE_SELECTION) {
                     onSingleSelected(subject.id)
@@ -224,10 +233,10 @@ fun SubjectSelectorNode(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = subject.name,
+                text = if (isMastered) "🏆 ${subject.name}" else subject.name,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF2C3E50)
+                fontWeight = if (isMastered) FontWeight.Bold else FontWeight.Medium,
+                color = if (isMastered) Color(0xFFD4AF37) else Color(0xFF2C3E50)
             )
             if (subject.youtubeUrl != null) {
                 Row(

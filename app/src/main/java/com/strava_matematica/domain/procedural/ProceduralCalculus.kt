@@ -150,14 +150,15 @@ object ProceduralCalculus {
     private fun generateDerivadaCadeia(difficulty: Int, random: Random): Pair<String, String> {
         val a = random.nextInt(2, 5)
         val exp = random.nextInt(2, 4)
-        val x0 = random.nextInt(1, 3)
-        
+        val x0 = random.nextInt(1, 4)
+
         // f(x) = (ax + 1)^exp
-        // f'(x) = exp * (ax + 1)^(exp - 1) * a
+        // f'(x) = exp * a * (ax + 1)^(exp - 1)
         val inner = a * x0 + 1
-        val innerExp = Math.pow(inner.toDouble(), (exp - 1).toDouble()).toInt()
-        val ans = exp * innerExp * a
-        
-        return Pair("Dada a função \\( f(x) = ( x + 1)^ \\), calcule o valor da derivada \\( f'() \\) usando a Regra da Cadeia.", "")
+        val innerPow = Math.pow(inner.toDouble(), (exp - 1).toDouble()).toInt()
+        val ans = exp * a * innerPow
+
+        val statement = "Dada a função \\(f(x) = (${a}x + 1)^{${exp}}\\), calcule \\(f'(${x0})\\) usando a Regra da Cadeia."
+        return Pair(statement, "$ans")
     }
 }

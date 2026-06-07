@@ -273,7 +273,34 @@ class LocalSprintRepository private constructor(context: Context) {
         for (attempt in 1..10) {
             var exercise: ProceduralExercise? = null
             
-            if (!useProcedural) {
+            // Zoom exato: filtrar por template_id quando definido
+            if (!useProcedural && config.templatePin != null) {
+                val countByTemplate = catalog.countByTemplate(config.templatePin!!)
+                if (countByTemplate > 0) {
+                    val exerciseId = catalog.exerciseIdByTemplateOffset(
+                        config.templatePin!!,
+                        kotlin.random.Random.nextInt(countByTemplate)
+                    )
+                    if (exerciseId != null) {
+                        val entity = catalog.getById(exerciseId)
+                        if (entity != null) {
+                            exercise = ProceduralExercise(
+                                id = entity.id,
+                                statement = entity.statement,
+                                expectedAnswer = entity.expectedAnswer,
+                                primarySkill = entity.primarySkill,
+                                difficulty = entity.difficulty,
+                                templateId = entity.templateId ?: "default",
+                                canvasMode = entity.canvasMode,
+                                validatorType = entity.validatorType,
+                                answerType = entity.answerType,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!useProcedural && exercise == null) {
                 val count = catalog.countBySkill(skillTag)
                 if (count > 0) {
                     val targetDifficulty = mmr.toDouble() / 100.0

@@ -66,7 +66,7 @@ class IinkRecognizer(private val context: Context) : MathRecognizer {
     //     return editor.contentPackage
     // }
 
-    override suspend fun recognize(strokes: List<List<Offset>>): String? {
+    override suspend fun recognize(strokes: List<List<Offset>>, expectedAnswer: String?): String? {
         // Stub: remove this return when iink is activated.
         return null
 

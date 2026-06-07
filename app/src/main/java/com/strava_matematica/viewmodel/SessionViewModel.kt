@@ -7,10 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.strava_matematica.data.local.repository.LocalSprintRepository
 import com.strava_matematica.model.ApiStatus
-import com.strava_matematica.model.SessionStartRequest
-import com.strava_matematica.model.SubmitRequest
-import com.strava_matematica.model.FieldSubmit
-import com.strava_matematica.ui.folha.ImageUtils
 import com.strava_matematica.model.GestureConfig
 import com.strava_matematica.model.CalibrationSample
 import com.strava_matematica.model.DrillFlushResult

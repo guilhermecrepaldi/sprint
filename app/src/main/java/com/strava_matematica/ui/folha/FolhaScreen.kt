@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -23,12 +22,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -52,7 +48,6 @@ import com.strava_matematica.model.CurriculumNode
 import com.strava_matematica.model.MathCurriculum
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -118,6 +113,7 @@ fun FolhaScreen(
     skillAccuracy: Map<String, Float> = emptyMap(),
     skillAttempts: Map<String, Int> = emptyMap(),
     skillFluency: Map<String, Float> = emptyMap(),
+    skillStatuses: Map<String, String> = emptyMap(),
     masteryDetected: Boolean = false,
     suggestedNextSkill: String? = null,
     scoreRiskVisible: Boolean = false,
@@ -365,6 +361,7 @@ fun FolhaScreen(
                         skillAccuracy = skillAccuracy,
                         skillAttempts = skillAttempts,
                         skillFluency = skillFluency,
+                        skillStatuses = skillStatuses,
                         isSimulationActive = isSimulationActive,
                         showSprintScrolls = showSprintScrolls,
                         modifier = Modifier
@@ -942,6 +939,7 @@ private fun SprintScrollConfigPage(
     skillAccuracy: Map<String, Float>,
     skillAttempts: Map<String, Int>,
     skillFluency: Map<String, Float>,
+    skillStatuses: Map<String, String>,
     isSimulationActive: androidx.compose.runtime.MutableState<Boolean>,
     showSprintScrolls: androidx.compose.runtime.MutableState<Boolean>,
     onApply: (skillTag: String, density: String, layoutMode: String, difficultyStart: Double?, digitsCount: Int, 
@@ -1021,6 +1019,7 @@ valuesCount: Int, numberSet: String) -> Unit,
                     CurriculumTreeSelector(
                         mode = SelectorMode.SINGLE_SELECTION,
                         selectedSingleId = selectedSkill.value,
+                        skillStatuses = skillStatuses,
                         onSingleSelected = { selectedSkill.value = it }
                     )
 

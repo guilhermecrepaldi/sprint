@@ -66,6 +66,7 @@ dependencies {
     implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 
     // MyScript iink SDK (~50 MB AAR) — uncomment after setup in settings.gradle.kts.
     // See app/src/main/java/.../recognizer/IinkRecognizer.kt for the full setup guide.

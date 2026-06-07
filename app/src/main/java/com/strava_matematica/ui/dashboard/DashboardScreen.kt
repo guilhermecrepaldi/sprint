@@ -53,45 +53,15 @@ import com.strava_matematica.ui.folha.InkCanvas
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import com.strava_matematica.model.MathCurriculum
+
 // ── Trilha de habilidades em ordem pedagógica ────────────────────────────────
 
-val SKILL_ORDER = listOf(
-    "soma_subtracao", "multiplicacao_divisao", "fracoes_decimais",
-    "porcentagem_razao", "potenciacao_radiciacao", "equacoes_lineares",
-    "sistemas_equacoes", "fatoracao_produtos_notaveis", "inequacoes",
-    "equacoes_quadraticas", "funcao_afim", "funcao_quadratica",
-    "funcao_exponencial", "funcao_logaritmica", "funcao_modular",
-    "geometria_plana", "geometria_espacial", "geometria_analitica",
-    "progressoes_pa_pg", "combinatoria", "probabilidade",
-    "trig_razoes", "trig_seno_cosseno_tangente", "trig_identidades",
-    "trig_equacoes", "nocao_de_limite", "continuidade",
-    "derivadas_basicas", "derivadas_regra_cadeia", "derivadas_produto_quociente",
-    "aplicacoes_derivadas", "integrais_indefinidas", "integrais_definidas",
-    "aplicacoes_integrais",
-)
+val SKILL_ORDER: List<String>
+    get() = MathCurriculum.getFlatNodes().filter { it.children.isEmpty() }.map { it.proceduralTag ?: it.id }
 
-val SKILL_NAMES = mapOf(
-    "soma_subtracao" to "Soma e Sub.", "multiplicacao_divisao" to "Multiplicação",
-    "fracoes_decimais" to "Frações", "porcentagem_razao" to "Porcentagem",
-    "potenciacao_radiciacao" to "Potenciação", "equacoes_lineares" to "Eq. Lineares",
-    "sistemas_equacoes" to "Sistemas", "fatoracao_produtos_notaveis" to "Fatoração",
-    "inequacoes" to "Inequações", "equacoes_quadraticas" to "Eq. Quadráticas",
-    "funcao_afim" to "Função Afim", "funcao_quadratica" to "Função Quadrática",
-    "funcao_exponencial" to "Exponencial", "funcao_logaritmica" to "Logaritmo",
-    "funcao_modular" to "Modular", "geometria_plana" to "Geo. Plana",
-    "geometria_espacial" to "Geo. Espacial", "geometria_analitica" to "Geo. Analítica",
-    "progressoes_pa_pg" to "PA e PG", "combinatoria" to "Combinatória",
-    "probabilidade" to "Probabilidade", "trig_razoes" to "Trig. Razões",
-    "trig_seno_cosseno_tangente" to "Sen, Cos, Tan", "trig_identidades" to "Identidades",
-    "trig_equacoes" to "Eq. Trig.", "nocao_de_limite" to "Limite",
-    "continuidade" to "Continuidade", "derivadas_basicas" to "Derivadas",
-    "derivadas_regra_cadeia" to "Regra da Cadeia",
-    "derivadas_produto_quociente" to "Prod. e Quot.",
-    "aplicacoes_derivadas" to "Aplic. Derivadas",
-    "integrais_indefinidas" to "Integrais Indef.",
-    "integrais_definidas" to "Integrais Def.",
-    "aplicacoes_integrais" to "Aplic. Integrais",
-)
+val SKILL_NAMES: Map<String, String>
+    get() = MathCurriculum.getFlatNodes().filter { it.children.isEmpty() }.associate { (it.proceduralTag ?: it.id) to it.name }
 
 // ── Modos de estudo: mapeiam para density no ViewModel ───────────────────────
 // "high" = Simulado  |  "medium" = Fixação  |  "low" = Atenção

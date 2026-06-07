@@ -143,6 +143,19 @@ Pass rate: 100%
 - [x] [INFRA] Agente remoto CCR criado: trig_01YBesuXGBdHwmn3L51Hh8iy · roda 9h Sao Paulo (12:00 UTC) diariamente · https://claude.ai/code/routines/trig_01YBesuXGBdHwmn3L51Hh8iy
 - [x] [BUILD] BUILD SUCCESSFUL (lote 6) — de942ed
 
+## ✅ Concluídas (sprint 2026-06-07 diagnostico + build)
+
+- [x] [ENV] JDK 21 instalado: Microsoft OpenJDK 21.0.11.10-hotspot
+- [x] [ENV] JAVA_HOME configurado para build Android
+- [x] [BUILD] BUILD SUCCESSFUL — 39 tasks, 2s, todos up-to-date
+- [x] [QA] Emulador Medium_Tablet (Android 15) rodando
+- [x] [QA] `.\simular_android.ps1 -NoBackend` — app instalou e abriu sem crash
+- [x] [QA] Screenshot capturado: `.sprint/android_screenshot.png`
+- [x] [QA] Diagnostico completo: 89 arquivos Kotlin, 14 procedural engines, 90+ skills
+- [x] [QA] Backend diagnostico: 109 pytest verdes, 105 unittest verdes, 28 endpoints
+- [x] [DOCS] Handoff atualizado com diagnostico completo
+- [x] [DOCS] Spec/roadmap consolidados
+
 ## 🔄 Em progresso
 
 (nenhuma)
@@ -153,8 +166,19 @@ Pass rate: 100%
 
 ## 📋 Pendentes
 
-- [ ] [QA] Testar no emulador: ZoomableCanvas pinch revela mapa; 2-finger tap avança sem zoom
-- [ ] [INFRA] Rodar seed: `python backend/seed/exercises.py` no servidor para popular o banco com 147 exercícios
+- [ ] [CODE] Commit dos 16 arquivos modificados
+- [ ] [QA] Teste funcional: escrita → enter → feedback → proximo exercicio
+- [ ] [QA] Teste funcional: 5 erros seguidos → aviso de score
+- [ ] [QA] Teste funcional: triplo toque → scrolls secundarios
+- [ ] [QA] Teste funcional: trocar skill na Arvore → Sprint atualiza
+- [ ] [QA] Teste funcional: Painel/Perfil mostra historico apos exercicios
+- [ ] [BUGFIX] ArenaManager seed diaria (sempre retorna 42)
+- [ ] [CODE] Thread safety em ProceduralEngine.statementHistory
+- [ ] [CODE] Thread safety em LocalSprintRepository.recentStatements
+- [ ] [CODE] Remover dead code: 12+ metodos privados nao chamados
+- [ ] [ARCH] Migrations reais em vez de fallbackToDestructiveMigration
+- [ ] [TEST] Testes Android unitarios
+- [ ] [INFRA] Rodar seed: `python backend/seed/exercises.py` no servidor
 
 ## Decisões tomadas
 
@@ -219,6 +243,7 @@ Pass rate: 100%
 
 ## Log de lotes
 
+- [07:00] Lote 11: 10/10 ✅ — 100% — JDK 21 install, JAVA_HOME fix, BUILD SUCCESSFUL, emulator QA, screenshot, diagnostic report, handoff update
 - [00:13] Lote 1: 3/3 ✅ — 100% — build fix + 2-finger tap + settings
 - [01:30] Lote 2: 5/5 ✅ — 100% — sprint automation + backend history API + dashboard real data
 - [02:15] Lote 3: 8/8 ✅ — 100% — BuildConfig URL, error/loading UI, notes persistence, guideMode wiring; BUILD SUCCESSFUL 1s

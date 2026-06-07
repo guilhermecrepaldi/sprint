@@ -44,36 +44,144 @@ object ProceduralGeometry {
     }
 
     private fun generateGeometriaPlana(difficulty: Int): ProceduralExercise {
-        val base = ProceduralEngine.randomInstance.nextInt(2, 10)
-        val altura = ProceduralEngine.randomInstance.nextInt(2, 10)
-        val area = (base * altura) / 2
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = "Calcule a área do triângulo retângulo abaixo.\n\n[fig:right_triangle, angle=90, opp=$altura, adj=$base]",
-            expectedAnswer = area.toString(),
-            primarySkill = "geometria_plana",
-            difficulty = difficulty.toDouble(),
-            templateId = "geo_plana_01",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "numeric"
-        )
+        val rng = ProceduralEngine.randomInstance
+        val shape = rng.nextInt(1, 5)
+        return when (shape) {
+            1 -> { // Triângulo retângulo
+                val base = rng.nextInt(2, 10)
+                val altura = rng.nextInt(2, 10)
+                val area = (base * altura) / 2
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Calcule a área do triângulo retângulo de catetos $base e $altura.",
+                    expectedAnswer = area.toString(),
+                    primarySkill = "geometria_plana",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_plana_01",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+            2 -> { // Círculo (área)
+                val r = rng.nextInt(1, 8)
+                val area = r * r
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Calcule a área de um círculo de raio $r. (Use π ≈ 3.14 e responda o valor inteiro arredondado, mas aqui π² não, então use a = πr² e responda com π, ex: 25π)",
+                    expectedAnswer = "${area}π",
+                    primarySkill = "geometria_plana",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_plana_02",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "expression"
+                )
+            }
+            3 -> { // Trapézio
+                val baseMaior = rng.nextInt(4, 12)
+                val baseMenor = rng.nextInt(2, baseMaior)
+                val altura = rng.nextInt(2, 8)
+                val area = (baseMaior + baseMenor) * altura / 2
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Calcule a área de um trapézio de bases $baseMaior e $baseMenor e altura $altura.",
+                    expectedAnswer = area.toString(),
+                    primarySkill = "geometria_plana",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_plana_03",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+            else -> { // Retângulo (perímetro)
+                val l = rng.nextInt(3, 10)
+                val w = rng.nextInt(2, l)
+                val perim = 2 * (l + w)
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Calcule o perímetro de um retângulo de lados $l e $w.",
+                    expectedAnswer = perim.toString(),
+                    primarySkill = "geometria_plana",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_plana_04",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+        }
     }
 
     private fun generateGeometriaEspacial(difficulty: Int): ProceduralExercise {
-        val lado = ProceduralEngine.randomInstance.nextInt(2, 6)
-        val volume = lado * lado * lado
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = "Qual o volume de um cubo com aresta de tamanho $lado?\n\n[fig:cube,edge=$lado]",
-            expectedAnswer = volume.toString(),
-            primarySkill = "geometria_espacial",
-            difficulty = difficulty.toDouble(),
-            templateId = "geo_espacial_01",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "numeric"
-        )
+        val rng = ProceduralEngine.randomInstance
+        val shape = rng.nextInt(1, 5)
+        return when (shape) {
+            1 -> { // Cubo
+                val lado = rng.nextInt(2, 6)
+                val volume = lado * lado * lado
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Qual o volume de um cubo com aresta de tamanho $lado?",
+                    expectedAnswer = volume.toString(),
+                    primarySkill = "geometria_espacial",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_espacial_01",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+            2 -> { // Esfera (volume em termos de π)
+                val r = rng.nextInt(1, 5)
+                val r3 = r * r * r
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Qual o volume de uma esfera de raio $r? (Responda em termos de π, ex: 36π)",
+                    expectedAnswer = "${(4 * r3)}π/3",
+                    primarySkill = "geometria_espacial",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_espacial_02",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "expression"
+                )
+            }
+            3 -> { // Paralelepípedo
+                val a = rng.nextInt(2, 6)
+                val b = rng.nextInt(2, 6)
+                val c = rng.nextInt(2, 5)
+                val volume = a * b * c
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Qual o volume de um paralelepípedo de dimensões $a × $b × $c?",
+                    expectedAnswer = volume.toString(),
+                    primarySkill = "geometria_espacial",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_espacial_03",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+            else -> { // Cilindro (volume em termos de π)
+                val r = rng.nextInt(1, 5)
+                val h = rng.nextInt(2, 8)
+                val r2 = r * r
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Qual o volume de um cilindro de raio $r e altura $h? (Responda em termos de π, ex: 24π)",
+                    expectedAnswer = "${r2 * h}π",
+                    primarySkill = "geometria_espacial",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "geo_espacial_04",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "expression"
+                )
+            }
+        }
     }
 
 
@@ -97,35 +205,118 @@ object ProceduralGeometry {
     }
 
     private fun generateCombinatoria(difficulty: Int): ProceduralExercise {
-        val n = ProceduralEngine.randomInstance.nextInt(4, 7)
-        var fat = 1
-        for (i in 2..n) fat *= i
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = "Calcule o número de permutações simples de $n elementos ($n!).",
-            expectedAnswer = fat.toString(),
-            primarySkill = "combinatoria",
-            difficulty = difficulty.toDouble(),
-            templateId = "comb_01",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "numeric"
-        )
+        val rng = ProceduralEngine.randomInstance
+        val type = rng.nextInt(1, 4)
+        return when (type) {
+            1 -> { // Fatorial
+                val n = rng.nextInt(3, 8)
+                var fat = 1
+                for (i in 2..n) fat *= i
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Calcule $n! (fatorial de $n).",
+                    expectedAnswer = fat.toString(),
+                    primarySkill = "combinatoria",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "comb_01",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+            2 -> { // Permutação simples
+                val n = rng.nextInt(3, 7)
+                var fat = 1
+                for (i in 2..n) fat *= i
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Quantas permutações simples de $n elementos são possíveis?",
+                    expectedAnswer = fat.toString(),
+                    primarySkill = "combinatoria",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "comb_02",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+            else -> { // Arranjo A(n,k)
+                val n = rng.nextInt(4, 8)
+                val k = rng.nextInt(2, n)
+                var arr = 1
+                for (i in 0 until k) arr *= (n - i)
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Calcule o arranjo simples A($n, $k).",
+                    expectedAnswer = arr.toString(),
+                    primarySkill = "combinatoria",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "comb_03",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "numeric"
+                )
+            }
+        }
     }
 
     private fun generateProbabilidade(difficulty: Int): ProceduralExercise {
-        val faces = 6
-        return ProceduralExercise(
-            id = UUID.randomUUID().toString(),
-            statement = "No lançamento de um dado não viciado de 6 faces, qual a probabilidade de cair um número par? Responda em fração irredutível simplificada a/b.",
-            expectedAnswer = "1/2",
-            primarySkill = "probabilidade",
-            difficulty = difficulty.toDouble(),
-            templateId = "prob_01",
-            canvasMode = "blank",
-            validatorType = "exact",
-            answerType = "numeric"
-        )
+        val rng = ProceduralEngine.randomInstance
+        val scenario = rng.nextInt(1, 4)
+        return when (scenario) {
+            1 -> { // Dado par
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "No lançamento de um dado de 6 faces, qual a probabilidade de sair um número par? (Fração irredutível)",
+                    expectedAnswer = "1/2",
+                    primarySkill = "probabilidade",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "prob_01",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "fraction"
+                )
+            }
+            2 -> { // Dado maior que 4
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "No lançamento de um dado de 6 faces, qual a probabilidade de sair um número maior que 4? (Fração irredutível)",
+                    expectedAnswer = "1/3",
+                    primarySkill = "probabilidade",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "prob_02",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "fraction"
+                )
+            }
+            3 -> { // Moeda: 2 caras seguidas
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "Ao lançar uma moeda justa 2 vezes, qual a probabilidade de sair cara nas duas? (Fração irredutível)",
+                    expectedAnswer = "1/4",
+                    primarySkill = "probabilidade",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "prob_03",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "fraction"
+                )
+            }
+            else -> { // Dado: probabilidade de múltiplos de 3
+                ProceduralExercise(
+                    id = UUID.randomUUID().toString(),
+                    statement = "No lançamento de um dado de 6 faces, qual a probabilidade de sair um múltiplo de 3? (Fração irredutível)",
+                    expectedAnswer = "1/3",
+                    primarySkill = "probabilidade",
+                    difficulty = difficulty.toDouble(),
+                    templateId = "prob_04",
+                    canvasMode = "blank",
+                    validatorType = "exact",
+                    answerType = "fraction"
+                )
+            }
+        }
     }
 
     private fun generateTrigRazoes(difficulty: Int): ProceduralExercise {
@@ -146,16 +337,31 @@ object ProceduralGeometry {
     }
 
     private fun generateTrigSenoCosseno(difficulty: Int): ProceduralExercise {
+        val rng = ProceduralEngine.randomInstance
         val angles = listOf(
-            Triple("30^\\circ", "1/2", "30"), 
-            Triple("60^\\circ", "\\sqrt{3}/2", "60"), 
-            Triple("90^\\circ", "1", "90")
+            Triple("0°", "0", "0"),
+            Triple("30°", "1/2", "30"),
+            Triple("45°", "√2/2", "45"),
+            Triple("60°", "√3/2", "60"),
+            Triple("90°", "1", "90"),
+            Triple("120°", "√3/2", "120"),
+            Triple("180°", "0", "180")
         )
-        val chosen = angles.random()
+        val chosen = angles.random(rng)
+        val askSin = rng.nextBoolean()
+        val func = if (askSin) "\\sin" else "\\cos"
+        val answer = when {
+            askSin && chosen.third in listOf("0°", "180°") -> "0"
+            !askSin && chosen.third == "90°" -> "0"
+            askSin && chosen.third == "90°" -> "1"
+            !askSin && chosen.third == "0°" -> "1"
+            !askSin && chosen.third == "180°" -> "-1"
+            else -> chosen.second
+        }
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Qual o valor numérico de $\\sin(${chosen.first})$?\n\n[fig:trig_unit_circle,angle=${chosen.third},show_proj=true]",
-            expectedAnswer = chosen.second,
+            statement = "Qual o valor numérico de $func(${chosen.first})?",
+            expectedAnswer = answer,
             primarySkill = "trig_seno_cosseno_tangente",
             difficulty = difficulty.toDouble(),
             templateId = "trig_sc_01",
@@ -256,17 +462,33 @@ object ProceduralGeometry {
     }
 
     private fun generateTrigonometry(difficulty: Int): ProceduralExercise {
-        val angle = ProceduralEngine.randomInstance.nextInt(1, 4) * 30
+        val rng = ProceduralEngine.randomInstance
+        val angle = rng.nextInt(1, 4) * 30
+        val sinVal = when (angle) {
+            30 -> "1/2"
+            60 -> "√3/2"
+            90 -> "1"
+            else -> "√2/2"
+        }
+        val cosVal = when (angle) {
+            30 -> "√3/2"
+            60 -> "1/2"
+            90 -> "0"
+            else -> "√2/2"
+        }
+        val askSin = rng.nextBoolean()
+        val answer = if (askSin) sinVal else cosVal
+        val func = if (askSin) "sen" else "cos"
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Sabendo que as razões trigonométricas do círculo se repetem, calcule o seno do ângulo de ${angle}º.",
-            expectedAnswer = if (angle == 90) "1" else "...", // Simplified mock
-            primarySkill = "trigonometry",
+            statement = "Qual o valor de $func(${angle}°)? (Responda como fração ou número exato)",
+            expectedAnswer = answer,
+            primarySkill = "trig_razoes",
             difficulty = difficulty.toDouble(),
             templateId = "trig_01",
             canvasMode = "blank",
             validatorType = "exact",
-            answerType = "numeric"
+            answerType = "text"
         )
     }
 }
