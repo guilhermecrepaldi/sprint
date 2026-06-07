@@ -24,36 +24,20 @@ class MlKitRecognizer(private val context: Context) : MathRecognizer {
         DigitalInkRecognitionModel.builder(it).build()
     }
 
-    private val defaultModelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("default")
-    private val defaultModel = defaultModelIdentifier?.let {
-        DigitalInkRecognitionModel.builder(it).build()
-    }
-
     override suspend fun recognize(strokes: List<List<Offset>>, expectedAnswer: String?): String? {
         if (strokes.isEmpty()) return null
 
-        // Try math model first
-        val mathResult = recognizeWithModel(mathModel, strokes, expectedAnswer)
-        if (mathResult != null) {
-            val cleaned = postProcess(mathResult, expectedAnswer)
+        val rawResult = recognizeWithModel(mathModel, strokes, expectedAnswer)
+        if (rawResult != null) {
+            val cleaned = postProcess(rawResult, expectedAnswer)
             if (cleaned != null) {
-                Log.d(TAG, "math ok: '$mathResult' -> '$cleaned'")
+                Log.d(TAG, "recognized: '$rawResult' -> '$cleaned'")
                 return cleaned
             }
         }
 
-        // Fallback: default writing model (better for digits)
-        val defaultResult = recognizeWithModel(defaultModel, strokes, expectedAnswer)
-        if (defaultResult != null) {
-            val cleaned = postProcess(defaultResult, expectedAnswer)
-            if (cleaned != null) {
-                Log.d(TAG, "default ok: '$defaultResult' -> '$cleaned'")
-                return cleaned
-            }
-        }
-
-        Log.d(TAG, "both failed: math='$mathResult', default='$defaultResult'")
-        return mathResult ?: defaultResult
+        Log.d(TAG, "recognition failed: raw='$rawResult'")
+        return rawResult
     }
 
     private suspend fun recognizeWithModel(
