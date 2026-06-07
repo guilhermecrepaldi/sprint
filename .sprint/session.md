@@ -155,6 +155,11 @@ Pass rate: 100%
 - [x] [QA] Backend diagnostico: 109 pytest verdes, 105 unittest verdes, 28 endpoints
 - [x] [DOCS] Handoff atualizado com diagnostico completo
 - [x] [DOCS] Spec/roadmap consolidados
+- [x] [BUGFIX] ArenaManager: seed diaria agora usa year*1000+dayOfYear (antes retornava sempre 42)
+- [x] [CODE] Thread safety: ProceduralEngine.statementHistory usa synchronizedList
+- [x] [CODE] Thread safety: LocalSprintRepository.recentStatements usa synchronizedList
+- [x] [CODE] Dead code removido: -295 linhas em ProceduralAlgebra, ProceduralCalculus, ProceduralGeometry
+- [x] [BUILD] BUILD SUCCESSFUL 4s apos limpeza
 
 ## 🔄 Em progresso
 
@@ -243,6 +248,7 @@ Pass rate: 100%
 
 ## Log de lotes
 
+- [07:30] Lote 12: 4/4 ✅ — 100% — ArenaManager fix, thread safety x2, dead code removal (-295 lines); BUILD SUCCESSFUL 4s
 - [07:00] Lote 11: 10/10 ✅ — 100% — JDK 21 install, JAVA_HOME fix, BUILD SUCCESSFUL, emulator QA, screenshot, diagnostic report, handoff update
 - [00:13] Lote 1: 3/3 ✅ — 100% — build fix + 2-finger tap + settings
 - [01:30] Lote 2: 5/5 ✅ — 100% — sprint automation + backend history API + dashboard real data
