@@ -105,48 +105,6 @@ object ProceduralCalculus {
         return Pair("Calcule o valor numérico da integral definida:\n\n\\(\\int_{$lower}^{$upper} $coef x^2 \\,dx\\)", "$result")
     }
 
-    private fun generateContinuidade(random: Random): Pair<String, String> {
-        val a = random.nextInt(1, 4)
-        val x0 = random.nextInt(1, 3)
-        val result = a * x0 * x0
-        return Pair("Para qual valor de c a função \\(f(x) = \\begin{cases} $a x^2 & x \\neq $x0 \\\\ c & x = $x0 \\end{cases}\\) é contínua em \\(x = $x0\\)?", "$result")
-    }
-
-    private fun generateRegraCadeia(random: Random): Pair<String, String> {
-        val a = random.nextInt(2, 5)
-        val n = random.nextInt(2, 4)
-        val coef = a * n
-        val exp = n - 1
-        return Pair("Calcule a derivada usando a regra da cadeia: \\(f(x) = \\sin($a x^n)\\)", if (exp == 1) "${coef}x \\cos($a x^n)" else "${coef}x^$exp \\cos($a x^n)")
-    }
-
-    private fun generateProdutoQuociente(random: Random): Pair<String, String> {
-        val a = random.nextInt(2, 5)
-        return Pair("Calcule a derivada do produto: \\(f(x) = x^2 \\sin($a x)\\)", "2x \\sin($a x) + $a x^2 \\cos($a x)")
-    }
-
-    private fun generateAplicacoesDerivadas(random: Random): Pair<String, String> {
-        val a = random.nextInt(1, 4)
-        val b = random.nextInt(1, 5)
-        val x0 = random.nextInt(1, 3)
-        val result = 2 * a * x0 + b
-        return Pair("Se a posição de uma partícula é \\(s(t) = $a t^2 + $b t\\), qual a velocidade em \\(t = $x0\\)?", "$result")
-    }
-
-    private fun generateIntegralDefinida(random: Random): Pair<String, String> {
-        val aEven = random.nextInt(1, 4) * 2
-        val upper = random.nextInt(1, 3)
-        val result = (aEven / 2) * upper * upper
-        return Pair("Calcule a integral definida: \\(\\int_{0}^{$upper} $aEven x dx\\)\n\n[fig:area_under_curve,a=0,b=$upper]", "$result")
-    }
-
-    private fun generateAplicacoesIntegrais(random: Random): Pair<String, String> {
-        val v = random.nextInt(2, 6)
-        val t = random.nextInt(2, 5)
-        val dist = v * t
-        return Pair("Se a velocidade de um carro é constante em \\(v(t) = $v\\) m/s, qual a distância percorrida de \\(t = 0\\) a \\(t = $t\\) s?", "$dist")
-    }
-
     private fun generateDerivadaCadeia(difficulty: Int, random: Random): Pair<String, String> {
         val a = random.nextInt(2, 5)
         val exp = random.nextInt(2, 4)

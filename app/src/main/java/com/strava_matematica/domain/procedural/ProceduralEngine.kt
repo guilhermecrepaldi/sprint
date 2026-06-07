@@ -21,7 +21,7 @@ object ProceduralEngine {
     var randomInstance: Random = Random.Default
 
 
-        private val statementHistory = java.util.LinkedList<String>()
+        private val statementHistory = java.util.Collections.synchronizedList(java.util.LinkedList<String>())
     private const val HISTORY_SIZE = 30
 
     fun generate(skillTag: String, mmr: Int, config: SessionConfig = SessionConfig()): ProceduralExercise {

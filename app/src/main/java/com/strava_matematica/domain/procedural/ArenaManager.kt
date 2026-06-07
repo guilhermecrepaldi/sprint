@@ -26,7 +26,7 @@ object ArenaManager {
         val dayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
         
         // Seed diária (Ex: 2026155) garante a mesma prova nas 24h para o mesmo MMR/Config
-        val dailySeedStr = ""
-        return dailySeedStr.toLongOrNull() ?: 42L
+        val dailySeed = (year.toLong() * 1000) + dayOfYear.toLong()
+        return dailySeed
     }
 }

@@ -41,7 +41,7 @@ class LocalSprintRepository private constructor(context: Context) {
     private val runtime = SprintRuntimeDatabase.getInstance(context)
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val recentStatements = mutableListOf<String>()
+    private val recentStatements = java.util.Collections.synchronizedList(mutableListOf<String>())
     
     private fun addRecent(statement: String) {
         if (recentStatements.size >= 35) {
