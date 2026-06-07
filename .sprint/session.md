@@ -160,6 +160,11 @@ Pass rate: 100%
 - [x] [CODE] Thread safety: LocalSprintRepository.recentStatements usa synchronizedList
 - [x] [CODE] Dead code removido: -295 linhas em ProceduralAlgebra, ProceduralCalculus, ProceduralGeometry
 - [x] [BUILD] BUILD SUCCESSFUL 4s apos limpeza
+- [x] [BUGFIX] ML Kit crash: tag "default" invalida para Digital Ink Recognition removida
+- [x] [CODE] MlKitRecognizer: post-processamento numerico (prioriza candidatos quando esperado e numero)
+- [x] [BUILD] BUILD SUCCESSFUL 14s apos ML Kit fix
+- [x] [QA] App abriu sem crash no emulador Medium_Tablet
+- [x] [DOCS] Handoff atualizado
 
 ## 🔄 Em progresso
 
