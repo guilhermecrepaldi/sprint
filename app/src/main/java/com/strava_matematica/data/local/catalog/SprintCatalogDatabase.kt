@@ -6,12 +6,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ExerciseEntity::class],
-    version = 1,
+    entities = [
+        ExerciseEntity::class,
+        ExamQuestionEntity::class,
+        ExamAlternativeEntity::class
+    ],
+    version = 2,
     exportSchema = false,
 )
 abstract class SprintCatalogDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
+    abstract fun examDao(): ExamDao
 
     companion object {
         @Volatile private var instance: SprintCatalogDatabase? = null
@@ -24,7 +29,8 @@ abstract class SprintCatalogDatabase : RoomDatabase() {
                     "exercise_catalog.db",
                 )
                     .createFromAsset("databases/exercise_catalog.db")
-                    .addCallback(ExerciseSeedInstaller())
+                    .fallbackToDestructiveMigration()
+                    .addCallback(ExerciseSeedInstaller(context.applicationContext))
                     .build()
                     .also { instance = it }
             }

@@ -12,8 +12,32 @@ object ProceduralLinearAlgebra {
             "soma_produto_matrizes" -> generateSomaProdutoMatrizes(diff, random)
             "determinantes" -> generateDeterminantes(diff, random)
             "operacoes_vetoriais" -> generateOperacoesVetoriais(diff, random)
+            "alg_lin_vec", "alg_lin_spc", "alg_lin_trans", "alg_lin_eig" -> generateLinAlgAdvanced(diff, random)
+            "alg_abs_grp", "alg_abs_ring", "alg_abs_gal" -> generateAbstractAlgebra(diff, random)
             else -> generateOperacoesVetoriais(diff, random)
         }
+    }
+
+    private fun generateLinAlgAdvanced(difficulty: Int, random: Random): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Na Álgebra Linear, um conjunto de vetores é linearmente independente (LI) se e somente se o determinante da matriz formada por esses vetores como colunas for:\n1) Igual a zero\n2) Diferente de zero\n(Responda 1 ou 2)"
+        } else {
+            "Se 'v' é um autovetor de uma matriz A associado ao autovalor λ, então a equação característica é dada por:\n1) Av = λv\n2) Aλ = v\n(Responda 1 ou 2)"
+        }
+        val answer = if (qType == 1) "2" else "1"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "alg_lin", difficulty.toDouble(), "lin_alg_adv", "blank", "exact", "numeric")
+    }
+
+    private fun generateAbstractAlgebra(difficulty: Int, random: Random): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Na Álgebra Abstrata, a estrutura algébrica formada por um conjunto equipado com uma operação associativa e que possui elemento neutro e inverso para cada elemento é chamada de:\n1) Grupo\n2) Anel\n(Responda 1 ou 2)"
+        } else {
+            "Qual o Teorema Fundamental da Álgebra (consequência da teoria de corpos)?\n1) Todo polinômio não constante com coeficientes complexos tem pelo menos uma raiz complexa.\n2) Todo número inteiro pode ser fatorado de forma única em primos.\n(Responda 1 ou 2)"
+        }
+        val answer = "1"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "alg_abs", difficulty.toDouble(), "abs_alg_basic", "blank", "exact", "numeric")
     }
 
     private fun generateSomaProdutoMatrizes(difficulty: Int, random: Random): ProceduralExercise {

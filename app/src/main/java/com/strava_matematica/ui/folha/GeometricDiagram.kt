@@ -677,6 +677,60 @@ fun GeometricDiagram(
                 }
                 drawPath(path = curvePath, color = ink, style = Stroke(width = 2.dp.toPx()))
             }
+            
+            "cube" -> {
+                val margin = 32.dp.toPx()
+                val sizeVal = minOf(width, height) - margin * 2
+                val L = sizeVal * 0.7f
+                val offset = sizeVal * 0.3f
+                
+                // Posições base
+                val startX = margin
+                val startY = margin + offset
+                
+                // Face frontal
+                val fTL = Offset(startX, startY)
+                val fTR = Offset(startX + L, startY)
+                val fBL = Offset(startX, startY + L)
+                val fBR = Offset(startX + L, startY + L)
+                
+                // Face traseira
+                val bTL = Offset(startX + offset, startY - offset)
+                val bTR = Offset(startX + L + offset, startY - offset)
+                val bBL = Offset(startX + offset, startY + L - offset)
+                val bBR = Offset(startX + L + offset, startY + L - offset)
+                
+                val path = Path().apply {
+                    // Face traseira
+                    moveTo(bTL.x, bTL.y)
+                    lineTo(bTR.x, bTR.y)
+                    lineTo(bBR.x, bBR.y)
+                    lineTo(bBL.x, bBL.y)
+                    close()
+                    
+                    // Face frontal
+                    moveTo(fTL.x, fTL.y)
+                    lineTo(fTR.x, fTR.y)
+                    lineTo(fBR.x, fBR.y)
+                    lineTo(fBL.x, fBL.y)
+                    close()
+                    
+                    // Conexões
+                    moveTo(fTL.x, fTL.y); lineTo(bTL.x, bTL.y)
+                    moveTo(fTR.x, fTR.y); lineTo(bTR.x, bTR.y)
+                    moveTo(fBR.x, fBR.y); lineTo(bBR.x, bBR.y)
+                    moveTo(fBL.x, fBL.y); lineTo(bBL.x, bBL.y)
+                }
+                
+                drawPath(path = path, color = ink, style = Stroke(width = 2.dp.toPx()))
+                
+                val edgeLabel = params["edge"] ?: ""
+                if (edgeLabel.isNotBlank()) {
+                    val txt = textMeasurer.measure(edgeLabel, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ink))
+                    // Rotular a aresta inferior da face frontal
+                    drawText(txt, topLeft = Offset(fBL.x + L / 2f - txt.size.width / 2f, fBL.y + 4.dp.toPx()))
+                }
+            }
         }
     }
 }

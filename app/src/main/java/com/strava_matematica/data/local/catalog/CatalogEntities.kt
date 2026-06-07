@@ -37,3 +37,31 @@ data class ExerciseEntity(
     @ColumnInfo(name = "parameter_vector_json") val parameterVectorJson: String?,
     @ColumnInfo(name = "difficulty_vector_json") val difficultyVectorJson: String?,
 )
+
+@Entity(tableName = "exam_questions")
+data class ExamQuestionEntity(
+    @PrimaryKey val id: String, // ex: "enem-2023-matematica-9"
+    val title: String,
+    val indexNum: Int,
+    val discipline: String,
+    val year: Int,
+    val context: String,
+    @ColumnInfo(name = "files_json") val filesJson: String,
+    @ColumnInfo(name = "correct_alternative") val correctAlternative: String,
+    @ColumnInfo(name = "alternatives_introduction") val alternativesIntroduction: String?
+)
+
+@Entity(
+    tableName = "exam_alternatives",
+    indices = [
+        Index(value = ["question_id"])
+    ]
+)
+data class ExamAlternativeEntity(
+    @PrimaryKey val id: String, // ex: "enem-2023-matematica-9-A"
+    @ColumnInfo(name = "question_id") val questionId: String,
+    val letter: String,
+    val text: String,
+    val file: String?,
+    @ColumnInfo(name = "is_correct") val isCorrect: Boolean
+)

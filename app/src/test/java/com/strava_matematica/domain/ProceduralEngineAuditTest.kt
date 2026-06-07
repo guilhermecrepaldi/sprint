@@ -9,6 +9,7 @@ import org.junit.Test
 class ProceduralEngineAuditTest {
 
     private val allSkills = listOf(
+        // Base Antiga
         "soma_subtracao", "multiplicacao_divisao", "fracoes_decimais",
         "porcentagem_razao", "potenciacao_radiciacao",
         "equacoes_lineares", "sistemas_equacoes", "fatoracao_produtos_notaveis",
@@ -21,7 +22,18 @@ class ProceduralEngineAuditTest {
         "nocao_de_limite", "continuidade", "derivadas_basicas",
         "derivadas_regra_cadeia", "derivadas_produto_quociente",
         "aplicacoes_derivadas", "integrais_indefinidas",
-        "integrais_definidas", "aplicacoes_integrais"
+        "integrais_definidas", "aplicacoes_integrais",
+        // Novas 100% Cobertura
+        "fnd_log_prop", "fnd_set_op", "fnd_num_int", "fnd_graph_dir",
+        "alg_lin_vec", "alg_abs_grp", "alg_elem_poly", "alg_num_mod",
+        "geo_euc_plan", "geo_diff_crv", "geo_top_spc",
+        "calc_pre_func", "calc_dif_lim", "calc_eq_ode", "calc_real_lim",
+        "stat_comb_perm", "stat_dist_disc", "stat_inf_samp",
+        "comp_num_err", "comp_opt_lin", "comp_dyn_sys", "comp_th_aut",
+        // Extra tags
+        "alg_elem_eq", "alg_elem_sys", "comp_dyn", "comp_num", "comp_opt", "comp_th",
+        "stat_dist_clt", "stat_dist_cont", "stat_inf_conf", "stat_inf_reg", "stat_inf_test",
+        "stat_prob_spc"
     )
 
     @Test
@@ -44,6 +56,10 @@ class ProceduralEngineAuditTest {
                     if (exercise.primarySkill == "soma_subtracao") {
                         missingSkills.add(skill)
                     }
+                }
+                // O fallback nunca deve ser retornado (template = placeholder)
+                if (exercise.templateId == "placeholder") {
+                    missingSkills.add("$skill (Placeholder)")
                 }
             } catch (e: Exception) {
                 missingSkills.add("$skill (Erro: ${e.message})")

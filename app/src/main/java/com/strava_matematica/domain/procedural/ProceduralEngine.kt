@@ -42,7 +42,10 @@ object ProceduralEngine {
     private fun generateInternal(skillTag: String, mmr: Int, config: SessionConfig): ProceduralExercise {
         // Grandezas e Lógica
         if (skillTag in listOf("rule_of_3", "percentage", "interest")) return ProceduralProportions.generate(skillTag, mmr)
-        if (skillTag in listOf("sets_venn", "propositional")) return ProceduralLogic.generate(skillTag, mmr)
+        if (skillTag in listOf(
+            "sets_venn", "propositional", "fnd_set_op", "fnd_set_card", "fnd_set_zfc",
+            "fnd_log_prop", "fnd_log_pred", "fnd_log_fo"
+        )) return ProceduralLogic.generate(skillTag, mmr)
         
         // Aritmética Avançada
         if (skillTag in listOf("mmc_mdc", "divisibility_primes", "dizimas", "scientific_notation")) return ProceduralArithmetic.generate(skillTag, mmr)
@@ -88,11 +91,39 @@ object ProceduralEngine {
             "combinatoria", "probabilidade" ->
                 ProceduralStats.generate(skillTag, mmr)
 
-            // Linear Algebra
-            "soma_produto_matrizes", "determinantes", "operacoes_vetoriais" ->
+            // Abstract Algebra & Linear Algebra
+            "soma_produto_matrizes", "determinantes", "operacoes_vetoriais",
+            "alg_lin_vec", "alg_lin_spc", "alg_lin_trans", "alg_lin_eig",
+            "alg_abs_grp", "alg_abs_ring", "alg_abs_gal" ->
                 ProceduralLinearAlgebra.generate(skillTag, mmr)
 
-            else -> generatePlaceholder(skillTag, mmr)
+            // Graphs
+            "fnd_graph_vert", "fnd_graph_path", "fnd_graph_col" ->
+                ProceduralGraphs.generate(skillTag, mmr)
+                
+            // Number Theory & Basics
+            "fnd_num_nat", "fnd_num_int", "fnd_num_real", "fnd_num_comp",
+            "alg_num_div", "alg_num_prim", "alg_num_mod", "alg_num_dio" ->
+                ProceduralNumberTheory.generate(skillTag, mmr)
+                
+            // Computational Math
+            "comp_num_err", "comp_num_int", "comp_num_diff", "comp_num_sys",
+            "comp_opt_lin", "comp_opt_non", "comp_opt_int",
+            "comp_dyn_sys", "comp_dyn_attr", "comp_dyn_chaos",
+            "comp_th_aut", "comp_th_comp", "comp_th_comp_ana", "comp" ->
+                ProceduralCompMath.generate(skillTag, mmr)
+
+            else -> {
+                when {
+                    skillTag.startsWith("fnd") -> ProceduralNumberTheory.generate(skillTag, mmr)
+                    skillTag.startsWith("alg") -> ProceduralAlgebra.generate(skillTag, mmr)
+                    skillTag.startsWith("geo") -> ProceduralGeometry.generate(skillTag, mmr)
+                    skillTag.startsWith("calc") -> ProceduralCalculus.generate(skillTag, mmr)
+                    skillTag.startsWith("stat") -> ProceduralStats.generate(skillTag, mmr)
+                    skillTag.startsWith("comp") -> ProceduralCompMath.generate(skillTag, mmr)
+                    else -> generatePlaceholder(skillTag, mmr)
+                }
+            }
         }
     }
 

@@ -10,8 +10,44 @@ object ProceduralStats {
         return when (skillTag) {
             "stat_comb_perm", "stat_comb_fund" -> generatePermutacao(diffLvl, random)
             "stat_prob", "stat_prob_cond" -> generateProbabilidade(diffLvl, random)
+            "stat_prob_spc" -> generateStatsProbSpc(diffLvl, random)
+            "stat_dist_disc", "stat_dist_cont", "stat_dist_clt" -> generateStatsDistrib(diffLvl, random)
+            "stat_inf_samp", "stat_inf_conf", "stat_inf_test", "stat_inf_reg" -> generateStatsInf(diffLvl, random)
             else -> generatePermutacao(diffLvl, random)
         }
+    }
+
+    private fun generateStatsProbSpc(difficulty: Int, random: Random): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Segundo os Axiomas de Kolmogorov, qual é a soma das probabilidades de todos os eventos mutuamente exclusivos de um espaço amostral?"
+        } else {
+            "Se a probabilidade de um evento A ocorrer é 0.3, qual é a probabilidade do evento complementar (A não ocorrer)?"
+        }
+        val answer = if (qType == 1) "1" else "0.7"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "stat_prob_spc", difficulty.toDouble(), "stat_prob_basic", "blank", "exact", "numeric")
+    }
+
+    private fun generateStatsDistrib(difficulty: Int, random: Random): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Qual é o valor numérico da média (μ) em uma distribuição normal padrão (Z)?"
+        } else {
+            "Qual é o valor numérico do desvio padrão (σ) em uma distribuição normal padrão (Z)?"
+        }
+        val answer = if (qType == 1) "0" else "1"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "stat_dist", difficulty.toDouble(), "stat_dist_basic", "blank", "exact", "numeric")
+    }
+
+    private fun generateStatsInf(difficulty: Int, random: Random): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Se a variância de uma amostra de dados é 25, qual é o valor do seu desvio padrão?"
+        } else {
+            "Se o desvio padrão de uma amostra é 7, qual é o valor da sua variância?"
+        }
+        val answer = if (qType == 1) "5" else "49"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "stat_inf", difficulty.toDouble(), "stat_inf_basic", "blank", "exact", "numeric")
     }
 
     private fun factorial(n: Int): Long {

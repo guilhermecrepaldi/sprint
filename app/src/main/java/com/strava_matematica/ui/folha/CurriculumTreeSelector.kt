@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.PlayCircleFilled
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,16 @@ fun CurriculumTreeSelector(
         modifier = modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        if (mode == SelectorMode.SINGLE_SELECTION) {
+            Button(
+                onClick = { onSingleSelected("curriculum_tour") },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C5CE7))
+            ) {
+                Text("🚀 INICIAR TOUR COMPLETO (Linear de 0 a 1000)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
         MathCurriculum.tree.forEach { domain ->
             DomainSelectorNode(
                 domain = domain,
@@ -63,7 +75,14 @@ fun DomainSelectorNode(
     quantities: Map<String, Int>,
     onQuantityChanged: (String, Int) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val containsSelected = selectedSingleId != null && (domain.id == selectedSingleId || domain.children.any { child -> child.id == selectedSingleId || child.proceduralTag == selectedSingleId })
+    var expanded by remember { mutableStateOf(containsSelected) }
+    
+    // Atualiza o estado se o selectedSingleId mudar (Zoom Out vindo do sprint)
+    LaunchedEffect(selectedSingleId) {
+        if (containsSelected) expanded = true
+    }
+
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
 
     Column(
@@ -187,6 +206,8 @@ fun SubjectSelectorNode(
     quantities: Map<String, Int>,
     onQuantityChanged: (String, Int) -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -201,13 +222,36 @@ fun SubjectSelectorNode(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = subject.name,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF2C3E50),
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = subject.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF2C3E50)
+            )
+            if (subject.youtubeUrl != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clickable { uriHandler.openUri(subject.youtubeUrl) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayCircleFilled,
+                        contentDescription = "Assistir Aula",
+                        tint = Color.Red,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Aula em Vídeo",
+                        fontSize = 12.sp,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         if (mode == SelectorMode.SINGLE_SELECTION) {
             RadioButton(

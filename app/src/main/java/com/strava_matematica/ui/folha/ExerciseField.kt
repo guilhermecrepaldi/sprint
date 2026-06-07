@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Clear
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
@@ -38,7 +38,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -46,6 +49,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.strava_matematica.design.FocusColors
@@ -133,13 +138,24 @@ fun ExerciseField(
     }
 
     val statementText = field.statement
-    val mediaTagRegex = remember(statementText) { Regex("""\[(fig|img|svg):[^\]]+\]""") }
+    val mediaTagRegex = remember(statementText) { Regex("""\[(?:fig|vid|aud|img):.*?\]""") }
     val mediaMatch = remember(statementText) { mediaTagRegex.find(statementText) }
     val mediaSpec = remember(statementText) { mediaMatch?.value }
     val cleanStatement = remember(statementText) { statementText.replace(mediaTagRegex, "").trim() }
+    
 
     var localClearSignal by remember { mutableStateOf(0) }
     var localUndoSignal by remember { mutableStateOf(0) }
+
+    // ── Test Hook para E2E (UI Invisible) ──────────────────────────────────
+    BasicTextField(
+        value = typedAnswer,
+        onValueChange = onTypedAnswerChange,
+        modifier = Modifier
+            .size(1.dp)
+            .alpha(0f)
+            .testTag("AnswerInput_${field.fieldIndex}")
+    )
 
     if (isCompact) {
         val isCorrect = typedAnswer.trim() == field.expectedAnswer?.trim()
@@ -161,7 +177,9 @@ fun ExerciseField(
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 16.dp),
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = ink.copy(alpha = 0.1f))
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                .padding(vertical = 16.dp, horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -169,14 +187,26 @@ fun ExerciseField(
             Row(
                 modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "${field.fieldIndex + 1}.",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = ink.copy(alpha = 0.35f)
-                )
+                // Number Indicator Bubble
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(ink.copy(alpha = 0.05f), CircleShape)
+                ) {
+                    Text(
+                        text = "${field.fieldIndex + 1}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ink.copy(alpha = 0.6f)
+                    )
+                }
+                
+                // Subtle divider
+                Box(modifier = Modifier.height(32.dp).width(2.dp).background(ink.copy(alpha = 0.08f)))
+
 
                 if (verticalStackData != null) {
                     VerticalArithmeticStack(
@@ -221,7 +251,6 @@ fun ExerciseField(
                     .width(195.dp)
                     .background(boxBgColor, RoundedCornerShape(8.dp))
                     .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
-                    .clickable { answerPadVisible.value = true }
             ) {
                 InkCanvas(
                     modifier = Modifier.matchParentSize().padding(4.dp),
@@ -236,7 +265,8 @@ fun ExerciseField(
                     initialRedoStack = initialAnswerRedoStack,
                     guideMode = "single",
                     onSyncStrokes = answerSync,
-                    onPenEvent = onPenEvent
+                    onPenEvent = onPenEvent,
+                    onTap = { answerPadVisible.value = true }
                 )
                 if (typedAnswer.isNotBlank()) {
                     MathAnswerTemplate(
@@ -376,7 +406,6 @@ fun ExerciseField(
                             .width(180.dp)
                             .background(boxBgColor, RoundedCornerShape(8.dp))
                             .border(2.dp, boxBorderColor, RoundedCornerShape(8.dp))
-                            .clickable { answerPadVisible.value = true }
                     ) {
                         InkCanvas(
                             modifier = Modifier.matchParentSize().padding(Spacing.xs),

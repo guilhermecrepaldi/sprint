@@ -208,6 +208,12 @@ class LocalSprintRepository private constructor(context: Context) {
         val fields = mutableListOf<FolhaField>()
         var difficultySum = 0.0
 
+        val actualSkillTag = if (skillTag == "curriculum_tour") {
+            com.strava_matematica.model.MathCurriculum.getFlatNodes().let { nodes -> nodes[pageIndex % nodes.size].id }
+        } else {
+            skillTag
+        }
+
         if (!config.simuladoRulesJson.isNullOrEmpty()) {
             try {
                 val rules = json.decodeFromString<List<com.strava_matematica.ui.folha.SimuladoSequenceRule>>(config.simuladoRulesJson)
@@ -233,9 +239,9 @@ class LocalSprintRepository private constructor(context: Context) {
 
         // Modo Padrão (Fallback)
         if (fields.isEmpty()) {
-            val count = config.exercisesPerPage.coerceAtLeast(1)
+            val count = if (skillTag == "curriculum_tour") 3 else config.exercisesPerPage.coerceAtLeast(1)
             for (i in 0 until count) {
-                val exercise = selectExercise(studentId, skillTag, config)
+                val exercise = selectExercise(studentId, actualSkillTag, config)
                 fields.add(exercise.toFolhaField(fieldIndex = i))
                 difficultySum += exercise.difficulty
             }

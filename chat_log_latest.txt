@@ -1,0 +1,8 @@
+[2026-06-06] Demanda: Revisão E2E solicitada. App compilando 100% dos nós.
+[2026-06-06] Demanda: Procurar por testes e2e soltos. Teste cego 'SprintProceduralTest.kt' e 'ProceduralEngineAuditTest.kt' encontrados e integrados na revisão.
+[2026-06-06] Demanda: Refatorar esteira de testes E2E e Auditoria executada com sucesso. Criados TestHooks visuais invisíveis.
+[2026-06-06] Demanda: Fechamento de buracos de exercícios faltantes (Fallback dinâmico via startsWith nas 14 categorias ausentes).
+[2026-06-06] Demanda: Finalização de UX para Múltipla Escolha nos novos exercícios. Parser extraído da statement e Canvas substituído por Botões premium no ExerciseField.
+[2026-06-07] Demanda: Rollback de UI. Remoção total de UX de múltipla escolha e conversão dos conteúdos procedurais Teóricos para cálculos numéricos diretos (OCR-First).
+[2026-06-07] Demanda: Simulado Geral da Árvore Curricular e E2E Test. Auditoria varreu 79 nós terminais. Foi identificado 1 nó sem implementação específica ('stat_prob_spc' - Axiomas de Kolmogorov). A engine de Estatística foi atualizada e o simulado exportado.
+[2026-06-07] Demanda: Tuning MMR e Progressão. Decisão: Optado pelo modelo Casual/Flow (Avanço via 5 acertos seguidos). Realizado Bugfix no SessionViewModel para dinamizar a SKILL_SEQUENCE varrendo todos os 79 nós da árvore curricular em tempo real, corrigindo o bloqueio de avanço de fase nas novas skills adicionadas.

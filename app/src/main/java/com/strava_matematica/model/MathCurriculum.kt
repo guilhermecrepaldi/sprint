@@ -271,4 +271,16 @@ object MathCurriculum {
             )
         )
     )
+
+    fun getFlatNodes(): List<CurriculumNode> {
+        val result = mutableListOf<CurriculumNode>()
+        fun recurse(nodes: List<CurriculumNode>) {
+            for (node in nodes) {
+                result.add(node)
+                recurse(node.children)
+            }
+        }
+        recurse(tree)
+        return result
+    }
 }

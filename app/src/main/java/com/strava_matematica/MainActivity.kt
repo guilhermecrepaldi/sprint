@@ -346,6 +346,7 @@ fun SprintApp(
                                             folhaViewModel.resetForNextFolha()
                                             sessionViewModel.startSessionFromDashboard()
                                         },
+                                        onZoomOut = { sessionViewModel.zoomOutToTree(it) },
                                         sessionCorrect = state.sessionCorrect,
                                         sessionTotal = state.sessionTotal,
                                         sessionStartedAtMs = sessionStartedAtMs,

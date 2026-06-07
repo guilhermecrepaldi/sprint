@@ -8,10 +8,10 @@ object ProceduralAlgebra {
 
     fun generate(skillTag: String, mmr: Int, random: Random = Random): ProceduralExercise {
         return when (skillTag) {
-            "equacoes_lineares" -> generateLinear(mmr, random)
-            "sistemas_equacoes" -> generateSystem(mmr, random)
+            "equacoes_lineares", "alg_elem_eq" -> generateLinear(mmr, random)
+            "sistemas_equacoes", "alg_elem_sys" -> generateSystem(mmr, random)
             "equacoes_quadraticas", "equacao_2_grau" -> generateQuadratic(mmr, random)
-            "fatoracao_produtos_notaveis", "polinomios", "alg_elem_poly" -> generatePolynomial(mmr, random)
+            "fatoracao_produtos_notaveis", "polinomios", "alg_elem", "alg_elem_poly" -> generatePolynomial(mmr, random)
             "fracoes_decimais" -> generateFracoesDecimais(mmr, random)
             "porcentagem_razao" -> generatePorcentagemRazao(mmr, random)
             "potenciacao_radiciacao" -> generatePotenciacaoRadiciacao(mmr, random)

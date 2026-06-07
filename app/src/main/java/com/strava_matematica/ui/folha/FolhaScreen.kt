@@ -61,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -104,6 +105,7 @@ fun FolhaScreen(
     onPenEvent: (fieldIndex: Int, event: PenEvent) -> Unit = { _, _ -> },
     onConfigChange: (SessionConfig) -> Unit = {},
     onEndSession: () -> Unit = {},
+    onZoomOut: (String?) -> Unit = {},
     sessionCorrect: Int = 0,
     sessionTotal: Int = 0,
     sessionStartedAtMs: Long = System.currentTimeMillis(),
@@ -261,7 +263,7 @@ fun FolhaScreen(
                                     backgroundMode = config.backgroundMode,
                                     penColor = config.penColor,
                                     penWidth = config.penWidth,
-                                    modifier = Modifier.fillMaxWidth().height(80.dp),
+                                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                                     isKPlus = false,
                                     isCompact = true,
                                     exercisesPerPage = config.exercisesPerPage,
@@ -513,9 +515,9 @@ fun FolhaScreen(
                         }
                     }
                     
-                    // Ícone 2: Árvore (Abre configurações/árvore atual)
+                    // Ícone 2: Árvore (Zoom Out para o Mapa)
                     IconButton(
-                        onClick = { showSprintScrolls.value = true },
+                        onClick = { onZoomOut(currentNode?.id) },
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
                             .size(32.dp)
@@ -1295,6 +1297,7 @@ private fun EnterSquare(
 
     Box(
         modifier = modifier
+            .testTag("SubmitButton")
             .size(72.dp)
             .border(
                 width = 1.5.dp,

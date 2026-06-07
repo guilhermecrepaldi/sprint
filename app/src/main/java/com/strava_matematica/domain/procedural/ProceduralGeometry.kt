@@ -15,8 +15,32 @@ object ProceduralGeometry {
             "geo_ana_cart", "geometria_analitica" -> generateGeometriaAnalitica(diff)
             "geo_ana_eq" -> generateReta(diff)
             "trig_basic", "trigonometria" -> generateTrigonometry(diff)
+            "geo_diff_crv", "geo_diff_man", "geo_diff_riem" -> generateGeoDiff(diff)
+            "geo_top_spc", "geo_top_cont", "geo_top_comp", "geo_top_alg" -> generateGeoTop(diff)
             else -> generateGeometriaPlana(diff) // Fallback
         }
+    }
+
+    private fun generateGeoDiff(difficulty: Int): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Na Geometria Diferencial, a Curvatura Gaussiana (K) de uma esfera de raio R é dada por:\n1) K = 1 / R^2\n2) K = 0\n(Responda 1 ou 2)"
+        } else {
+            "Um espaço euclidiano plano (como uma folha de papel sem dobras intrínsecas) possui Curvatura Gaussiana igual a:\n1) 1\n2) 0\n(Responda 1 ou 2)"
+        }
+        val answer = if (qType == 1) "1" else "2"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "geo_diff", difficulty.toDouble(), "geo_diff_basic", "blank", "exact", "numeric")
+    }
+
+    private fun generateGeoTop(difficulty: Int): ProceduralExercise {
+        val qType = ProceduralEngine.randomInstance.nextInt(1, 3)
+        val statement = if (qType == 1) {
+            "Em Topologia, duas figuras são consideradas 'homeomorfas' (topologicamente equivalentes) se podemos deformar uma na outra sem cortes ou colagens. Uma caneca (com 1 alça) é homeomorfa a:\n1) Uma esfera (bola)\n2) Um toro (rosquinha)\n(Responda 1 ou 2)"
+        } else {
+            "Qual é a característica de Euler (X = V - A + F) de um poliedro convexo simples (como um cubo)?\n1) 2\n2) 0\n(Responda 1 ou 2)"
+        }
+        val answer = if (qType == 1) "2" else "1"
+        return ProceduralExercise(UUID.randomUUID().toString(), statement, answer, "geo_top", difficulty.toDouble(), "geo_top_basic", "blank", "exact", "numeric")
     }
 
     private fun generateGeometriaPlana(difficulty: Int): ProceduralExercise {
@@ -41,7 +65,7 @@ object ProceduralGeometry {
         val volume = lado * lado * lado
         return ProceduralExercise(
             id = UUID.randomUUID().toString(),
-            statement = "Qual o volume de um cubo com aresta de tamanho $lado?",
+            statement = "Qual o volume de um cubo com aresta de tamanho $lado?\n\n[fig:cube,edge=$lado]",
             expectedAnswer = volume.toString(),
             primarySkill = "geometria_espacial",
             difficulty = difficulty.toDouble(),

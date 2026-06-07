@@ -305,6 +305,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // ── Session start (a partir do dashboard) ────────────────────────────────
+    // 🚀 Zoom Out (Spatial Metaphor) 🚀
+    fun zoomOutToTree(nodeId: String?) {
+        _uiState.update { 
+            it.copy(
+                status = SessionStatus.DASHBOARD,
+                selectedSkillTag = nodeId ?: "soma_subtracao"
+            ) 
+        }
+    }
 
     fun startSessionFromDashboard() {
         val state = _uiState.value
@@ -611,20 +620,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     companion object {
         /** Ordem linear da árvore — usada para sugerir próximo tema no mastery. */
-        val SKILL_SEQUENCE = listOf(
-            "soma_subtracao", "multiplicacao_divisao", "fracoes_decimais",
-            "porcentagem_razao", "potenciacao_radiciacao",
-            "equacoes_lineares", "sistemas_equacoes", "fatoracao_produtos_notaveis",
-            "inequacoes", "equacoes_quadraticas",
-            "funcao_afim", "funcao_quadratica", "funcao_exponencial",
-            "funcao_logaritmica", "funcao_modular",
-            "geometria_plana", "geometria_espacial", "geometria_analitica",
-            "progressoes_pa_pg", "combinatoria", "probabilidade",
-            "trig_razoes", "trig_seno_cosseno_tangente", "trig_identidades", "trig_equacoes",
-            "nocao_de_limite", "continuidade", "derivadas_basicas",
-            "derivadas_regra_cadeia", "derivadas_produto_quociente",
-            "aplicacoes_derivadas", "integrais_indefinidas",
-            "integrais_definidas", "aplicacoes_integrais",
-        )
+        val SKILL_SEQUENCE: List<String> by lazy {
+            com.strava_matematica.model.MathCurriculum.getFlatNodes()
+                .filter { it.children.isEmpty() }
+                .map { it.proceduralTag ?: it.id }
+        }
     }
 }

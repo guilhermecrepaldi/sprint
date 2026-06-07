@@ -9,10 +9,14 @@ object ProceduralCalculus {
         val type = skillTag
         val diff = (mmr.toDouble() / 100.0).toInt().coerceAtLeast(1)
         val problem = when (skillTag) {
+            "calc_pre_func", "calc_pre_elem", "calc_pre_seq" -> generatePreCalc(diff, random)
             "calc_dif_lim", "nocao_de_limite" -> generateLimite(diff, random)
             "calc_dif_der", "derivadas_basicas" -> generateDerivadaBasica(diff, random)
             "derivadas_regra_cadeia" -> generateDerivadaCadeia(diff, random)
             "calc_dif_int", "integrais_indefinidas" -> generateIntegral(diff, random)
+            "calc_dif_mul" -> generateDifMul(diff, random)
+            "calc_eq_ode", "calc_eq_pde", "calc_eq_trans" -> generateEquacoes(diff, random)
+            "calc_real_lim", "calc_real_met", "calc_real_comp" -> generateRealAnalise(diff, random)
             else -> generateDerivadaBasica(diff, random) // Fallback
         }
         
@@ -27,6 +31,29 @@ object ProceduralCalculus {
             validatorType = "exact",
             answerType = "numeric"
         )
+    }
+
+    private fun generatePreCalc(difficulty: Int, random: Random): Pair<String, String> {
+        val qType = random.nextInt(1, 3)
+        return if (qType == 1) {
+            "Uma sequência aritmética começa com a_1 = 3 e tem razão r = 4. Qual o valor do 5º termo (a_5)?" to "19"
+        } else {
+            "Qual é o domínio da função f(x) = 1/(x - 2)?\n1) R - {2}\n2) R\n(Responda 1 ou 2)" to "1"
+        }
+    }
+
+    private fun generateDifMul(difficulty: Int, random: Random): Pair<String, String> {
+        val c = random.nextInt(2, 5)
+        return "Se f(x, y) = x^2 + $c*y, qual é o valor numérico da derivada parcial de f em relação a y, ou seja, ∂f/∂y?" to "$c"
+    }
+
+    private fun generateEquacoes(difficulty: Int, random: Random): Pair<String, String> {
+        val k = random.nextInt(2, 6)
+        return "A solução geral da Equação Diferencial Ordinária (EDO) linear y' = $k*y é do tipo:\n1) y = C*e^(${k}x)\n2) y = C*x^$k\n(Responda 1 ou 2)" to "1"
+    }
+
+    private fun generateRealAnalise(difficulty: Int, random: Random): Pair<String, String> {
+        return "Na Análise Real, pelo Teorema de Bolzano-Weierstrass, toda sequência limitada de números reais possui uma subsequência:\n1) Divergente\n2) Convergente\n(Responda 1 ou 2)" to "2"
     }
 
     /**
