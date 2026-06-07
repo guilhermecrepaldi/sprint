@@ -1,45 +1,83 @@
 package com.strava_matematica.recognizer
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.ui.geometry.Offset
-import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.common.model.DownloadConditions
+import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.vision.digitalink.DigitalInkRecognition
-import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.DigitalInkRecognitionModel
 import com.google.mlkit.vision.digitalink.DigitalInkRecognitionModelIdentifier
+import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.Ink
-import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
-class MlKitRecognizer(@Suppress("UNUSED_PARAMETER") context: Context) : MathRecognizer {
+class MlKitRecognizer(private val context: Context) : MathRecognizer {
 
-    private val modelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("zxx-Zsym-x-math")
-    private val model = modelIdentifier?.let {
+    companion object {
+        private const val TAG = "MlKitRecognizer"
+    }
+
+    private val mathModelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("zxx-Zsym-x-math")
+    private val mathModel = mathModelIdentifier?.let {
+        DigitalInkRecognitionModel.builder(it).build()
+    }
+
+    private val defaultModelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("default")
+    private val defaultModel = defaultModelIdentifier?.let {
         DigitalInkRecognitionModel.builder(it).build()
     }
 
     override suspend fun recognize(strokes: List<List<Offset>>, expectedAnswer: String?): String? {
-        val model = this.model ?: return null
         if (strokes.isEmpty()) return null
 
-        val modelManager = RemoteModelManager.getInstance()
-        val isDownloaded = ensureModelDownloaded(modelManager, model)
-        if (!isDownloaded) return null
+        // Try math model first
+        val mathResult = recognizeWithModel(mathModel, strokes, expectedAnswer)
+        if (mathResult != null) {
+            val cleaned = postProcess(mathResult, expectedAnswer)
+            if (cleaned != null) {
+                Log.d(TAG, "math ok: '$mathResult' -> '$cleaned'")
+                return cleaned
+            }
+        }
 
-        return suspendCancellableCoroutine { continuation ->
+        // Fallback: default writing model (better for digits)
+        val defaultResult = recognizeWithModel(defaultModel, strokes, expectedAnswer)
+        if (defaultResult != null) {
+            val cleaned = postProcess(defaultResult, expectedAnswer)
+            if (cleaned != null) {
+                Log.d(TAG, "default ok: '$defaultResult' -> '$cleaned'")
+                return cleaned
+            }
+        }
+
+        Log.d(TAG, "both failed: math='$mathResult', default='$defaultResult'")
+        return mathResult ?: defaultResult
+    }
+
+    private suspend fun recognizeWithModel(
+        model: DigitalInkRecognitionModel?,
+        strokes: List<List<Offset>>,
+        expectedAnswer: String?
+    ): String? {
+        if (model == null) return null
+
+        val modelManager = RemoteModelManager.getInstance()
+        if (!ensureModelDownloaded(modelManager, model)) return null
+
+        return suspendCancellableCoroutine { cont ->
             val inkBuilder = Ink.builder()
             var time = 0L
             for (stroke in strokes) {
-                val strokeBuilder = Ink.Stroke.builder()
-                for (point in stroke) {
-                    strokeBuilder.addPoint(Ink.Point.create(point.x, point.y, time))
+                val sb = Ink.Stroke.builder()
+                for (pt in stroke) {
+                    sb.addPoint(Ink.Point.create(pt.x, pt.y, time))
                     time += 10L
                 }
-                inkBuilder.addStroke(strokeBuilder.build())
+                inkBuilder.addStroke(sb.build())
             }
             val ink = inkBuilder.build()
-
             val recognizer = DigitalInkRecognition.getClient(
                 DigitalInkRecognizerOptions.builder(model).build()
             )
@@ -52,17 +90,12 @@ class MlKitRecognizer(@Suppress("UNUSED_PARAMETER") context: Context) : MathReco
                             val candidateClean = candidate.text.replace("\\s".toRegex(), "")
                             if (candidateClean == expectedClean) {
                                 bestText = candidate.text
-                                continuation.resume(bestText)
+                                cont.resume(bestText)
                                 return@addOnSuccessListener
                             }
                         }
                     }
-
-                    // Se não achamos a resposta exata, tentar mitigar alucinações de letras
                     if (bestText != null) {
-                        val isExpectedNumeric = expectedAnswer?.matches(Regex("""^-?\d+([.,]\d+)?$""")) == true
-                        val isMathExpected = true // Na matemática, preferimos sempre números e sinais
-
                         val mathRegex = Regex("""^[-+*/=0-9().,\s]+$""")
                         if (!bestText!!.matches(mathRegex)) {
                             for (candidate in result.candidates) {
@@ -73,36 +106,40 @@ class MlKitRecognizer(@Suppress("UNUSED_PARAMETER") context: Context) : MathReco
                             }
                         }
                     }
-
-                    continuation.resume(bestText)
+                    cont.resume(bestText)
                 }
-                .addOnFailureListener {
-                    continuation.resume(null)
-                }
+                .addOnFailureListener { cont.resume(null) }
         }
     }
 
-    private suspend fun ensureModelDownloaded(
-        modelManager: RemoteModelManager,
-        model: DigitalInkRecognitionModel
-    ): Boolean = suspendCancellableCoroutine { continuation ->
-        modelManager.isModelDownloaded(model)
-            .addOnSuccessListener { downloaded ->
-                if (downloaded) {
-                    continuation.resume(true)
-                } else {
-                    val conditions = DownloadConditions.Builder().build()
-                    modelManager.download(model, conditions)
-                        .addOnSuccessListener {
-                            continuation.resume(true)
-                        }
-                        .addOnFailureListener {
-                            continuation.resume(false)
-                        }
-                }
+    private fun postProcess(text: String, expectedAnswer: String?): String? {
+        if (text.isBlank()) return null
+        val trimmed = text.trim()
+        val isNum = expectedAnswer?.matches(Regex("""^-?\d+([.,]\d+)?$""")) == true
+        if (isNum) {
+            val numMatch = Regex("""-?\d+([.,]\d+)?""").find(trimmed)
+            if (numMatch != null && numMatch.value.length in 1..8) return numMatch.value
+            if (trimmed.matches(Regex("""^[-+*/=0-9().,\s]+$"""))) return trimmed
+            val digits = trimmed.replace(Regex("""[^\d]"""), "")
+            if (digits.length in 1..8 && expectedAnswer != null) {
+                val expDigits = expectedAnswer.replace(Regex("""[^\d]"""), "")
+                if (digits.length == expDigits.length) return digits
             }
-            .addOnFailureListener {
-                continuation.resume(false)
-            }
+            if (trimmed.length <= 10 && trimmed.count { it.isLetter() } == 0) return trimmed
+            return trimmed
+        }
+        return trimmed
     }
+
+    private suspend fun ensureModelDownloaded(mgr: RemoteModelManager, model: DigitalInkRecognitionModel): Boolean =
+        suspendCancellableCoroutine { cont ->
+            mgr.isModelDownloaded(model)
+                .addOnSuccessListener { ok ->
+                    if (ok) cont.resume(true)
+                    else mgr.download(model, DownloadConditions.Builder().build())
+                        .addOnSuccessListener { cont.resume(true) }
+                        .addOnFailureListener { cont.resume(false) }
+                }
+                .addOnFailureListener { cont.resume(false) }
+        }
 }
