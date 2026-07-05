@@ -1,0 +1,624 @@
+# SPEC v1.0 — Math Ink Vector Memory Engine
+
+STATUS: HISTORICO. Para a fonte atual do projeto SPRINT, leia AGENTS.md e docs/README.md.
+
+## 1. Visão Geral
+
+Este documento descreve o módulo responsável por transformar a escrita do aluno no tablet em dados estruturados, vetores comportamentais e memória cognitiva matemática.
+
+O objetivo não é apenas reconhecer a resposta final escrita pelo aluno.
+
+O objetivo é capturar o processo de resolução.
+
+A caneta/stylus funciona como sensor de aprendizagem.
+
+---
+
+## 2. Frase Central
+
+> Toda escrita matemática no tablet vira dado, vetor e memória de aprendizagem.
+
+---
+
+## 3. Papel do Módulo
+
+O Math Ink Vector Memory Engine é responsável por:
+
+* capturar os movimentos da caneta;
+* reconhecer a resposta escrita;
+* transformar escrita em dado estruturado;
+* medir tempo, ritmo e hesitação;
+* identificar padrões de erro;
+* gerar vetores cognitivos;
+* alimentar a memória do aluno;
+* orientar a escolha da próxima lista de exercícios.
+
+---
+
+## 4. Conceito Principal
+
+Cada exercício resolvido gera dois tipos principais de informação:
+
+### 4.1 Resposta Reconhecida
+
+Aquilo que o aluno escreveu como resposta final.
+
+Exemplo:
+
+```text
+37
+```
+
+O sistema interpreta como:
+
+```json
+{
+  "answer": 37
+}
+```
+
+---
+
+### 4.2 Processo de Escrita
+
+Como o aluno chegou até aquela resposta.
+
+O sistema captura:
+
+* posição X;
+* posição Y;
+* tempo;
+* pressão;
+* velocidade;
+* pausas;
+* apagamentos;
+* quantidade de traços;
+* ordem dos traços;
+* hesitação;
+* tempo antes da primeira escrita;
+* tempo total da resposta.
+
+---
+
+## 5. Dados Capturados pela Caneta
+
+Cada evento de escrita pode gerar um registro semelhante a:
+
+```json
+{
+  "student_id": "stu_001",
+  "exercise_id": "ex_0001",
+  "page_id": "page_001",
+  "timestamp": 1710000000,
+  "x": 438.2,
+  "y": 192.6,
+  "pressure": 0.72,
+  "tilt": 0.31,
+  "velocity": 1.42,
+  "event_type": "stroke_move"
+}
+```
+
+---
+
+## 6. Estrutura de Um Exercício Resolvido
+
+Após a resolução, o sistema consolida os eventos em um pacote de resposta.
+
+```json
+{
+  "student_id": "stu_001",
+  "exercise_id": "math_basic_0047",
+  "skill_tags": ["multiplicacao", "tabuada_7"],
+  "expected_answer": 56,
+  "recognized_answer": 54,
+  "is_correct": false,
+  "total_time_ms": 8400,
+  "time_to_first_stroke_ms": 2100,
+  "stroke_count": 5,
+  "erase_count": 1,
+  "pause_count": 2,
+  "average_pressure": 0.68,
+  "average_velocity": 1.2,
+  "error_type": "tabuada",
+  "confidence": 0.91
+}
+```
+
+---
+
+## 7. Vetor Cognitivo Matemático
+
+Cada exercício gera um vetor de aprendizagem.
+
+Exemplo conceitual:
+
+```text
+[acerto, tempo, hesitacao, pressao, apagamento, dificuldade, skill, tipo_erro, fadiga]
+```
+
+Exemplo estruturado:
+
+```json
+{
+  "correctness": 0,
+  "speed_score": 0.42,
+  "hesitation_score": 0.71,
+  "fluency_score": 0.38,
+  "pressure_stability": 0.64,
+  "erase_score": 0.8,
+  "difficulty_level": 2,
+  "skill_vector": {
+    "multiplicacao": 1.0,
+    "tabuada_7": 1.0,
+    "aritmetica_basica": 0.7
+  },
+  "fatigue_index": 0.22
+}
+```
+
+---
+
+## 8. Memória Cognitiva do Aluno
+
+O sistema acumula os vetores ao longo do tempo para criar uma memória longitudinal.
+
+Essa memória deve registrar:
+
+* habilidades fortes;
+* habilidades fracas;
+* evolução por tema;
+* velocidade média;
+* perda de foco;
+* fadiga;
+* padrões de erro;
+* retenção;
+* automatização;
+* consistência;
+* resposta à repetição.
+
+---
+
+## 9. Exemplo de Perfil do Aluno
+
+```json
+{
+  "student_id": "stu_001",
+  "math_profile": {
+    "soma": {
+      "accuracy": 0.96,
+      "fluency": 0.88,
+      "status": "automatizado"
+    },
+    "multiplicacao": {
+      "accuracy": 0.74,
+      "fluency": 0.52,
+      "status": "em_desenvolvimento"
+    },
+    "tabuada_7": {
+      "accuracy": 0.48,
+      "fluency": 0.31,
+      "status": "fraco"
+    },
+    "ordem_operacoes": {
+      "accuracy": 0.62,
+      "fluency": 0.44,
+      "status": "instavel"
+    }
+  },
+  "behavior_profile": {
+    "average_focus_time_min": 38,
+    "fatigue_after_min": 46,
+    "best_session_duration_min": 25,
+    "responds_well_to_repetition": true
+  }
+}
+```
+
+---
+
+## 10. Métricas Principais
+
+### 10.1 Acerto
+
+Se a resposta está correta.
+
+### 10.2 Tempo
+
+Quanto tempo o aluno leva para resolver.
+
+### 10.3 Fluidez
+
+Se escreve com ritmo contínuo ou com muitas pausas.
+
+### 10.4 Hesitação
+
+Tempo parado antes ou durante a resposta.
+
+### 10.5 Automatização
+
+Capacidade de responder rápido e corretamente.
+
+### 10.6 Fadiga
+
+Perda progressiva de desempenho durante a sessão.
+
+### 10.7 Retenção
+
+Se mantém desempenho após dias sem praticar.
+
+---
+
+## 11. Tipos de Erro
+
+O sistema deve classificar erros por categoria.
+
+Exemplos iniciais:
+
+* soma;
+* subtração;
+* multiplicação;
+* divisão;
+* tabuada;
+* regra de sinais;
+* ordem de operações;
+* parênteses;
+* distributiva;
+* fração;
+* álgebra básica;
+* interpretação.
+
+---
+
+## 12. Uso na Escolha da Próxima Lista
+
+A memória cognitiva alimenta o motor adaptativo.
+
+Exemplo:
+
+Se o aluno apresenta:
+
+* erro em tabuada do 7;
+* tempo alto;
+* hesitação alta;
+* baixa fluidez;
+
+O sistema deve puxar:
+
+* exercícios curtos de multiplicação por 7;
+* variações com 7 × n;
+* expressões simples envolvendo 7;
+* folhas 5x de repetição progressiva.
+
+---
+
+## 13. Loop Principal
+
+```text
+Escrita no tablet
+→ captura de traços
+→ reconhecimento da resposta
+→ correção
+→ geração de vetor
+→ atualização da memória
+→ seleção da próxima folha
+→ novo ciclo
+```
+
+---
+
+## 14. Papel da IA
+
+A IA não precisa corrigir tudo.
+
+O sistema deve usar lógica determinística sempre que possível.
+
+A IA entra para:
+
+* interpretar padrões complexos;
+* gerar diagnóstico;
+* sugerir biblioteca de exercícios;
+* resumir evolução;
+* detectar tendências;
+* criar relatórios para pais/professores;
+* ajudar na classificação de erros ambíguos.
+
+---
+
+## 15. O que Deve Ser Determinístico
+
+Para reduzir custo e aumentar velocidade, o backend pode resolver diretamente:
+
+* gabarito;
+* acerto/erro;
+* pontuação;
+* tempo;
+* estatísticas simples;
+* escolha inicial de exercícios por regra.
+
+---
+
+## 16. O que Deve Usar IA
+
+* leitura manuscrita ambígua;
+* análise de padrão longitudinal;
+* recomendações pedagógicas;
+* agrupamento de falhas;
+* geração de novas listas;
+* relatórios explicativos;
+* comparação entre perfis semelhantes.
+
+---
+
+## 17. Arquitetura Técnica Sugerida
+
+### 17.1 App Android
+
+Responsável por:
+
+* exibir folha 5x;
+* capturar stylus;
+* registrar eventos;
+* permitir escrita natural;
+* enviar dados ao backend.
+
+Tecnologias possíveis:
+
+* Kotlin;
+* Android SDK;
+* Jetpack Compose;
+* Canvas;
+* stylus input;
+* MotionEvent.
+
+---
+
+### 17.2 Backend
+
+Responsável por:
+
+* receber eventos;
+* consolidar respostas;
+* corrigir;
+* salvar histórico;
+* gerar vetores;
+* selecionar próxima lista.
+
+Tecnologias possíveis:
+
+* Python;
+* FastAPI;
+* PostgreSQL;
+* Redis;
+* filas assíncronas.
+
+---
+
+### 17.3 Banco de Dados
+
+Armazena:
+
+* alunos;
+* exercícios;
+* respostas;
+* eventos de caneta;
+* vetores;
+* sessões;
+* perfis cognitivos;
+* listas geradas;
+* bibliotecas de exercícios.
+
+---
+
+### 17.4 Motor Adaptativo
+
+Responsável por:
+
+* interpretar desempenho;
+* decidir próxima folha;
+* aumentar dificuldade;
+* reduzir dificuldade;
+* repetir padrões;
+* puxar exercícios da biblioteca correta.
+
+---
+
+## 18. Estrutura de Tabelas Conceituais
+
+### students
+
+* id;
+* name;
+* age;
+* level;
+* parent_id.
+
+### exercises
+
+* id;
+* statement;
+* expected_answer;
+* skill_tags;
+* difficulty;
+* estimated_time;
+* source_library.
+
+### exercise_attempts
+
+* id;
+* student_id;
+* exercise_id;
+* recognized_answer;
+* is_correct;
+* total_time;
+* error_type;
+* confidence.
+
+### pen_events
+
+* id;
+* attempt_id;
+* timestamp;
+* x;
+* y;
+* pressure;
+* tilt;
+* event_type.
+
+### cognitive_vectors
+
+* id;
+* student_id;
+* exercise_id;
+* vector_json;
+* created_at.
+
+### student_skill_memory
+
+* student_id;
+* skill;
+* accuracy;
+* fluency;
+* retention;
+* fatigue;
+* status.
+
+---
+
+## 19. MVP Inicial
+
+### Objetivo
+
+Validar o ciclo:
+
+```text
+folha 5x → escrita → leitura → correção → vetor → próxima folha
+```
+
+### Escopo mínimo
+
+* Android tablet;
+* 5 exercícios por página;
+* operações básicas;
+* captura de traços;
+* OCR simples de números;
+* gabarito automático;
+* tempo por questão;
+* histórico do aluno;
+* geração da próxima folha por regra.
+
+---
+
+## 20. Fora do MVP Inicial
+
+Não incluir no início:
+
+* cálculo avançado;
+* reconhecimento perfeito de equações;
+* marketplace;
+* múltiplas matérias;
+* explicações longas;
+* gamificação pesada;
+* IA cara em todas as respostas.
+
+---
+
+## 21. Primeiros Níveis de Matemática
+
+### Nível 1
+
+* soma;
+* subtração;
+* multiplicação simples.
+
+### Nível 2
+
+* tabuada;
+* divisão simples;
+* expressões com duas operações.
+
+### Nível 3
+
+* parênteses;
+* ordem de operações;
+* multiplicação combinada.
+
+### Nível 4
+
+* negativos;
+* frações simples;
+* distributiva.
+
+### Nível 5
+
+* equações simples;
+* álgebra inicial.
+
+---
+
+## 22. Resultado Esperado
+
+Depois de algumas sessões, o sistema deve conseguir afirmar:
+
+* o aluno é rápido em soma;
+* erra tabuada do 7;
+* hesita em parênteses;
+* perde foco após 40 minutos;
+* melhora com repetição curta;
+* precisa de reforço em multiplicação combinada.
+
+---
+
+## 23. Filosofia do Produto
+
+O sistema não é um chat de professor.
+
+O sistema é um motor de treino.
+
+O aluno aprende fazendo.
+
+A IA observa, mede e adapta.
+
+---
+
+## 24. Conclusão
+
+O Math Ink Vector Memory Engine é o núcleo sensorial e cognitivo do produto.
+
+Ele transforma escrita manual em:
+
+* resposta;
+* comportamento;
+* vetor;
+* memória;
+* adaptação.
+
+Esse módulo permite criar um Kumon/Duolingo de matemática baseado em dados reais do aluno.
+
+---
+
+# ADDENDUM V2.0 — Pivot Estratégico ("O Strava da Matemática")
+
+Este adendo foi gerado após aprovação técnica para sobrepor as premissas originais do documento, mantendo o histórico v1.0 intacto.
+
+## 25. Pivot de Público-Alvo e Escopo
+A premissa da Seção 21 ("Matemática Básica / Nível 1 ao 5") foi **substituída**.
+O novo público-alvo são **adolescentes do Ensino Médio (13 a 17 anos)**.
+O sistema deve focar em computação algébrica avançada: equações de 2º grau, frações, matrizes, polinômios e trigonometria.
+A interface infantil será substituída por um design minimalista focado em Deep Work (Alta Performance e Vestibular).
+
+## 26. Pivot de Correção (Result-Only Correction)
+A premissa da Seção 14 ("A IA não precisa corrigir tudo") ganha um contorno técnico específico:
+Adotou-se a abordagem **Result-Only**. O sistema extrairá e converterá para LaTeX (via Math OCR) apenas a **resposta final** destacada pelo aluno.
+O motor de correção utilizará uma engine simbólica (como *SymPy* em Python) para validar variações corretas da mesma resposta (ex: `1/2 == 0.5`).
+O resto das linhas de rascunho da equação manuscrita não serão analisadas via IA step-by-step no MVP, mas seus vetores serão salvos estritamente como telemetria de tempo e hesitação.
+
+## 27. Pivot de Processamento (Thin Client / Online-First)
+A premissa da Seção 17 ("Android App corrige") foi **substituída**.
+Para garantir total retenção de dados (Data Harvesting), o aplicativo Android funcionará como um "Thin Client" (Cliente Fino). Ele captura a tinta a 60/120Hz e transmite para a Nuvem. Nenhuma correção ou OCR acontecerá no Edge (offline) no MVP inicial. Todo o motor de decisão residirá no Backend (Python).
+
+## 28. Pivot de Engajamento ("O Strava da Matemática")
+A essência do engajamento evolui para **Math Esports**:
+*   **Comunicação em Tempo Real:** Uso de WebSockets para garantir "zero latência" no traçado esportivo.
+*   **Time-Decay Scoring:** O motor de pontuação (Backend) dará bônus (multiplicadores de pontuação) com base nos milissegundos economizados, gerando penalidades naturais para longas hesitações cognitivas.
+*   **Ghost Racing (Multiplayer Assíncrono):** Alunos poderão receber desafios ("Fulano fez 2000 pontos nesta lista") e competir em tempo real contra o "fantasma" (tempo e rastro vetorial gravados) dos oponentes na mesma folha de exercícios.

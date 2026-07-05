@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strava da Matemática — Layout Spec v1.0</title>
+  <link rel="stylesheet" href="tokens.css" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; }
+    body { font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+
+    /* Intro artboard styling */
+    .intro {
+      background: #FFFFFF;
+      border: 1px solid #D9DED6;
+      border-radius: 8px;
+      height: 100%;
+      padding: 32px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      color: #151713;
+    }
+    .intro .kicker {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5F665C;
+    }
+    .intro h1 {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-weight: 600;
+      font-size: 40px;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .intro p {
+      font-size: 15px;
+      line-height: 1.5;
+      color: #2a2d27;
+      margin: 0;
+      max-width: 560px;
+    }
+    .intro .meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 16px 0;
+      border-top: 1px solid #D9DED6;
+      border-bottom: 1px solid #D9DED6;
+    }
+    .intro .meta .item { display: flex; flex-direction: column; gap: 4px; }
+    .intro .meta .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #5F665C;
+    }
+    .intro .meta .val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .intro .links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .intro a.cta {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 12px 18px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .intro a.cta.primary {
+      background: #151713; color: #fff;
+    }
+    .intro a.cta.ghost {
+      background: transparent; color: #151713; border: 1px solid #D9DED6;
+    }
+    .intro a.cta:hover { opacity: 0.92; }
+    .intro .legend {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5F665C;
+    }
+    .intro .legend .swatch {
+      width: 12px; height: 12px; border-radius: 2px;
+      display: inline-block; vertical-align: middle; margin-right: 6px;
+    }
+  </style>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="components/icons.jsx"></script>
+  <script type="text/babel" src="components/ink-canvas.jsx"></script>
+  <script type="text/babel" src="components/sample-data.jsx"></script>
+  <script type="text/babel" src="components/folha-safe.jsx"></script>
+  <script type="text/babel" src="components/folha-bold.jsx"></script>
+  <script type="text/babel" src="components/result-safe.jsx"></script>
+  <script type="text/babel" src="components/result-bold.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const W = 760;
+    const H = 1180;
+
+    function Intro() {
+      return (
+        <div className="intro">
+          <span className="kicker">Strava da Matemática · APP_LAYOUT_SPEC v1.0</span>
+          <h1>Caderno de treino para a matemática de alta performance.</h1>
+          <p>
+            Hi-fi do app Android. Tablet portrait, foco em escrita à caneta,
+            estética de caderno de treino — não de app escolar.
+            Cada tela em duas direções: <strong>Safe</strong> (cards
+            hairline, hierarquia conservadora) e <strong>Bold</strong> (numeração
+            editorial gigante em gutter, régua lateral, ledger).
+          </p>
+
+          <div className="meta">
+            <div className="item">
+              <span className="label">Target</span>
+              <span className="val">Android tablet, portrait</span>
+            </div>
+            <div className="item">
+              <span className="label">Tipo</span>
+              <span className="val">IBM Plex Sans + Mono</span>
+            </div>
+            <div className="item">
+              <span className="label">Temas</span>
+              <span className="val">White / Dark Focus</span>
+            </div>
+            <div className="item">
+              <span className="label">Telas neste exercício</span>
+              <span className="val">Folha + PageResult</span>
+            </div>
+          </div>
+
+          <div className="legend">
+            <span><span className="swatch" style={{background:'#1E7F5C'}}></span>Progresso</span>
+            <span><span className="swatch" style={{background:'#B7791F'}}></span>Hesitação</span>
+            <span><span className="swatch" style={{background:'#C2413A'}}></span>Erro</span>
+            <span><span className="swatch" style={{background:'#2F6F9F'}}></span>Info</span>
+          </div>
+
+          <div className="links" style={{marginTop: 'auto'}}>
+            <a className="cta primary" href="prototype.html">
+              ▶ Abrir protótipo interativo
+            </a>
+            <a className="cta ghost" href="prototype.html?screen=result">
+              Ir direto ao PageResult
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="intro"
+            title="Strava da Matemática"
+            subtitle="Layout spec — variantes para FolhaScreen e PageResultScreen"
+          >
+            <DCArtboard id="intro-card" label="Read me" width={W * 1.4} height={H * 0.55}>
+              <Intro />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="folha"
+            title="FolhaScreen"
+            subtitle="A folha de exercícios — onde o aluno passa 90% do tempo. Caneta, borracha, undo/redo, troca de campo."
+          >
+            <DCArtboard id="folha-safe-white" label="Safe · White Focus" width={W} height={H}>
+              <FolhaScreenSafe theme="white" initialInk={window.DEMO_INK} />
+            </DCArtboard>
+            <DCArtboard id="folha-bold-white" label="Bold · White Focus" width={W} height={H}>
+              <FolhaScreenBold theme="white" initialInk={window.DEMO_INK} />
+            </DCArtboard>
+            <DCArtboard id="folha-safe-dark" label="Safe · Dark Focus" width={W} height={H}>
+              <FolhaScreenSafe theme="dark" initialInk={window.DEMO_INK} />
+            </DCArtboard>
+            <DCArtboard id="folha-bold-dark" label="Bold · Dark Focus" width={W} height={H}>
+              <FolhaScreenBold theme="dark" initialInk={window.DEMO_INK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="result"
+            title="PageResultScreen"
+            subtitle="Correção campo a campo + diagnóstico cognitivo. Sem confete, sem texto motivacional."
+          >
+            <DCArtboard id="result-safe-white" label="Safe · White Focus" width={W} height={H}>
+              <PageResultScreenSafe theme="white" />
+            </DCArtboard>
+            <DCArtboard id="result-bold-white" label="Bold · White Focus" width={W} height={H}>
+              <PageResultScreenBold theme="white" />
+            </DCArtboard>
+            <DCArtboard id="result-safe-dark" label="Safe · Dark Focus" width={W} height={H}>
+              <PageResultScreenSafe theme="dark" />
+            </DCArtboard>
+            <DCArtboard id="result-bold-dark" label="Bold · Dark Focus" width={W} height={H}>
+              <PageResultScreenBold theme="dark" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
